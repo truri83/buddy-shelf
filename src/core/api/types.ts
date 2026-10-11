@@ -93,6 +93,15 @@ export interface FilamentEntry {
   translucent: boolean;
 }
 
+/** Typisches Leerspulen-Gewicht eines Herstellers laut Filament-Datenbank (/catalog/spools) */
+export interface DbSpoolWeight {
+  manufacturer: string;
+  spool_type: 'plastic' | 'cardboard' | 'metal' | null;
+  weight: number;
+  /** Anzahl Filamente mit diesem Wert */
+  count: number;
+}
+
 /** GET /inventory/catalog – Leerspulen-Gewichte */
 export interface CatalogEntry {
   id: number;

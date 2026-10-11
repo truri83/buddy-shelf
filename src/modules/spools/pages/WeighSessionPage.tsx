@@ -26,6 +26,8 @@ import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ScannerView, StateView } from '@/core/ui';
+import { CoreRow, useWeighMode, WeighModeSwitch } from '../components/CoreRow';
+import { netToGross } from '../cores';
 import { useArchiveSpool, useLocations, useMoveSpool, useSpools, useWeighSpool } from '../hooks/useSpools';
 import { spoolTitle } from '../slots';
 import { missingSpools, newSession, parseGrams, record, SESSION_KEY, type WeighSession } from '../weighSession';
@@ -48,6 +50,7 @@ export function WeighSessionPage() {
   const [active, setActive] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
   const input = useRef<HTMLIonInputElement>(null);
+  const [mode, setMode] = useWeighMode();
   const [alert] = useIonAlert();
 
   useIonViewDidEnter(() => setActive(true));
@@ -92,7 +95,8 @@ export function WeighSessionPage() {
     [openSpool],
   );
 
-  const gross = parseGrams(value);
+  const entered = parseGrams(value);
+  const gross = entered == null || !current ? null : mode === 'net' ? netToGross(entered, current.core_weight) : entered;
   const rest = current && gross != null ? Math.round(current.label_weight - weightUsedFromScale(gross, current)) : null;
 
   const save = async () => {
@@ -182,13 +186,12 @@ export function WeighSessionPage() {
             {current ? (
               <section style={{ background: 'var(--bs-surface)', borderRadius: 'var(--bs-r-lg)', padding: 'var(--bs-s4)', marginBottom: 'var(--bs-s3)', display: 'grid', gap: 'var(--bs-s2)' }}>
                 <strong>{spoolTitle(current)}</strong>
-                <IonNote>
-                  {t('weigh.core', { g: current.core_weight })}
-                  {current.last_scale_weight != null ? ` · ${t('weighs.lastGross', { g: current.last_scale_weight })}` : ''}
-                </IonNote>
+                <WeighModeSwitch mode={mode} onChange={setMode} />
+                {mode === 'gross' && <CoreRow spool={current} onChanged={(s) => setCurrent(s)} />}
+                {current.last_scale_weight != null && <IonNote>{t('weighs.lastGross', { g: current.last_scale_weight })}</IonNote>}
                 <IonInput
                   ref={input}
-                  label={t('weigh.gross')}
+                  label={mode === 'net' ? t('weigh.net') : t('weigh.gross')}
                   labelPlacement="stacked"
                   inputmode="decimal"
                   enterkeyhint="done"

@@ -148,3 +148,16 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 | Daten | `POST /spoolbuddy/scale/update-spool-weight`, `PATCH /inventory/spools/{id}` `{ location_id }`, `POST /inventory/spools/{id}/archive` |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Pro Spule: 1 Scan + Gewicht + Enter; 10 Spulen ohne einen weiteren Tipp; Inventur zeigt nicht gescannte Spulen des gewählten Orts |
+
+## SP-10 Leerspulen und Gewichte (angelehnt an Spooly)
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt |
+| Ziel | Gewichte stimmen: Leerspulen-Gewichte pflegen, beim Wiegen die richtige Leerspule sehen/ändern, Restgewicht wahlweise brutto (Waage mit Spule) oder netto (nur Filament) eintragen. |
+| Ablauf | Mehr → „Leerspulen“ → Liste nach Hersteller, Suche, Eintrag tippen = ändern, + = neu, Wischen/Löschen mit Bestätigung; Vorschläge aus der Filament-Datenbank (Hersteller mit bekanntem Leerspulen-Gewicht, das noch fehlt) mit einem Tipp übernehmen. Wiegen (SP-05/SP-09): Zeile „Leerspule: Name · g“ → Auswahl-Sheet → speichert `core_weight` an der Spule; Umschalter Brutto/Netto. |
+| Seite | `pages/CoreWeightsPage.tsx` (`/spools/cores`), Leerspulen-Zeile + Brutto/Netto im Wiegen-Sheet und in „Wiegen & Inventur“ |
+| Daten | `GET/POST /inventory/catalog`, `PUT/DELETE /inventory/catalog/{id}` (`{ name, weight }`); Spule: `PATCH { core_weight, core_weight_catalog_id }`; Netto wird als Brutto = Netto + Leerspule an den Waagen-Endpunkt gegeben (eine Rechenregel für beide Wege) |
+| Vorbild | spooly.eu: Gesamt-/Restgewicht, Füllstand, QR-Wechsel – hier mit Bambuddy als Datenhaltung |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Leerspule „Sunlu – Kunststoff 160 g“ anlegen, beim Wiegen von #5 auswählen → Rest stimmt; Netto 400 g eintragen → Rest 400 g |

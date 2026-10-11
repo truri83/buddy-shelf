@@ -1,6 +1,7 @@
 import type {
   CatalogEntry,
   ColorEntry,
+  DbSpoolWeight,
   FilamentEntry,
   Location,
   LocationCreate,
@@ -118,6 +119,10 @@ export const bambuddy = {
   },
   catalog: {
     spools: () => request<CatalogEntry[]>('GET', '/inventory/catalog'),
+    /** Leerspulen-Katalog pflegen (SP-10) */
+    addSpool: (e: { name: string; weight: number }) => request<CatalogEntry>('POST', '/inventory/catalog', e),
+    updateSpool: (id: number, e: { name: string; weight: number }) => request<CatalogEntry>('PUT', `/inventory/catalog/${id}`, e),
+    removeSpool: (id: number) => request<{ status: string }>('DELETE', `/inventory/catalog/${id}`),
     colors: (q: { manufacturer?: string; material?: string }) => {
       const p = new URLSearchParams();
       if (q.manufacturer) p.set('manufacturer', q.manufacturer);
@@ -128,6 +133,8 @@ export const bambuddy = {
   /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
   filamentDb: {
     manufacturers: () => catalogRequest<string[]>('/manufacturers'),
+    /** Häufigstes Leerspulen-Gewicht je Hersteller und Spulenart */
+    spoolWeights: () => catalogRequest<DbSpoolWeight[]>('/spools'),
     materials: (manufacturer?: string) =>
       catalogRequest<string[]>(`/materials${manufacturer ? `?manufacturer=${encodeURIComponent(manufacturer)}` : ''}`),
     filaments: (q: { manufacturer?: string; material?: string }) => {

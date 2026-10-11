@@ -4,8 +4,11 @@ import { weightUsedFromScale, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { FillBar } from '@/core/ui';
+import { netToGross } from '../cores';
 import { useWeighSpool } from '../hooks/useSpools';
 import { spoolTitle } from '../slots';
+import { parseGrams } from '../weighSession';
+import { CoreRow, NetHint, useWeighMode, WeighModeSwitch } from './CoreRow';
 
 interface Props {
   spool: Spool;
@@ -13,20 +16,21 @@ interface Props {
   onDismiss: () => void;
 }
 
-/** SP-05: Bruttogewicht eingeben → Vorschau Rest → speichern (Bambuddys Waagen-Endpunkt). */
+/** SP-05/SP-10: Brutto (Waage mit Spule) oder Netto eingeben → Vorschau Rest → speichern (Bambuddys Waagen-Endpunkt). */
 export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useWeighMode();
   const weigh = useWeighSpool();
   const [toast] = useIonToast();
 
-  const gross = Number(value.replace(',', '.'));
-  const valid = value.trim() !== '' && Number.isFinite(gross) && gross > 0 && gross <= 100_000;
-  const rest = valid ? Math.round(spool.label_weight - weightUsedFromScale(gross, spool)) : null;
-  const tooLight = valid && gross < spool.core_weight;
+  const entered = parseGrams(value);
+  const gross = entered == null ? null : mode === 'net' ? netToGross(entered, spool.core_weight) : entered;
+  const rest = gross != null ? Math.round(spool.label_weight - weightUsedFromScale(gross, spool)) : null;
+  const tooLight = mode === 'gross' && gross != null && gross < spool.core_weight;
 
   const save = async () => {
-    if (!valid) return;
+    if (gross == null) return;
     setError(null);
     try {
       await weigh.mutateAsync({ spoolId: spool.id, gross });
@@ -40,7 +44,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   };
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.6} breakpoints={[0, 0.6, 1]}>
+    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('weigh.title')}</IonTitle>
@@ -48,13 +52,16 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
       </IonHeader>
       <IonContent>
         <IonNote style={{ display: 'block', padding: 'var(--bs-s3) var(--bs-s4) 0' }}>{spoolTitle(spool)}</IonNote>
+        <div style={{ padding: 'var(--bs-s3) var(--bs-s4) 0' }}>
+          <WeighModeSwitch mode={mode} onChange={setMode} />
+        </div>
         <IonList inset>
           <IonItem>
             <IonInput
-              label={t('weigh.gross')}
+              label={mode === 'net' ? t('weigh.net') : t('weigh.gross')}
               labelPlacement="stacked"
               inputmode="decimal"
-              type="text"
+              enterkeyhint="done"
               placeholder="g"
               value={value}
               onIonInput={(e) => setValue(String(e.detail.value ?? ''))}
@@ -64,7 +71,8 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
           </IonItem>
         </IonList>
         <div style={{ display: 'grid', gap: 'var(--bs-s2)', padding: '0 var(--bs-s4)' }}>
-          <IonNote>{t('weigh.core', { g: spool.core_weight })}</IonNote>
+          {mode === 'gross' && <CoreRow spool={spool} />}
+          <NetHint mode={mode} core={spool.core_weight} />
           {rest != null && (
             <>
               <div className="bs-num" style={{ fontSize: 'var(--bs-fs-title)', fontWeight: 700 }}>
@@ -82,7 +90,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
               {error}
             </IonNote>
           )}
-          <IonButton expand="block" disabled={!valid || weigh.isPending} onClick={() => void save()} style={{ marginTop: 'var(--bs-s3)' }}>
+          <IonButton expand="block" disabled={gross == null || weigh.isPending} onClick={() => void save()} style={{ marginTop: 'var(--bs-s3)' }}>
             {t('common.save')}
           </IonButton>
         </div>

@@ -167,6 +167,21 @@ export function useDbFilaments(manufacturer: string, material: string) {
   });
 }
 
+/** SP-10: Leerspulen-Katalog pflegen */
+export function useCatalogMutations() {
+  const qc = useQueryClient();
+  const done = () => void qc.invalidateQueries({ queryKey: spoolKeys.catalog });
+  return {
+    add: useMutation({ mutationFn: bambuddy.catalog.addSpool, onSuccess: done }),
+    update: useMutation({ mutationFn: ({ id, ...e }: { id: number; name: string; weight: number }) => bambuddy.catalog.updateSpool(id, e), onSuccess: done }),
+    remove: useMutation({ mutationFn: bambuddy.catalog.removeSpool, onSuccess: done }),
+  };
+}
+
+export function useDbSpoolWeights(enabled: boolean) {
+  return useQuery({ queryKey: ['filamentDb', 'spools'], queryFn: bambuddy.filamentDb.spoolWeights, staleTime: DB_STALE, enabled, retry: false });
+}
+
 export function useCatalog() {
   return useQuery({ queryKey: spoolKeys.catalog, queryFn: bambuddy.catalog.spools, staleTime: 60 * 60_000 });
 }

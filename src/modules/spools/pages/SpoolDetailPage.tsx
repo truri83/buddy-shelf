@@ -123,6 +123,12 @@ export function SpoolDetailPage() {
                   {s.core_weight} g
                 </IonLabel>
               </IonItem>
+              <IonItem>
+                <IonLabel color="medium">{t('spools.detail.gross')}</IonLabel>
+                <IonLabel slot="end" className="bs-num">
+                  {remainingGrams(s) + s.core_weight} g
+                </IonLabel>
+              </IonItem>
               <IonItem lines="none">
                 <IonLabel color="medium">{t('spools.detail.code')}</IonLabel>
                 <IonLabel slot="end" className="bs-num">

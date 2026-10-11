@@ -93,6 +93,32 @@ export const handlers = [
     return st ? HttpResponse.json(st) : HttpResponse.json({ detail: 'Printer not found' }, { status: 404 });
   }),
   http.get(api('/inventory/catalog'), () => HttpResponse.json(catalog)),
+  http.post(api('/inventory/catalog'), async ({ request }) => {
+    const e = (await request.json()) as { name: string; weight: number };
+    const row = { id: Math.max(0, ...catalog.map((c) => c.id)) + 1, name: e.name, weight: e.weight, is_default: false };
+    catalog.push(row);
+    return HttpResponse.json(row);
+  }),
+  http.put(api('/inventory/catalog/:id'), async ({ params, request }) => {
+    const row = catalog.find((c) => c.id === Number(params.id));
+    if (!row) return HttpResponse.json({ detail: 'Entry not found' }, { status: 404 });
+    Object.assign(row, (await request.json()) as object);
+    return HttpResponse.json(row);
+  }),
+  http.delete(api('/inventory/catalog/:id'), ({ params }) => {
+    const i = catalog.findIndex((c) => c.id === Number(params.id));
+    if (i < 0) return HttpResponse.json({ detail: 'Entry not found' }, { status: 404 });
+    catalog.splice(i, 1);
+    return HttpResponse.json({ status: 'deleted' });
+  }),
+  // Leerspulen-Vorschläge aus der Filament-Datenbank (server/catalog.js)
+  http.get('*/catalog/spools', () =>
+    HttpResponse.json([
+      { manufacturer: 'Polymaker', spool_type: 'cardboard', weight: 140, count: 120 },
+      { manufacturer: 'Sunlu', spool_type: 'plastic', weight: 160, count: 80 },
+      { manufacturer: 'Bambu Lab', spool_type: null, weight: 250, count: 287 },
+    ]),
+  ),
   http.get(api('/inventory/colors/search'), ({ request }) => {
     const q = new URL(request.url).searchParams;
     const m = (q.get('manufacturer') ?? '').toLowerCase();

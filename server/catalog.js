@@ -48,6 +48,25 @@ function normHex(h) {
   return /^[0-9A-F]{6}([0-9A-F]{2})?$/.test(v) ? v.slice(0, 6) : null;
 }
 
+/** Häufigstes Leerspulen-Gewicht je Hersteller + Spulenart. */
+function spoolWeights(data) {
+  const counts = new Map();
+  for (const f of data) {
+    if (!f.spool_weight) continue;
+    const key = `${f.manufacturer}|${f.spool_type ?? ''}`;
+    const m = counts.get(key) ?? new Map();
+    m.set(f.spool_weight, (m.get(f.spool_weight) ?? 0) + 1);
+    counts.set(key, m);
+  }
+  return [...counts.entries()]
+    .map(([key, m]) => {
+      const [manufacturer, type] = key.split('|');
+      const [weight, count] = [...m.entries()].sort((a, b) => b[1] - a[1])[0];
+      return { manufacturer, spool_type: type || null, weight, count };
+    })
+    .sort((a, b) => a.manufacturer.localeCompare(b.manufacturer, 'de'));
+}
+
 const uniqSorted = (list) => [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
 const eq = (a, b) => String(a ?? '').toLowerCase() === String(b ?? '').toLowerCase();
 
@@ -59,6 +78,7 @@ export async function catalogResponse(path, query) {
     const m = query.get('manufacturer');
     return uniqSorted(data.filter((f) => !m || eq(f.manufacturer, m)).map((f) => f.material));
   }
+  if (path === '/spools') return spoolWeights(data);
   if (path === '/filaments') {
     const m = query.get('manufacturer');
     const mat = query.get('material');
