@@ -44,3 +44,16 @@ describe('parseScan', () => {
     expect(() => encodeSlotCode(1, 0, 4)).toThrow();
   });
 });
+
+describe('Packungs-Barcode', async () => {
+  const { parseScan, isValidGtin } = await import('./codes');
+  it('erkennt EAN-13/UPC-A mit gültiger Prüfziffer', () => {
+    expect(parseScan('6975337031390')).toEqual({ kind: 'gtin', code: '6975337031390' });
+    expect(parseScan('191314034277')).toEqual({ kind: 'gtin', code: '191314034277' });
+    expect(isValidGtin('96385074')).toBe(true);
+  });
+  it('falsche Prüfziffer oder Länge ist kein Barcode', () => {
+    expect(parseScan('6975337031391').kind).toBe('unknown');
+    expect(parseScan('12345').kind).toBe('unknown');
+  });
+});

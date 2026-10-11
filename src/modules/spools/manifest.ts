@@ -31,7 +31,14 @@ export const spoolsModule: ModuleManifest = {
     { id: 'spools.slots', label: 'spools.action.slots', icon: gridOutline, href: '/spools/slots' },
   ],
   // SP-08: Slot-Etikett öffnet den Doppelscan
-  scan: (r) => (r.kind === 'spool' ? `/spools/${r.spoolId}` : r.kind === 'slot' ? `/spools/slot/${r.printerId}/${r.amsId}/${r.trayId}` : null),
+  scan: (r) =>
+    r.kind === 'spool'
+      ? `/spools/${r.spoolId}`
+      : r.kind === 'slot'
+        ? `/spools/slot/${r.printerId}/${r.amsId}/${r.trayId}`
+        : r.kind === 'gtin'
+          ? `/spools/new?gtin=${r.code}`
+          : null,
   requires: { api: ['inventory:read'], platform: [], optional: ['scanner', 'printer.bluetooth', 'printer.usb', 'nfc'] },
   events: { emits: ['spool.assigned', 'spool.moved', 'spool.weighed', 'spool.created'] },
 };

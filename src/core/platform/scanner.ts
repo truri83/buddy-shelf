@@ -21,25 +21,44 @@ export interface ScannerHandle {
 }
 
 interface Detector {
-  detect(source: CanvasImageSource | ImageBitmapSource): Promise<{ rawValue: string }[]>;
+  detect(source: CanvasImageSource | ImageBitmapSource): Promise<{ rawValue: string; format?: string; cornerPoints?: { x: number; y: number }[] }[]>;
 }
 
-let detectorPromise: Promise<Detector> | null = null;
+/** QR für eigene Etiketten, EAN/UPC für Packungen. */
+export type ScanFormat = 'qr_code' | 'ean_13' | 'ean_8' | 'upc_a' | 'upc_e';
+export const QR_ONLY: ScanFormat[] = ['qr_code'];
+export const QR_AND_BARCODES: ScanFormat[] = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e'];
 
-/** QR-Erkenner: nativ, sonst zxing-wasm. Einmal je Sitzung; nach einem Fehler beim nächsten Aufruf neu versuchen. */
-export function getQrDetector(): Promise<Detector> {
-  detectorPromise ??= (async () => {
+/** Lage eines Treffers im Videobild (Pixel des Kamerabilds). */
+export interface ScanHit {
+  text: string;
+  format: string | null;
+  points: { x: number; y: number }[];
+  videoWidth: number;
+  videoHeight: number;
+}
+
+const detectors = new Map<string, Promise<Detector>>();
+
+/** Erkenner für die Formate: nativ, sonst zxing-wasm. Einmal je Formatsatz; nach einem Fehler neu versuchen. */
+export function getQrDetector(formats: ScanFormat[] = QR_ONLY): Promise<Detector> {
+  const key = formats.join(',');
+  let detectorPromise = detectors.get(key);
+  if (detectorPromise) return detectorPromise;
+  detectorPromise = (async () => {
     const Native = (globalThis as { BarcodeDetector?: { new (o: object): Detector; getSupportedFormats(): Promise<string[]> } }).BarcodeDetector;
-    if (Native && (await Native.getSupportedFormats().catch((): string[] => [])).includes('qr_code')) {
-      return new Native({ formats: ['qr_code'] });
+    const supported = Native ? await Native.getSupportedFormats().catch((): string[] => []) : [];
+    if (Native && formats.every((f) => supported.includes(f))) {
+      return new Native({ formats });
     }
     const { BarcodeDetector, prepareZXingModule } = await import('barcode-detector/ponyfill');
     prepareZXingModule({
       overrides: { locateFile: (path: string, prefix: string) => (path.endsWith('.wasm') ? wasmUrl : prefix + path) },
     });
-    return new BarcodeDetector({ formats: ['qr_code'] });
+    return new BarcodeDetector({ formats });
   })();
-  detectorPromise.catch(() => (detectorPromise = null));
+  detectors.set(key, detectorPromise);
+  detectorPromise.catch(() => detectors.delete(key));
   return detectorPromise;
 }
 
@@ -102,7 +121,14 @@ function toScannerError(e: unknown): ScannerError {
  * Ein Code wird nur einmal gemeldet, solange er im Bild bleibt (erst nach 2,5 s ohne ihn wieder).
  * `signal`: Abbruch während des Starts – die Kamera wird dann sofort wieder freigegeben.
  */
-export async function startScanner(video: HTMLVideoElement, onCode: (text: string) => void, signal?: AbortSignal): Promise<ScannerHandle> {
+export async function startScanner(
+  video: HTMLVideoElement,
+  onCode: (text: string, hit: ScanHit) => void,
+  signal?: AbortSignal,
+  formats: ScanFormat[] = QR_ONLY,
+  /** jede Sichtung (auch bekannte Codes) – für die Markierung im Bild */
+  onSight?: (hit: ScanHit) => void,
+): Promise<ScannerHandle> {
   if (!window.isSecureContext) throw new ScannerError('insecure');
   if (!navigator.mediaDevices?.getUserMedia) throw new ScannerError('nocamera');
 
@@ -130,7 +156,7 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
 
   let detector: Detector;
   try {
-    detector = await getQrDetector();
+    detector = await getQrDetector(formats);
   } catch (e) {
     release();
     throw new ScannerError('failed', e instanceof Error ? e.message : String(e));
@@ -148,22 +174,32 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
   const INTERVAL_MS = 200;
   const AFTER_HIT_MS = 900;
   let pauseUntil = 0;
+  let tickCount = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const tick = async () => {
     if (stopped) return;
-    if (video.readyState >= 2 && !document.hidden && Date.now() >= pauseUntil) {
+    // nach einem Treffer seltener prüfen (Markierung bleibt sichtbar), sonst ~5×/s
+    if (video.readyState >= 2 && !document.hidden && (Date.now() >= pauseUntil || (tickCount++ & 3) === 0)) {
       try {
         const found = await detector.detect(video);
-        const text = found[0]?.rawValue;
+        const first = found[0];
+        const text = first?.rawValue;
         const now = Date.now();
         if (text) {
+          onSight?.({ text, format: first?.format ?? null, points: first?.cornerPoints ?? [], videoWidth: video.videoWidth, videoHeight: video.videoHeight });
           const isNew = text !== last.text || now - last.at > 2500;
           // jede Sichtung verlängert die Sperre – ein Code im Bild wird nicht alle 2,5 s erneut gemeldet
           last = { text, at: now };
           if (isNew) {
             pauseUntil = now + AFTER_HIT_MS;
-            onCode(text);
+            onCode(text, {
+              text,
+              format: first?.format ?? null,
+              points: first?.cornerPoints ?? [],
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+            });
           }
         }
       } catch {

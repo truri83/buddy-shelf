@@ -161,6 +161,11 @@ export function useDbMaterials(manufacturer: string, enabled: boolean) {
     retry: false,
   });
 }
+/** Packungs-Barcode → Filament (Open Filament Database) */
+export function useGtin(code: string) {
+  return useQuery({ queryKey: ['filamentDb', 'gtin', code], queryFn: () => bambuddy.filamentDb.gtin(code), enabled: !!code, staleTime: DB_STALE, retry: false });
+}
+
 export function useDbFilaments(manufacturer: string, material: string) {
   return useQuery({
     queryKey: ['filamentDb', 'filaments', manufacturer, material],

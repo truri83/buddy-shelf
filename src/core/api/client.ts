@@ -3,6 +3,7 @@ import type {
   CatalogEntry,
   ColorEntry,
   DbSpoolWeight,
+  GtinHit,
   FilamentEntry,
   Location,
   LocationCreate,
@@ -147,6 +148,8 @@ export const bambuddy = {
   /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
   filamentDb: {
     manufacturers: () => catalogRequest<string[]>('/manufacturers'),
+    /** Packungs-Barcode → Filament (Open Filament Database) */
+    gtin: (code: string) => catalogRequest<GtinHit[]>(`/gtin/${encodeURIComponent(code)}`),
     /** Häufigstes Leerspulen-Gewicht je Hersteller und Spulenart */
     spoolWeights: () => catalogRequest<DbSpoolWeight[]>('/spools'),
     materials: (manufacturer?: string) =>

@@ -161,3 +161,16 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 | Vorbild | spooly.eu: Gesamt-/Restgewicht, Füllstand, QR-Wechsel – hier mit Bambuddy als Datenhaltung |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Leerspule „Sunlu – Kunststoff 160 g“ anlegen, beim Wiegen von #5 auswählen → Rest stimmt; Netto 400 g eintragen → Rest 400 g |
+
+## SP-11 Packungs-Barcode scannen (EAN/GTIN) + Anvisierhilfe
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt – mit echter Packung am iPhone prüfen |
+| Ziel | Neue Spule durch Scannen des Barcodes auf Packung/Spule anlegen: Hersteller, Material, Sorte, Farbe (Hex), Gewicht, Refill und Artikelnummer werden vorausgefüllt. Kamera zeigt, wo QR/Barcode hingehört, und markiert den erkannten Code. |
+| Ablauf | Scan-Tab oder „Spule hinzufügen“ → „Packung scannen“ → Barcode → Formular vorausgefüllt (Hinweis „aus Barcode“) → Anzahl → Anlegen → Etiketten. Unbekannter Barcode → Hinweis, Formular leer mit Barcode im Notizfeld. |
+| Seite | Scan-Vorlage (Rahmen für QR quadratisch, für Barcodes breit mit Ziellinie; erkannter Code wird umrandet); Formular `SpoolFormPage` (`?gtin=`) |
+| Daten | **Open Filament Database** (github.com/OpenFilamentCollective/open-filament-database, MIT): Barcode-Index `api.openfilamentdatabase.org/api/v1/gtin-index.json` (~5 600 Codes, 41 Marken) + Variante (`color_hex`, `sizes[].spool_refill`, `article_number`). Unser Server: `GET /catalog/gtin/{code}` (Index täglich, Varianten zwischengespeichert). Artikelnummer → Bambuddy `material_number`. |
+| Plattform | `scanner` mit Formaten QR + EAN-13/8, UPC-A/E |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Bambu-PLA-Basic-Packung → „Bambu Lab · PLA · Basic · Silver · #A6A9AA · 1000 g“; Refill-Packung setzt Spulenart Refill |

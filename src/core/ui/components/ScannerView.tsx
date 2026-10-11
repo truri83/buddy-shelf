@@ -1,7 +1,7 @@
 import { IonButton } from '@ionic/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { t } from '@/core/i18n';
-import { can, ScannerError, startScanner, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
+import { can, QR_ONLY, ScannerError, startScanner, type ScanFormat, type ScanHit, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
 
 type CamState = { kind: 'off' } | { kind: 'starting' } | { kind: 'running'; torch: boolean } | { kind: 'error'; error: ScannerErrorKind };
 
@@ -11,17 +11,57 @@ interface Props {
   onCode: (text: string) => void;
   /** Hinweis unter dem Bild im laufenden Zustand */
   hint?: string;
+  /** Welche Codes erkannt werden: nur QR (Etiketten) oder auch Packungs-Barcodes */
+  formats?: ScanFormat[];
 }
 
-/** Baustein „Kamera mit Zielrahmen“ (SP-02). Kamera aus, wenn inaktiv oder App im Hintergrund. */
-export function ScannerView({ active, onCode, hint }: Props) {
+/** Treffer-Umriss: Videopixel → Anzeige (object-fit: cover). */
+function toView(hit: ScanHit, el: HTMLElement): string | null {
+  if (!hit.points.length || !hit.videoWidth) return null;
+  const { width: w, height: h } = el.getBoundingClientRect();
+  const scale = Math.max(w / hit.videoWidth, h / hit.videoHeight);
+  const ox = (w - hit.videoWidth * scale) / 2;
+  const oy = (h - hit.videoHeight * scale) / 2;
+  return hit.points.map((p) => `${(p.x * scale + ox).toFixed(1)},${(p.y * scale + oy).toFixed(1)}`).join(' ');
+}
+
+/** Ecken des Zielrahmens (statt vollem Rahmen – das Motiv bleibt sichtbar). */
+function Corners({ inset }: { inset: CSSProperties['inset'] }) {
+  const c = (pos: CSSProperties): CSSProperties => ({
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderColor: 'var(--bs-accent)',
+    borderStyle: 'solid',
+    borderWidth: 0,
+    ...pos,
+  });
+  return (
+    <div aria-hidden style={{ position: 'absolute', inset, boxShadow: '0 0 0 100vmax rgba(0,0,0,.35)', borderRadius: 'var(--bs-r-md)' }}>
+      <span style={c({ top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 'var(--bs-r-md)' })} />
+      <span style={c({ top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 'var(--bs-r-md)' })} />
+      <span style={c({ bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 'var(--bs-r-md)' })} />
+      <span style={c({ bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 'var(--bs-r-md)' })} />
+    </div>
+  );
+}
+
+/**
+ * Baustein „Kamera mit Zielrahmen“ (SP-02/SP-11). Anvisierhilfe: quadratisch für QR, breit mit Ziellinie
+ * für Packungs-Barcodes; der erkannte Code wird kurz umrandet. Kamera aus, wenn inaktiv oder im Hintergrund.
+ */
+export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) {
   const [cam, setCam] = useState<CamState>({ kind: 'off' });
   const [torchOn, setTorchOn] = useState(false);
   const [hidden, setHidden] = useState(() => document.hidden);
+  const [mark, setMark] = useState<{ points: string; at: number } | null>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const handle = useRef<ScannerHandle | null>(null);
   const onCodeRef = useRef(onCode);
   const [attempt, setAttempt] = useState(0);
+  const barcodes = formats.some((f) => f !== 'qr_code');
+  const formatKey = formats.join(',');
 
   useEffect(() => {
     onCodeRef.current = onCode;
@@ -33,6 +73,14 @@ export function ScannerView({ active, onCode, hint }: Props) {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
+  // Umriss nach kurzer Zeit ausblenden
+  useEffect(() => {
+    if (!mark) return;
+    // verschwindet, sobald der Code nicht mehr gesehen wird
+    const id = setTimeout(() => setMark(null), 700);
+    return () => clearTimeout(id);
+  }, [mark]);
+
   const run = active && !hidden && can('scanner');
 
   useEffect(() => {
@@ -40,7 +88,16 @@ export function ScannerView({ active, onCode, hint }: Props) {
     let cancelled = false;
     const abort = new AbortController();
     queueMicrotask(() => !cancelled && setCam({ kind: 'starting' }));
-    startScanner(video.current, (text) => onCodeRef.current(text), abort.signal)
+    startScanner(
+      video.current,
+      (text) => onCodeRef.current(text),
+      abort.signal,
+      formatKey.split(',') as ScanFormat[],
+      (hit) => {
+        const points = box.current ? toView(hit, box.current) : null;
+        if (points) setMark({ points, at: Date.now() });
+      },
+    )
       .then((h) => {
         if (cancelled) return h.stop();
         handle.current = h;
@@ -55,7 +112,7 @@ export function ScannerView({ active, onCode, hint }: Props) {
       setTorchOn(false);
       setCam({ kind: 'off' });
     };
-  }, [run, attempt]);
+  }, [run, attempt, formatKey]);
 
   const toggleTorch = useCallback(async () => {
     await handle.current?.setTorch(!torchOn);
@@ -63,14 +120,19 @@ export function ScannerView({ active, onCode, hint }: Props) {
   }, [torchOn]);
 
   const status =
-    cam.kind === 'error' ? t(`scan.${cam.error}`) : cam.kind === 'running' ? (hint ?? t('scan.hint')) : t('scan.starting');
+    cam.kind === 'error'
+      ? t(`scan.${cam.error}`)
+      : cam.kind === 'running'
+        ? (hint ?? (barcodes ? t('scan.hintAny') : t('scan.hint')))
+        : t('scan.starting');
 
   return (
     <div>
       <div
+        ref={box}
         style={{
           position: 'relative',
-          aspectRatio: '1',
+          aspectRatio: barcodes ? '4 / 3' : '1',
           maxWidth: 420,
           margin: '0 auto var(--bs-s3)',
           borderRadius: 'var(--bs-r-lg)',
@@ -79,16 +141,23 @@ export function ScannerView({ active, onCode, hint }: Props) {
         }}
       >
         <video ref={video} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: cam.kind === 'running' ? 'block' : 'none' }} />
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: '18%',
-            border: '3px solid var(--bs-accent)',
-            borderRadius: 'var(--bs-r-md)',
-            boxShadow: cam.kind === 'running' ? '0 0 0 100vmax rgba(0,0,0,.35)' : 'none',
-          }}
-        />
+        {cam.kind === 'running' && (
+          <>
+            {/* Anvisierhilfe: QR quadratisch; mit Barcodes breit + Ziellinie */}
+            <Corners inset={barcodes ? '22% 8%' : '18%'} />
+            {barcodes && (
+              <div
+                aria-hidden
+                style={{ position: 'absolute', left: '10%', right: '10%', top: '50%', height: 2, background: 'var(--bs-critical)', opacity: 0.8, boxShadow: '0 0 6px var(--bs-critical)' }}
+              />
+            )}
+            {mark && (
+              <svg aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                <polygon points={mark.points} fill="rgba(var(--bs-accent-rgb), 0.2)" stroke="var(--bs-accent)" strokeWidth={4} strokeLinejoin="round" />
+              </svg>
+            )}
+          </>
+        )}
         {cam.kind !== 'running' && (
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 'var(--bs-s5)', textAlign: 'center', color: 'var(--bs-text-2)' }}>
             <div style={{ display: 'grid', gap: 'var(--bs-s3)', justifyItems: 'center' }}>

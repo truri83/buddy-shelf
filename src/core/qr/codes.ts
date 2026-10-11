@@ -6,15 +6,26 @@
  *  bm:t:<druckerId>:<amsId>:<slot>   Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule)
  *  <beliebig>/inventory?spool=<id>   Etikett aus Bambuddy selbst
  *  bambuddy://config?v=1&url=…&key=… Einrichtungs-QR aus Bambuddy (API-Schlüssel)
+ *  8/12/13/14 Ziffern mit Prüfziffer   Packungs-Barcode (EAN-8/13, UPC-A, GTIN-14)
  */
 
 export type ScanResult =
   | { kind: 'spool'; spoolId: number; source: 'buddy-shelf' | 'bambuddy-label' }
   | { kind: 'slot'; printerId: number; amsId: number; trayId: number }
   | { kind: 'config'; url: string; apiKey: string; version: number }
+  | { kind: 'gtin'; code: string }
   | { kind: 'unknown'; raw: string };
 
 export const SPOOL_CODE_PREFIX = 'bm:s:';
+
+/** Prüfziffer nach GS1 (gilt für EAN-8/13, UPC-A, GTIN-14). */
+export function isValidGtin(code: string): boolean {
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(code)) return false;
+  const digits = code.split('').map(Number);
+  const check = digits.pop()!;
+  const sum = digits.reverse().reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === check;
+}
 export const SLOT_CODE_PREFIX = 'bm:t:';
 
 /** Externe Spulenhalterung in Bambuddy: ams_id 255, tray_id 0/1. */
@@ -79,6 +90,8 @@ export function parseScan(raw: string): ScanResult {
   } catch {
     /* keine URL */
   }
+
+  if (isValidGtin(text)) return { kind: 'gtin', code: text };
 
   return { kind: 'unknown', raw: text };
 }

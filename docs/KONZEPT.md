@@ -51,6 +51,13 @@ Folgerungen:
 | 4–6 | Drucker live, Benachrichtigungen, Warteschlange, Archiv, Wartung, Statistik – nur was nach Test der vorhandenen Apps fehlt |
 | nativ | Capacitor-Hülle iOS/Android: Bluetooth-Druck vom iPhone, NFC, Push, Widgets |
 
+## Native iOS-App: Apples KI auf dem Gerät (Plan)
+Hinter der Plattform-Schnittstelle `scanner` (Capacitor-Plugin in Swift), Module bleiben unverändert:
+- **VisionKit `DataScannerViewController`**: Live-Scan von QR, Barcodes und Text – schneller und sparsamer als der Web-Scanner.
+- **Vision Texterkennung**: Spulen-Etikett ohne Barcode lesen („PLA Basic · Jade White · 1 kg“).
+- **Foundation Models (iOS 26, Apple Intelligence)**: erkannten Text auf dem Gerät in Felder (Hersteller, Material, Farbe, Gewicht) übersetzen – „Foto-Import“ ohne Cloud. Nur auf Geräten mit Apple Intelligence; sonst Web-Weg.
+- Kamera-Erlaubnis bleibt in der nativen App dauerhaft (PWA: iOS fragt je App-Start).
+
 ## Kernabläufe (höchstens drei Tipps nach dem Scan)
 - **A – Spulenwechsel am AMS (Hauptablauf):** Slot-Etikett am AMS scannen → neue Spule scannen → fertig. Bambuddy stellt den Slot selbst ein; die alte Spule bekommt ihren Lagerort zurück (SP-08). Alternativ ohne Slot-Etikett: Spule scannen → „Ins AMS“ → Slot wählen (SP-03).
 - **B – Zurück ins Regal:** Scannen → „Verschieben“ → Lagerort (zuletzt genutzter oben) → optional Trockenbox.

@@ -1,4 +1,4 @@
-import type { FilamentEntry, Spool, SpoolCreate, SpoolUpdate } from '@/core/api';
+import type { FilamentEntry, GtinHit, Spool, SpoolCreate, SpoolUpdate } from '@/core/api';
 
 export const COMMON_MATERIALS = ['PLA', 'PETG', 'ABS', 'ASA', 'TPU', 'PA', 'PC'] as const;
 export const NET_WEIGHTS = [250, 500, 750, 1000, 2000, 3000] as const;
@@ -21,6 +21,8 @@ export interface SpoolDraft {
   kind: SpoolKind;
   locationId: number | null;
   quantity: number;
+  /** Herstellernummer (Bambu z. B. 10102) → Bambuddy material_number */
+  materialNumber: string;
 }
 
 export function emptyDraft(): SpoolDraft {
@@ -36,6 +38,7 @@ export function emptyDraft(): SpoolDraft {
     kind: 'plastic',
     locationId: null,
     quantity: 1,
+    materialNumber: '',
   };
 }
 
@@ -53,6 +56,7 @@ export function draftFromSpool(s: Spool): SpoolDraft {
     kind: s.category === REFILL_CATEGORY ? 'refill' : 'plastic',
     locationId: s.location_id,
     quantity: 1,
+    materialNumber: s.material_number ?? '',
   };
 }
 
@@ -85,6 +89,30 @@ export function applyFilament(d: SpoolDraft, f: FilamentEntry): SpoolDraft {
 
 const text = (v: string) => (v.trim() ? v.trim() : null);
 
+/**
+ * Packungs-Barcode übernehmen. Teilen sich Spule und Refill einen Barcode, gilt die Spule;
+ * die Spulenart lässt sich danach umschalten. Die Artikelnummer stammt aus irgendeinem Treffer.
+ */
+export function applyGtin(d: SpoolDraft, hits: GtinHit[]): SpoolDraft {
+  const hit = hits.find((h) => !h.refill) ?? hits[0];
+  if (!hit) return d;
+  const material = hit.material.toUpperCase();
+  const subtype = hit.filament.toUpperCase().startsWith(material) ? hit.filament.slice(material.length).trim() : hit.filament;
+  return {
+    ...d,
+    brand: hit.brand,
+    material,
+    subtype,
+    colorName: hit.color,
+    rgba: hit.color_hex ? `${hit.color_hex}FF` : d.rgba,
+    labelWeight: hit.weight ?? d.labelWeight,
+    coreWeight: hit.spool_weight ?? d.coreWeight,
+    coreCatalogId: hit.spool_weight != null ? null : d.coreCatalogId,
+    kind: hit.refill ? 'refill' : d.kind,
+    materialNumber: hits.find((h) => h.article_number)?.article_number ?? d.materialNumber,
+  };
+}
+
 /** Formular → POST-Body (leere Texte als null, Bambuddy-Feldnamen). */
 export function draftToCreate(d: SpoolDraft): SpoolCreate {
   return {
@@ -97,6 +125,7 @@ export function draftToCreate(d: SpoolDraft): SpoolCreate {
     core_weight: d.coreWeight,
     core_weight_catalog_id: d.coreCatalogId,
     location_id: d.locationId,
+    material_number: text(d.materialNumber),
     ...(d.kind === 'refill' ? { category: REFILL_CATEGORY } : {}),
   };
 }

@@ -111,6 +111,19 @@ export const handlers = [
     catalog.splice(i, 1);
     return HttpResponse.json({ status: 'deleted' });
   }),
+  // Packungs-Barcodes (server/catalog.js → Open Filament Database)
+  http.get('*/catalog/gtin/:code', ({ params }) => {
+    const hits: Record<string, object[]> = {
+      '6975337031390': [
+        { gtin: '06975337031390', brand: 'Bambu Lab', material: 'PLA', filament: 'PLA Basic', color: 'Silver', color_hex: 'A6A9AA', weight: 1000, spool_weight: null, refill: false, article_number: null },
+        { gtin: '06975337031390', brand: 'Bambu Lab', material: 'PLA', filament: 'PLA Basic', color: 'Silver', color_hex: 'A6A9AA', weight: 1000, spool_weight: null, refill: true, article_number: '10102' },
+      ],
+      '191314034277': [
+        { gtin: '00191314034277', brand: 'Hatchbox', material: 'PLA', filament: 'PLA Matte', color: 'Terracotta', color_hex: 'A46A62', weight: 1000, spool_weight: 244, refill: false, article_number: null },
+      ],
+    };
+    return HttpResponse.json(hits[String(params.code)] ?? []);
+  }),
   // Leerspulen-Vorschläge aus der Filament-Datenbank (server/catalog.js)
   http.get('*/catalog/spools', () =>
     HttpResponse.json([

@@ -67,11 +67,80 @@ function spoolWeights(data) {
     .sort((a, b) => a.manufacturer.localeCompare(b.manufacturer, 'de'));
 }
 
+// ---------- Packungs-Barcodes: Open Filament Database (MIT) ----------
+// Barcode-Index (~5 600 GTIN, ~3,5 MB) einmal am Tag; Varianten (Farbe, Refill, Artikelnummer) bei Bedarf.
+const OFD = process.env.OFD_API_URL || 'https://api.openfilamentdatabase.org/api/v1';
+let gtinCache = { at: 0, codes: /** @type {Record<string, any[]> | null} */ (null), loading: /** @type {Promise<any> | null} */ (null) };
+const variantCache = new Map();
+
+async function loadGtinIndex() {
+  if (gtinCache.codes && Date.now() - gtinCache.at < TTL_MS) return gtinCache.codes;
+  gtinCache.loading ??= (async () => {
+    try {
+      const res = await fetch(`${OFD}/gtin-index.json`, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) throw new Error(`Open Filament Database HTTP ${res.status}`);
+      const j = await res.json();
+      gtinCache = { at: Date.now(), codes: j.codes ?? {}, loading: null };
+      return gtinCache.codes;
+    } catch (e) {
+      gtinCache.loading = null;
+      if (gtinCache.codes) return gtinCache.codes;
+      throw e;
+    }
+  })();
+  return gtinCache.loading;
+}
+
+async function loadVariant(href) {
+  const hit = variantCache.get(href);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+  const res = await fetch(`${OFD}/${href}`, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (variantCache.size > 2000) variantCache.delete(variantCache.keys().next().value);
+  variantCache.set(href, { at: Date.now(), data });
+  return data;
+}
+
+/** EAN-8/13, UPC-A, GTIN-14 → 14-stellig (wie der Index). */
+export function normalizeGtin(code) {
+  const d = String(code ?? '').replace(/\D/g, '');
+  if (![8, 12, 13, 14].includes(d.length)) return null;
+  return d.padStart(14, '0');
+}
+
+async function gtinLookup(code) {
+  const key = normalizeGtin(code);
+  if (!key) return [];
+  const codes = await loadGtinIndex();
+  const entries = codes[key] ?? [];
+  const out = [];
+  for (const e of entries) {
+    const v = await loadVariant(e.href).catch(() => null);
+    const size = v?.sizes?.find((s) => s.uuid === e.size_uuid) ?? null;
+    out.push({
+      gtin: key,
+      brand: e.brand_name,
+      material: e.material_slug,
+      filament: e.filament_name,
+      color: e.variant_name,
+      color_hex: normHex(v?.color_hex ?? null),
+      weight: e.filament_weight ?? size?.filament_weight ?? null,
+      spool_weight: size?.empty_spool_weight ?? null,
+      refill: !!size?.spool_refill,
+      article_number: size?.article_number ?? null,
+    });
+  }
+  return out;
+}
+
 const uniqSorted = (list) => [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
 const eq = (a, b) => String(a ?? '').toLowerCase() === String(b ?? '').toLowerCase();
 
 /** Antwort für einen Katalog-Pfad (ohne /catalog-Präfix). */
 export async function catalogResponse(path, query) {
+  const gtin = /^\/gtin\/([0-9]{8,14})$/.exec(path);
+  if (gtin) return gtinLookup(gtin[1]);
   const data = await load();
   if (path === '/manufacturers') return uniqSorted(data.map((f) => f.manufacturer));
   if (path === '/materials') {

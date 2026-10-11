@@ -17,7 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/core/i18n';
-import { haptic } from '@/core/platform';
+import { haptic, QR_AND_BARCODES } from '@/core/platform';
 import { ScannerView } from '@/core/ui';
 import { applyConfig, dispatchScan } from '../scan';
 
@@ -80,7 +80,7 @@ export function ScanPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
-        <ScannerView active={active} onCode={(raw) => handleCode(raw, true)} />
+        <ScannerView active={active} formats={QR_AND_BARCODES} onCode={(raw) => handleCode(raw, true)} />
         {message && (
           <p role="status" style={{ textAlign: 'center', color: 'var(--bs-text-2)', margin: '0 0 var(--bs-s3)' }}>
             {message}

@@ -41,3 +41,23 @@ describe('Spule anlegen/bearbeiten', () => {
     expect(draftToUpdate({ ...draftFromSpool({ ...spool, category: 'Refill' }), kind: 'plastic' }, { ...spool, category: 'Refill' })).toEqual({ category: null });
   });
 });
+
+describe('Packungs-Barcode', async () => {
+  const { applyGtin } = await import('./newSpool');
+  const base = { gtin: '06975337031390', brand: 'Bambu Lab', material: 'PLA', filament: 'PLA Basic', color: 'Silver', color_hex: 'A6A9AA', weight: 1000, spool_weight: null };
+  it('füllt Hersteller, Sorte, Farbe, Gewicht; Spule vor Refill; Artikelnummer aus Refill-Eintrag', () => {
+    const d = applyGtin(emptyDraft(), [
+      { ...base, refill: true, article_number: '10102' },
+      { ...base, refill: false, article_number: null },
+    ]);
+    expect(d).toMatchObject({ brand: 'Bambu Lab', material: 'PLA', subtype: 'Basic', colorName: 'Silver', rgba: 'A6A9AAFF', labelWeight: 1000, kind: 'plastic', materialNumber: '10102' });
+    expect(draftToCreate(d)).toMatchObject({ material_number: '10102' });
+  });
+  it('nur Refill → Spulenart Refill; Leerspule aus der Datenbank', () => {
+    expect(applyGtin(emptyDraft(), [{ ...base, refill: true, article_number: null }]).kind).toBe('refill');
+    expect(applyGtin(emptyDraft(), [{ ...base, spool_weight: 244, refill: false, article_number: null }]).coreWeight).toBe(244);
+  });
+  it('kein Treffer → unverändert', () => {
+    expect(applyGtin(emptyDraft(), [])).toEqual(emptyDraft());
+  });
+});

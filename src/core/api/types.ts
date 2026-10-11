@@ -93,6 +93,24 @@ export interface FilamentEntry {
   translucent: boolean;
 }
 
+/** Treffer für einen Packungs-Barcode (Open Filament Database über /catalog/gtin) */
+export interface GtinHit {
+  gtin: string;
+  brand: string;
+  material: string;
+  /** z. B. „PLA Basic“ */
+  filament: string;
+  /** Farbname */
+  color: string;
+  /** RRGGBB */
+  color_hex: string | null;
+  weight: number | null;
+  spool_weight: number | null;
+  refill: boolean;
+  /** Herstellernummer, bei Bambu z. B. 10102 → Bambuddy material_number */
+  article_number: string | null;
+}
+
 /** Typisches Leerspulen-Gewicht eines Herstellers laut Filament-Datenbank (/catalog/spools) */
 export interface DbSpoolWeight {
   manufacturer: string;
