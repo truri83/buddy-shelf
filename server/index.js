@@ -5,10 +5,13 @@ import fastifyStatic from '@fastify/static';
 import proxy from '@fastify/http-proxy';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { registerAdmin } from './admin.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
 const PORT = Number(process.env.PORT ?? 8080);
+const VERSION = JSON.parse(readFileSync(join(root, '..', 'package.json'), 'utf8')).version;
 
 if (!BAMBUDDY_URL) {
   console.error('BAMBUDDY_URL fehlt (z. B. http://bambuddy:8000).');
@@ -17,6 +20,9 @@ if (!BAMBUDDY_URL) {
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
+// Selbst-Update auf Unraid (nur mit BUDDY_SHELF_ADMIN_TOKEN). Statische Routen gehen vor den Proxy.
+await registerAdmin(app, { version: VERSION });
+
 await app.register(proxy, { upstream: BAMBUDDY_URL, prefix: '/api', rewritePrefix: '/api', websocket: true });
 
 // Phase 2: Druckdienst (niimblue-node) für den Etikettendruck vom iPhone.
@@ -24,7 +30,8 @@ if (process.env.NIIMBLUE_URL) {
   await app.register(proxy, { upstream: process.env.NIIMBLUE_URL, prefix: '/print', rewritePrefix: '' });
 }
 
-app.get('/healthz', async () => ({ ok: true }));
+// sha zeigt, welcher Build läuft – daran erkennt das Deploy, dass das Update angekommen ist.
+app.get('/healthz', async () => ({ ok: true, version: VERSION, sha: process.env.BUILD_SHA || null }));
 
 await app.register(fastifyStatic, { root, wildcard: false });
 // SPA-Fallback: alle unbekannten Pfade → index.html
@@ -32,5 +39,8 @@ app.setNotFoundHandler((req, reply) => {
   if (req.raw.url?.startsWith('/api')) return reply.code(404).send({ detail: 'Not found' });
   return reply.sendFile('index.html');
 });
+
+// Node als PID 1 ignoriert SIGTERM – sonst wartet jedes docker stop den Timeout ab.
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void app.close().then(() => process.exit(0)));
 
 await app.listen({ host: '0.0.0.0', port: PORT });

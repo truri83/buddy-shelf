@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt',
+        // Neue Version nach einem Deploy sofort übernehmen (sonst bleibt die Homescreen-App alt).
+        registerType: 'autoUpdate',
         includeAssets: ['icon.svg'],
         manifest: {
           name: 'Buddy Shelf',

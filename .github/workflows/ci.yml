@@ -40,4 +40,8 @@ jobs:
         with:
           context: .
           push: true
+          # beide Tags aus EINEM Build (Seestar-Lehre: nie nachträglich umtaggen)
           tags: ghcr.io/${{ github.repository }}:latest,ghcr.io/${{ github.repository }}:${{ github.sha }}
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+            BUILD_AT=${{ github.event.head_commit.timestamp }}

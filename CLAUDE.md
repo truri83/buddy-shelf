@@ -42,6 +42,14 @@ Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschre
 - `npm run api:types` – Typen aus Bambuddys `openapi.json` → `src/core/api/bambuddy.gen.ts`
 - `npm run build && npm run server` – Produktionsbuild + Server (Proxy /api → Bambuddy)
 
+## Deploy (Unraid, Ablauf wie SeestarManager)
+- Prod: `http://100.101.172.117:8096` (Container `buddy-shelf`, Vorlage `deploy/unraid/buddy-shelf.xml`).
+- Push auf `main` → CI baut `ghcr.io/truri83/buddy-shelf:latest` + `:<sha>` (mit `BUILD_SHA`).
+- Dann `scripts/deploy.sh`: wartet auf CI, ruft `POST /api/admin/self-recreate` (Bearer-Token), pollt
+  `/healthz` bis `sha` = HEAD. Code: `server/admin.js` (übernommen aus Seestar `admin-api.ts`).
+- Token nur aus der Windows-Benutzer-Variable `BUDDY_SHELF_ADMIN_TOKEN` lesen, nie in Chat oder Kommandozeile.
+- Zugriff auf den Tower: `ssh -i ~/.ssh/unraid_claude root@100.101.172.117` (nur für Einrichtung/Notfall).
+
 ## Umgebung des Nutzers
 - Bambuddy selbst gehostet auf Unraid, erreichbar über Tailscale.
 - Drucker: Bambu Lab X2D mit AMS. Etikettendrucker: Niimbot B1 Pro (300 dpi, 48 mm, schwarz/rot,
