@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import type { SpoolAssignmentCreate, SpoolCreate } from '../src/core/api/types';
-import { assignments, catalog, colors, filamentDb, locations, printers, printerStatus, spools } from './data';
+import { assignments, catalog, colors, extras, filamentDb, locations, printers, printerStatus, spools } from './data';
 
 const api = (p: string) => `*/api/v1${p}`;
 const uniq = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'de'));
@@ -200,6 +200,166 @@ export const handlers = [
     const mat = q.get('material');
     return HttpResponse.json(filamentDb.filter((f) => (!m || f.manufacturer === m) && (!mat || f.material === mat)));
   }),
+  // ---------- Spoolman-Modus von Bambuddy. Alter Weg im Mock: localStorage „bs:mock.spoolman“ = "false"
+  http.get(api('/spoolman/status'), () =>
+    HttpResponse.json({ enabled: spoolmanOn(), connected: spoolmanOn(), url: spoolmanOn() ? 'http://mock-spoolman:7912' : null }),
+  ),
+  http.get(api('/spoolman/inventory/spools'), () => HttpResponse.json(spools.filter((x) => !x.archived_at).map(asSpoolman))),
+  http.get(api('/spoolman/inventory/spools/:id'), ({ params }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    return s ? HttpResponse.json(asSpoolman(s)) : HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+  }),
+  http.patch(api('/spoolman/inventory/spools/:id/weight'), async ({ params, request }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    const { weight_grams } = (await request.json()) as { weight_grams: number };
+    s.weight_used = Math.max(0, s.label_weight - Math.max(0, weight_grams - s.core_weight));
+    return HttpResponse.json({ status: 'ok', weight_used: s.weight_used });
+  }),
+  http.patch(api('/spoolman/inventory/spools/:id'), async ({ params, request }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    const body = (await request.json()) as Record<string, unknown>;
+    delete body.category; // kennt Bambuddys Spoolman-Weg nicht
+    delete body.material_number;
+    Object.assign(s, body);
+    return HttpResponse.json(asSpoolman(s));
+  }),
+  http.post(api('/spoolman/inventory/spools/bulk'), async ({ request }) => {
+    const { spool, quantity } = (await request.json()) as { spool: SpoolCreate; quantity: number };
+    const first = Math.max(...spools.map((x) => x.id)) + 1;
+    const stamp = new Date().toISOString();
+    const created = Array.from({ length: quantity }, (_, k) => ({
+      ...spools[0]!,
+      subtype: null,
+      color_name: null,
+      rgba: null,
+      brand: null,
+      location_id: null,
+      note: null,
+      label_weight: 1000,
+      core_weight: 250,
+      weight_used: 0,
+      last_scale_weight: null,
+      last_weighed_at: null,
+      ...spool,
+      category: null,
+      material_number: null,
+      id: first + k,
+      tag_uid: null,
+      tray_uuid: null,
+      storage_location: null,
+      archived_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+    }));
+    spools.push(...created);
+    return HttpResponse.json(created.map(asSpoolman));
+  }),
+  http.post(api('/spoolman/inventory/spools/:id/archive'), ({ params }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    s.archived_at = new Date().toISOString();
+    return HttpResponse.json(asSpoolman(s));
+  }),
+  http.post(api('/spoolman/inventory/spools/bulk-update'), async ({ request }) => {
+    const { ids, update } = (await request.json()) as { ids: number[]; update: object };
+    const hit = spools.filter((s) => ids.includes(s.id));
+    hit.forEach((s) => Object.assign(s, update));
+    return HttpResponse.json({ updated: hit.length, errors: ids.filter((id) => !hit.some((s) => s.id === id)).map((id) => ({ id, status: 404 })) });
+  }),
+  http.post(api('/spoolman/inventory/spools/bulk-archive'), async ({ request }) => {
+    const { ids } = (await request.json()) as { ids: number[] };
+    const hit = spools.filter((s) => ids.includes(s.id));
+    hit.forEach((s) => (s.archived_at = new Date().toISOString()));
+    return HttpResponse.json({ archived: hit.length, errors: [] });
+  }),
+  http.get(api('/spoolman/inventory/slot-assignments/all'), () =>
+    HttpResponse.json(
+      assignments.map((a) => ({ printer_id: a.printer_id, printer_name: a.printer_name, ams_id: a.ams_id, tray_id: a.tray_id, spoolman_spool_id: a.spool_id, ams_label: a.ams_label })),
+    ),
+  ),
+  // Wie Bambuddy: Slot wird überschrieben (ON CONFLICT Slot)
+  http.post(api('/spoolman/inventory/slot-assignments'), async ({ request }) => {
+    const a = (await request.json()) as { spoolman_spool_id: number; printer_id: number; ams_id: number; tray_id: number };
+    if (!printers.some((p) => p.id === a.printer_id)) return HttpResponse.json({ detail: 'Printer not found' }, { status: 404 });
+    if (!spools.some((s) => s.id === a.spoolman_spool_id)) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    const i = assignments.findIndex((x) => x.printer_id === a.printer_id && x.ams_id === a.ams_id && x.tray_id === a.tray_id);
+    if (i >= 0) assignments.splice(i, 1);
+    assignments.push({ id: Math.max(0, ...assignments.map((x) => x.id)) + 1, spool_id: a.spoolman_spool_id, printer_id: a.printer_id, printer_name: 'X2D', ams_id: a.ams_id, tray_id: a.tray_id, ams_label: null, configured: true, pending_config: false });
+    return HttpResponse.json({ ok: true });
+  }),
+  // Wie Bambuddy: löscht alle Zuweisungen dieser Spule
+  http.delete(api('/spoolman/inventory/slot-assignments/:spoolId'), ({ params }) => {
+    for (let i = assignments.length - 1; i >= 0; i--) if (assignments[i]!.spool_id === Number(params.spoolId)) assignments.splice(i, 1);
+    return HttpResponse.json({ id: Number(params.spoolId) });
+  }),
+  http.post(api('/spoolman/spools/from-slot'), async ({ request }) => {
+    const r = (await request.json()) as { printer_id: number; ams_id: number; tray_id: number };
+    const t = printerStatus[r.printer_id]?.ams.find((a) => a.id === r.ams_id)?.tray.find((x) => x.id === r.tray_id);
+    if (!t?.tray_type || !t.tag_uid) return HttpResponse.json({ detail: 'Slot has no RFID tag' }, { status: 400 });
+    const stamp = new Date().toISOString();
+    const s = {
+      ...spools[0]!,
+      id: Math.max(...spools.map((x) => x.id)) + 1,
+      material: t.tray_type,
+      subtype: t.tray_sub_brands?.replace(t.tray_type, '').trim() || null,
+      color_name: null,
+      rgba: t.tray_color,
+      brand: 'Bambu Lab',
+      weight_used: 0,
+      tag_uid: t.tag_uid,
+      tray_uuid: t.tray_uuid ?? null,
+      location_id: null,
+      category: null,
+      archived_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+    };
+    spools.push(s);
+    assignments.push({ id: Math.max(0, ...assignments.map((x) => x.id)) + 1, spool_id: s.id, printer_id: r.printer_id, printer_name: 'X2D', ams_id: r.ams_id, tray_id: r.tray_id, ams_label: null, configured: true, pending_config: false });
+    return HttpResponse.json({ success: true, spool_id: s.id });
+  }),
+  // ---------- Zusatzdaten (server/extras.js), im Mock im Speicher
+  http.get('*/extras/spools', () => HttpResponse.json({ backend: spoolmanOn() ? 'spoolman' : 'file', spools: extras })),
+  http.patch('*/extras/spools/:id', async ({ params, request }) => {
+    applyExtras([Number(params.id)], (await request.json()) as Record<string, string | null>);
+    return HttpResponse.json({ updated: 1 });
+  }),
+  http.post('*/extras/spools/bulk', async ({ request }) => {
+    const { ids, patch } = (await request.json()) as { ids: number[]; patch: Record<string, string | null> };
+    applyExtras(ids, patch);
+    return HttpResponse.json({ updated: ids.length });
+  }),
   http.get(api('/auth/status'), () => HttpResponse.json({ auth_enabled: true })),
   http.get(api('/updates/version'), () => HttpResponse.json({ version: '1.2.5.7', repo: 'maziggy/bambuddy' })),
 ];
+
+function spoolmanOn() {
+  try {
+    return localStorage.getItem('bs:mock.spoolman') !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+/** Wie Bambuddys Spoolman-Abbild: keine Kategorie (die liegt in den Zusatzfeldern). */
+function asSpoolman<T extends { category?: string | null }>(s: T) {
+  const copy: Partial<T> = { ...s };
+  delete copy.category;
+  return copy;
+}
+
+function applyExtras(ids: number[], patch: Record<string, string | null>) {
+  for (const id of ids) {
+    const cur: Record<string, string> = { ...extras[id] };
+    for (const [k, v] of Object.entries(patch)) {
+      if (k === 'article_number') {
+        const s = spools.find((x) => x.id === id);
+        if (s) s.material_number = v;
+      } else if (v === null) delete cur[k];
+      else cur[k] = v;
+    }
+    extras[id] = cur;
+  }
+}

@@ -57,7 +57,8 @@ async function preview(template: LabelTemplate, vars: LabelVariables): Promise<s
 }
 
 /** Stapeldruck: ein Datensatz je Etikett, `quantity` Kopien je Etikett. */
-async function print(template: LabelTemplate, records: LabelVariables[], quantity = 1) {
+/** @returns true, wenn alles gedruckt wurde */
+async function print(template: LabelTemplate, records: LabelVariables[], quantity = 1): Promise<boolean> {
   set({ status: 'printing', progress: 0, error: null });
   try {
     const engine = await loadEngine();
@@ -72,8 +73,10 @@ async function print(template: LabelTemplate, records: LabelVariables[], quantit
       onProgress: (progress) => set({ progress }),
     });
     set({ status: 'idle', progress: 100 });
+    return true;
   } catch (e) {
     set({ status: 'error', error: message(e), printer: (await loadEngine()).connectedPrinter() });
+    return false;
   }
 }
 

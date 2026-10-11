@@ -1,10 +1,13 @@
-import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet } from '@ionic/react';
-import { ellipsisVertical, locationOutline } from 'ionicons/icons';
+import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet, useIonToast } from '@ionic/react';
+import { ellipsisVertical, locationOutline, waterOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
+import { todayIso } from '../drying';
+import { useSetExtras } from '../hooks/useSpools';
 import { isLow } from '../logic';
+import { agoText } from './DryingCard';
 
 interface Props {
   spool: Spool;
@@ -24,6 +27,16 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
   const [present] = useIonActionSheet();
+  const [toast] = useIonToast();
+  const setExtras = useSetExtras();
+  const markDried = () =>
+    setExtras
+      .mutateAsync({ ids: [spool.id], patch: { dried_at: todayIso() } })
+      .then(() => void toast({ message: t('dry.marked', { id: spool.id }), duration: 2000, position: 'top' }))
+      .catch(
+        (e: unknown) =>
+          void toast({ message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }), duration: 3000, position: 'top', color: 'danger' }),
+      );
 
   // Aktionen öffnen die Detailseite mit dem passenden Blatt (?action=…)
   const openMenu = () =>
@@ -35,6 +48,7 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
               { text: t('spools.action.weigh'), handler: () => navigate(`/spools/${spool.id}?action=weigh`) },
               { text: t('spools.action.toAms'), handler: () => navigate(`/spools/${spool.id}?action=ams`) },
               { text: t('spools.action.move'), handler: () => navigate(`/spools/${spool.id}?action=move`) },
+              { text: t('dry.markToday'), handler: () => void markDried() },
             ]
           : []),
         { text: t('spools.action.label'), handler: () => navigate(`/spools/${spool.id}?action=label`) },
@@ -87,6 +101,15 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
           {low && <Badge tone="warn">{t('spools.low')}</Badge>}
+          {spool.dried_at && (
+            <span
+              title={t('dry.last')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}
+            >
+              <IonIcon icon={waterOutline} aria-label={t('dry.last')} />
+              {agoText(spool.dried_at)}
+            </span>
+          )}
           {location && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
               <IonIcon icon={locationOutline} aria-hidden />

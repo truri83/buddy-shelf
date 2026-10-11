@@ -78,3 +78,11 @@ export const filamentDb = [
   { id: 'sunlu_pla_red', manufacturer: 'Sunlu', name: 'Red', material: 'PLA', color_hex: 'C12E1F', weight: 1000, spool_weight: 120, spool_type: 'cardboard', finish: null, translucent: false },
   { id: 'poly_pla_teal', manufacturer: 'Polymaker', name: 'PolyTerra Teal', material: 'PLA', color_hex: '00807F', weight: 1000, spool_weight: 140, spool_type: 'cardboard', finish: 'matte', translucent: false },
 ];
+
+/** Zusatzdaten (server/extras.js) – im Mock im Speicher: einige Spulen schon etikettiert, eine getrocknet. */
+export const extras: Record<number, Partial<Record<'dried_at' | 'label_printed_at' | 'category', string>>> = {
+  2: { label_printed_at: '2026-09-20' },
+  4: { label_printed_at: '2026-09-20', dried_at: '2026-10-02' },
+  5: { label_printed_at: '2026-09-21' },
+  10: { label_printed_at: '2026-09-21' },
+};

@@ -11,7 +11,7 @@ RUN BUILD_SHA=${BUILD_SHA} npm run build
 FROM node:22-alpine
 WORKDIR /app
 # Eigene Etikett-Vorlagen: /data auf appdata/buddy-shelf legen, sonst gehen sie beim Update verloren
-ENV NODE_ENV=production PORT=8080 BUDDY_SHELF_TEMPLATES_DIR=/data/templates
+ENV NODE_ENV=production PORT=8080 BUDDY_SHELF_DATA_DIR=/data BUDDY_SHELF_TEMPLATES_DIR=/data/templates
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist

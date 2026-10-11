@@ -24,6 +24,21 @@ Bambuddy-Anmeldung gelten die Rechte des Schlüssels bzw. Nutzers.
 Gewichte: Restgewicht = `label_weight − weight_used`; Waage: `weight_used = label_weight − (brutto − core_weight)`
 (`src/core/api/types.ts`). Schreibrechte: alle Inventar-Änderungen prüfen in Bambuddy `inventory:update`.
 
+## Spoolman-Modus (Bambuddy `GET /spoolman/status` → `enabled: true`), geprüft im Quellcode (11.10.2026)
+
+| Zweck | Methode + Pfad | Hinweis |
+| --- | --- | --- |
+| Spulen | `GET/POST /spoolman/inventory/spools`, `GET/PATCH/DELETE …/spools/{id}` | gleiches Format wie lokal; `category`, `low_stock_threshold_pct`, `core_weight_catalog_id`, `last_weighed_at` fehlen; `material_number` = `filament.article_number` (nur lesen); `location_id` über Bambuddys Lagerorte (nach Name mit Spoolman abgeglichen) |
+| Anlegen | `POST /spoolman/inventory/spools/bulk` | `{ spool, quantity 1–50 }`, legt Hersteller/Filament bei Bedarf an |
+| Stapel | `POST …/spools/bulk-update`, `…/bulk-archive` | Antwort `{ updated|archived, errors: [{ id, status, detail }] }` |
+| Wiegen | `PATCH …/spools/{id}/weight` | `{ weight_grams }` brutto |
+| AMS | `GET …/slot-assignments/all`, `POST …/slot-assignments` `{ spoolman_spool_id, printer_id, ams_id, tray_id }`, `DELETE …/slot-assignments/{spoolman_spool_id}` | POST überschreibt den Slot; DELETE entfernt alle Slots der Spule |
+| RFID | `POST /spoolman/spools/from-slot` | `{ success, spool_id }`; Recht `filaments:update` |
+
+Spoolman selbst (0.27, ohne Anmeldung; nur vom Server angesprochen): Zusatzfelder `POST /api/v1/field/spool/{key}`
+`{ name, field_type }`, Werte als JSON-Text (`'"2026-10-11"'`), `PATCH /api/v1/spool/{id} { extra }` führt Schlüssel
+zusammen, `null` löscht.
+
 ## Später
 | Zweck | Pfad |
 | --- | --- |

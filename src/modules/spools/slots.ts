@@ -82,11 +82,6 @@ export function isNewRfid(slot: Slot, spools: Pick<Spool, 'tag_uid' | 'tray_uuid
   return !spools.some((s) => (tag && s.tag_uid?.toUpperCase() === tag) || (uuid && s.tray_uuid?.toUpperCase() === uuid));
 }
 
-/** Zuweisungen, die vor dem Einlegen in einen neuen Slot weg müssen (eine Spule liegt nur an einem Ort). */
-export function staleAssignments(spoolId: number, target: Pick<Slot, 'printerId' | 'amsId' | 'trayId'>, assignments: SpoolAssignment[]) {
-  return assignments.filter((a) => a.spool_id === spoolId && slotKey({ printerId: a.printer_id, amsId: a.ams_id, trayId: a.tray_id }) !== slotKey(target));
-}
-
 /** Platzhalter für Slot-Etiketten (Vorlagen der Art „slot“). */
 export function slotLabelVariables(s: Slot) {
   return { code: encodeSlotCode(s.printerId, s.amsId, s.trayId), printer: s.printerName, ams: s.label.split(' · ')[0]!, slot: s.amsId === EXTERNAL_AMS_ID ? (s.trayId === 0 ? 'L' : 'R') : String(s.trayId + 1) };

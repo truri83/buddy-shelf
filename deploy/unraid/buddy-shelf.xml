@@ -15,9 +15,10 @@
   <Config Name="BAMBUDDY_URL" Target="BAMBUDDY_URL" Default="http://192.168.178.50:8008" Type="Variable" Display="always" Required="true" Description="Adresse der Bambuddy-Instanz">http://192.168.178.50:8008</Config>
   <Config Name="Bambuddy-API-Schlüssel" Target="BAMBUDDY_API_KEY" Default="" Type="Variable" Display="always" Required="false" Mask="true" Description="Wird für alle Geräte verwendet, die keinen eigenen Schlüssel eintragen"/>
   <Config Name="Admin-Token" Target="BUDDY_SHELF_ADMIN_TOKEN" Default="" Mode="" Type="Variable" Display="always" Required="false" Mask="true" Description="Token für Selbst-Updates (POST /api/admin/self-recreate). Leer = aus."/>
-  <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/buddy-shelf" Mode="rw" Type="Path" Display="always" Required="false" Description="Eigene Etikett-Vorlagen (templates/*.json)">/mnt/user/appdata/buddy-shelf</Config>
+  <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/buddy-shelf" Mode="rw" Type="Path" Display="always" Required="false" Description="Eigene Etikett-Vorlagen (templates/*.json) und Zusatzdaten je Spule, falls kein Spoolman">/mnt/user/appdata/buddy-shelf</Config>
   <Config Name="Docker-Socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Type="Path" Display="advanced" Required="false" Description="Nötig für Selbst-Updates per Admin-Token">/var/run/docker.sock</Config>
   <Config Name="BUDDY_SHELF_SELF_CONTAINER" Target="BUDDY_SHELF_SELF_CONTAINER" Default="buddy-shelf" Type="Variable" Display="advanced" Required="false" Description="Name dieses Containers (für Selbst-Update)">buddy-shelf</Config>
+  <Config Name="SPOOLMAN_URL" Target="SPOOLMAN_URL" Default="" Type="Variable" Display="advanced" Required="false" Description="Optional: Spoolman-Adresse, falls sie von hier anders lautet als in Bambuddy eingetragen. Leer = aus Bambuddy übernehmen."/>
   <Config Name="NIIMBLUE_URL" Target="NIIMBLUE_URL" Default="" Type="Variable" Display="advanced" Required="false" Description="Optional: niimblue-node REST-Dienst für Etikettendruck vom iPhone"/>
   <Config Name="TZ" Target="TZ" Default="Europe/Berlin" Type="Variable" Display="advanced" Required="false"/>
 </Container>

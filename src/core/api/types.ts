@@ -30,12 +30,15 @@ export interface Spool {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Zusatzdaten von Buddy Shelf (Spoolman-Zusatzfeld bzw. Datei), nicht von Bambuddy */
+  dried_at?: string | null;
+  label_printed_at?: string | null;
 }
 
 export type SpoolUpdate = Partial<
   Pick<
     Spool,
-    'material' | 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'weight_used' | 'note' | 'storage_location' | 'location_id' | 'category' | 'core_weight_catalog_id'
+    'material' | 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'weight_used' | 'note' | 'storage_location' | 'location_id' | 'category' | 'core_weight_catalog_id' | 'material_number'
   >
 >;
 

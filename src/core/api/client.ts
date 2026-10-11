@@ -1,4 +1,5 @@
 import { t } from '@/core/i18n';
+import { storage } from '@/core/platform';
 import type {
   CatalogEntry,
   ColorEntry,
@@ -106,10 +107,133 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return (await res.json()) as T;
 }
 
+// ---------- Datenquelle: Bambuddy selbst oder Spoolman (Einstellung in Bambuddy)
+
+export interface InventorySource {
+  /** Bambuddy führt den Bestand in Spoolman (Pfade /spoolman/inventory/…) */
+  spoolman: boolean;
+  url: string | null;
+}
+
+let source: { value: InventorySource; at: number } | null = null;
+let sourcePending: Promise<InventorySource> | null = null;
+
+/**
+ * Fragt Bambuddy, wo der Bestand liegt (1 Min. zwischengespeichert). Ohne Antwort gilt der zuletzt
+ * bekannte Stand – nie raten, sonst landen Änderungen in der falschen Datenbank.
+ */
+export function inventorySource(force = false): Promise<InventorySource> {
+  if (!force && source && Date.now() - source.at < 60_000) return Promise.resolve(source.value);
+  sourcePending ??= request<{ enabled: boolean; url: string | null }>('GET', '/spoolman/status')
+    .then((st) => {
+      const value = { spoolman: !!st.enabled, url: st.url ?? null };
+      source = { value, at: Date.now() };
+      storage.set('inventorySource', value);
+      return value;
+    })
+    .catch((e: unknown) => {
+      const last = source?.value ?? storage.get<InventorySource | null>('inventorySource', null);
+      if (last) return last;
+      throw e;
+    })
+    .finally(() => {
+      sourcePending = null;
+    });
+  return sourcePending;
+}
+
+/** Nur für Tests: Datenquelle vergessen. */
+export function _resetInventorySource() {
+  source = null;
+  sourcePending = null;
+}
+
+const inv = async () => ((await inventorySource()).spoolman ? '/spoolman/inventory' : '/inventory');
+
+/** Zusatzdaten je Spule (getrocknet, Etikett, bei Spoolman auch Refill/Artikelnummer) über unseren Server. */
+export type ExtrasPatch = Partial<Record<'dried_at' | 'label_printed_at' | 'category' | 'article_number', string | null>>;
+type ExtrasMap = Record<string, Partial<Record<'dried_at' | 'label_printed_at' | 'category', string>>>;
+
+async function extrasRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`/extras${path}`, {
+    method,
+    headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data: unknown = await res.json().catch(() => undefined);
+  if (!res.ok) throw new ApiError(res.status, describeError(res.status, data) ?? `${method} /extras${path} → ${res.status}`, data);
+  return data as T;
+}
+
+/** Zusatzdaten fehlen? Dann ohne sie weiter – die Spulen selbst sind wichtiger. */
+const loadExtras = () =>
+  extrasRequest<{ spools: ExtrasMap }>('GET', '/spools').then(
+    (r) => r.spools,
+    () => null,
+  );
+
+/** Ohne Zusatzdaten (Server weg) bleiben die Felder undefined = unbekannt, nicht „nie“. */
+function withExtras(s: Spool, extras: ExtrasMap | null, spoolman: boolean): Spool {
+  if (!extras) return s;
+  const e = extras[s.id] ?? {};
+  return {
+    ...s,
+    dried_at: e.dried_at ?? null,
+    label_printed_at: e.label_printed_at ?? null,
+    // Spoolman kennt keine Kategorie – dort liegt „Refill“ im Zusatzfeld
+    ...(spoolman ? { category: e.category ?? null } : {}),
+  };
+}
+
+/** Bei Spoolman gehen Kategorie und Artikelnummer nicht über Bambuddy, sondern in die Zusatzfelder. */
+function splitForSpoolman<T extends { category?: string | null; material_number?: string | null }>(data: T) {
+  const { category, material_number, ...rest } = data;
+  const extras: ExtrasPatch = {};
+  if (category !== undefined) extras.category = category || null;
+  if (material_number !== undefined) extras.article_number = material_number || null;
+  return { rest, extras };
+}
+
+const setExtras = (ids: number[], patch: ExtrasPatch) =>
+  Object.keys(patch).length && ids.length
+    ? extrasRequest<{ updated: number }>('POST', '/spools/bulk', { ids, patch })
+    : Promise.resolve({ updated: 0 });
+
+interface SpoolmanSlot {
+  printer_id: number;
+  printer_name: string | null;
+  ams_id: number;
+  tray_id: number;
+  spoolman_spool_id: number;
+  ams_label: string | null;
+}
+
+const fromSpoolmanSlot = (a: SpoolmanSlot, i: number): SpoolAssignment => ({
+  id: i + 1,
+  spool_id: a.spoolman_spool_id,
+  printer_id: a.printer_id,
+  printer_name: a.printer_name,
+  ams_id: a.ams_id,
+  tray_id: a.tray_id,
+  ams_label: a.ams_label,
+  configured: true,
+  pending_config: false,
+});
+
+const listSpoolmanSlots = () => request<SpoolmanSlot[]>('GET', '/spoolman/inventory/slot-assignments/all');
+
 export const bambuddy = {
   spools: {
-    list: () => request<Spool[]>('GET', '/inventory/spools'),
-    get: (id: number) => request<Spool>('GET', `/inventory/spools/${id}`),
+    list: async () => {
+      const src = await inventorySource();
+      const [list, extras] = await Promise.all([request<Spool[]>('GET', `${await inv()}/spools`), loadExtras()]);
+      return list.map((s) => withExtras(s, extras, src.spoolman));
+    },
+    get: async (id: number): Promise<Spool> => {
+      const src = await inventorySource();
+      const [spool, extras] = await Promise.all([request<Spool>('GET', `${await inv()}/spools/${id}`), loadExtras()]);
+      return withExtras(spool, extras, src.spoolman);
+    },
     /** Dublettenprüfung per NFC: tag_uid und/oder tray_uuid (Bambu-RFID). */
     byTag: (q: { tagUid?: string; trayUuid?: string }) => {
       const p = new URLSearchParams();
@@ -117,23 +241,60 @@ export const bambuddy = {
       if (q.trayUuid) p.set('tray_uuid', q.trayUuid);
       return request<Spool>('GET', `/inventory/spools/by-tag?${p}`);
     },
-    update: (id: number, patch: SpoolUpdate) => request<Spool>('PATCH', `/inventory/spools/${id}`, patch),
-    /** Mehrere gleiche Spulen in einem Schritt (quantity 1–100). */
-    createMany: (spool: SpoolCreate, quantity: number) => request<Spool[]>('POST', '/inventory/spools/bulk', { spool, quantity }),
+    update: async (id: number, patch: SpoolUpdate): Promise<Spool> => {
+      if (!(await inventorySource()).spoolman) return request<Spool>('PATCH', `/inventory/spools/${id}`, patch);
+      const { rest, extras } = splitForSpoolman(patch);
+      if (Object.keys(rest).length) await request<Spool>('PATCH', `/spoolman/inventory/spools/${id}`, rest);
+      await setExtras([id], extras);
+      return bambuddy.spools.get(id);
+    },
+    /** Mehrere gleiche Spulen in einem Schritt (quantity 1–50 bei Spoolman, 1–100 sonst). */
+    createMany: async (spool: SpoolCreate, quantity: number): Promise<Spool[]> => {
+      if (!(await inventorySource()).spoolman) return request<Spool[]>('POST', '/inventory/spools/bulk', { spool, quantity });
+      const { rest, extras } = splitForSpoolman(spool);
+      // 207 = nur ein Teil angelegt: { created, failed_count } – die angelegten trotzdem weiterreichen
+      const r = await request<Spool[] | { created: Spool[] }>('POST', '/spoolman/inventory/spools/bulk', { spool: rest, quantity });
+      const created = Array.isArray(r) ? r : r.created;
+      await setExtras(
+        created.map((s) => s.id),
+        extras,
+      );
+      return created.map((s) => ({
+        ...s,
+        category: extras.category ?? s.category ?? null,
+        material_number: extras.article_number ?? s.material_number,
+      }));
+    },
+    /** Zusatzdaten setzen (null = entfernen), auch für viele Spulen auf einmal */
+    setExtras: (ids: number[], patch: ExtrasPatch) => setExtras(ids, patch),
     /**
      * Waagenwert (brutto) übernehmen – Bambuddys eigener Waagen-Weg (SpoolBuddy): rechnet
      * weight_used = label_weight − (brutto − core_weight) und setzt last_scale_weight/last_weighed_at.
      */
-    archive: (id: number) => request<Spool>('POST', `/inventory/spools/${id}/archive`),
+    archive: async (id: number) => request<Spool>('POST', `${await inv()}/spools/${id}/archive`),
     /** Spule aus dem RFID-Chip im AMS-Slot anlegen und dem Slot zuweisen (ohne Chip: 400) */
-    fromSlot: (s: { printer_id: number; ams_id: number; tray_id: number }) => request<Spool>('POST', '/inventory/spools/from-slot', s),
-    /** Gleiche Änderung für viele Spulen; unbekannte IDs kommen in not_found zurück */
-    bulkUpdate: (ids: number[], update: SpoolUpdate) =>
-      request<{ updated: number; not_found: number[] }>('POST', '/inventory/spools/bulk-update', { ids, update }),
-    bulkArchive: (ids: number[]) =>
-      request<{ archived: number; already_archived: number[]; not_found: number[] }>('POST', '/inventory/spools/bulk-archive', { ids }),
-    weigh: (spoolId: number, grossGrams: number) =>
-      request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
+    fromSlot: async (s: { printer_id: number; ams_id: number; tray_id: number }): Promise<Spool> => {
+      if (!(await inventorySource()).spoolman) return request<Spool>('POST', '/inventory/spools/from-slot', s);
+      const r = await request<{ success: boolean; spool_id: number | null }>('POST', '/spoolman/spools/from-slot', s);
+      if (!r.spool_id) throw new ApiError(502, t('rfid.noSpool'));
+      return bambuddy.spools.get(r.spool_id);
+    },
+    /** Gleiche Änderung für viele Spulen; Fehlschläge je Spule kommen in not_found zurück */
+    bulkUpdate: async (ids: number[], update: SpoolUpdate): Promise<{ updated: number; not_found: number[] }> => {
+      if (!(await inventorySource()).spoolman) return request('POST', '/inventory/spools/bulk-update', { ids, update });
+      const r = await request<{ updated: number; errors: { id: number }[] }>('POST', '/spoolman/inventory/spools/bulk-update', { ids, update });
+      return { updated: r.updated, not_found: r.errors.map((e) => e.id) };
+    },
+    bulkArchive: async (ids: number[]): Promise<{ archived: number; already_archived: number[]; not_found: number[] }> => {
+      if (!(await inventorySource()).spoolman) return request('POST', '/inventory/spools/bulk-archive', { ids });
+      const r = await request<{ archived: number; errors: { id: number }[] }>('POST', '/spoolman/inventory/spools/bulk-archive', { ids });
+      return { archived: r.archived, already_archived: [], not_found: r.errors.map((e) => e.id) };
+    },
+    /** Waagenwert brutto; Bambuddy zieht die Leerspule ab (bei Spoolman nach dessen Tara-Regel) */
+    weigh: async (spoolId: number, grossGrams: number) =>
+      (await inventorySource()).spoolman
+        ? request<{ status: string; weight_used: number }>('PATCH', `/spoolman/inventory/spools/${spoolId}/weight`, { weight_grams: grossGrams })
+        : request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
   },
   locations: {
     list: () => request<Location[]>('GET', '/inventory/locations'),
@@ -141,11 +302,45 @@ export const bambuddy = {
     create: (l: LocationCreate) => request<Location>('POST', '/inventory/locations', l),
   },
   assignments: {
-    list: () => request<SpoolAssignment[]>('GET', '/inventory/assignments'),
-    /** Belegter Slot wird von Bambuddy ersetzt (kein 409). */
-    create: (a: SpoolAssignmentCreate) => request<SpoolAssignment>('POST', '/inventory/assignments', a),
-    remove: (printerId: number, amsId: number, trayId: number) =>
-      request<{ status: string }>('DELETE', `/inventory/assignments/${printerId}/${amsId}/${trayId}`),
+    list: async (): Promise<SpoolAssignment[]> =>
+      (await inventorySource()).spoolman ? (await listSpoolmanSlots()).map(fromSpoolmanSlot) : request<SpoolAssignment[]>('GET', '/inventory/assignments'),
+    /**
+     * Spule in einen Slot legen; eine Spule liegt nur an einem Ort, einen belegten Ziel-Slot ersetzt Bambuddy.
+     * Bambuddy lokal: erst neuen Slot belegen, dann alte lösen (scheitert es, bleibt die Spule, wo sie war).
+     * Spoolman: Bambuddy löscht Zuweisungen je Spule – darum erst lösen, dann belegen, bei Fehler zurücklegen.
+     */
+    place: async (a: SpoolAssignmentCreate): Promise<SpoolAssignment> => {
+      if (!(await inventorySource()).spoolman) {
+        const current = await request<SpoolAssignment[]>('GET', '/inventory/assignments');
+        const created = await request<SpoolAssignment>('POST', '/inventory/assignments', a);
+        const same = (x: SpoolAssignment) => x.printer_id === a.printer_id && x.ams_id === a.ams_id && x.tray_id === a.tray_id;
+        for (const old of current.filter((x) => x.spool_id === a.spool_id && !same(x))) {
+          await request('DELETE', `/inventory/assignments/${old.printer_id}/${old.ams_id}/${old.tray_id}`);
+        }
+        return created;
+      }
+      const before = (await listSpoolmanSlots()).filter((x) => x.spoolman_spool_id === a.spool_id);
+      if (before.length) await request('DELETE', `/spoolman/inventory/slot-assignments/${a.spool_id}`);
+      const body = (x: { printer_id: number; ams_id: number; tray_id: number }) => ({
+        spoolman_spool_id: a.spool_id,
+        printer_id: x.printer_id,
+        ams_id: x.ams_id,
+        tray_id: x.tray_id,
+      });
+      try {
+        await request('POST', '/spoolman/inventory/slot-assignments', body(a));
+      } catch (e) {
+        for (const old of before) await request('POST', '/spoolman/inventory/slot-assignments', body(old)).catch(() => undefined);
+        throw e;
+      }
+      return fromSpoolmanSlot({ ...body(a), printer_name: null, ams_label: null }, 0);
+    },
+    remove: async (printerId: number, amsId: number, trayId: number) => {
+      if (!(await inventorySource()).spoolman) return request<{ status: string }>('DELETE', `/inventory/assignments/${printerId}/${amsId}/${trayId}`);
+      const hit = (await listSpoolmanSlots()).find((x) => x.printer_id === printerId && x.ams_id === amsId && x.tray_id === trayId);
+      if (hit) await request('DELETE', `/spoolman/inventory/slot-assignments/${hit.spoolman_spool_id}`);
+      return { status: 'ok' };
+    },
   },
   printers: {
     list: () => request<Printer[]>('GET', '/printers/'),

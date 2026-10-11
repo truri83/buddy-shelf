@@ -197,6 +197,41 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Mock: Slot mit unbekanntem Chip zeigt „Neu erkannt“, Übernehmen legt Spule an, Slot zeigt sie, Etikett-Sheet öffnet |
 
+## Zusatzdaten außerhalb von Bambuddy
+
+Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“. Mit Spoolman (empfohlen) liegen sie dort als Zusatzfelder (`dried_at`, `label_printed_at`, dazu `category` für Refill), sichtbar in Spoolmans Oberfläche und mitgesichert. Ohne Spoolman: Datei `/data/spools.json` (Unraid `appdata/buddy-shelf`). Endpunkte unseres Servers: `GET /extras/spools`, `PATCH /extras/spools/{id}`, `POST /extras/spools/bulk` (`server/extras.js`). Fehlen die Zusatzdaten (Server weg), zeigt die App „unbekannt“ statt „nie“.
+
+## SP-15 Trocknung
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt |
+| Ziel | Sehen, wann eine Spule zuletzt getrocknet wurde, und wie heiß/lange sie in den Dörrautomaten soll. Timer kommt später mit der iOS-App. |
+| Ablauf | Detail → Karte „Trocknung“: Empfehlung je Material („PETG: 60–65 °C · 4–8 h“, darunter Bambuddys AMS-2-Pro-Wert) + „Getrocknet am …“ → „Heute getrocknet“ / Datum ändern / entfernen. ⋮-Menü der Karte: „Heute getrocknet“. Karte in der Liste zeigt Tropfen-Symbol mit „vor n Tagen“. |
+| Daten | Datum: Zusatzdaten `driedAt` (siehe oben). Empfehlungen: `src/modules/spools/drying.json` (übliche Herstellerangaben, z. B. Bambu Lab Wiki, Sunlu, Polymaker; Spannen statt Einzelwert; Dörrautomaten schaffen meist nur ~70 °C – Hinweis bei höheren Werten) |
+| Rechte | INVENTORY_UPDATE zum Setzen |
+| Akzeptanz | #5 PETG → Empfehlung 60–65 °C · 4–8 h; „Heute getrocknet“ → Detail und Liste zeigen das Datum, auch auf einem zweiten Gerät |
+
+## SP-16 Etiketten-Status
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt – Anzahl je Etikett wird gemerkt (einmal 2 wählen) |
+| Ziel | Wissen, welche Spulen schon ein Etikett haben; alle ohne Etikett auf einmal drucken (z. B. 2 je Spule). |
+| Ablauf | Drucken oder PNG speichern setzt „Etikett gedruckt am“. Liste: Filter „Ohne Etikett (n)“ → Auswählen → Alle → Etiketten mit Anzahl 2. Detail: Status mit „als etikettiert markieren“/zurücksetzen (für schon beklebte Spulen). |
+| Daten | Zusatzdaten `labelPrintedAt`, Stapel per `POST /extras/spools/bulk` |
+| Akzeptanz | 3 Spulen ohne Etikett → Filter zeigt 3 → Druck mit Anzahl 2 = 6 Etiketten → Filter leer |
+
+## SP-17 QR-Abläufe: Schnellmenü und Lagerort-Codes
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | geplant |
+| Ziel | Ein Scan startet die Arbeit: Spulen-Etikett → Schnellmenü; Lagerort-Etikett → danach gescannte Spulen landen dort. |
+| Ablauf | Scan Spule → Sheet mit Wiegen · Getrocknet · Ins AMS · Verschieben · Etikett · Details. Scan Lagerort (`bm:l:<id>`) → Modus „Einräumen in …“: jede weitere gescannte Spule wird dorthin verschoben (Ton + Liste), Ende per Knopf. Lagerort-Etiketten drucken unter Lagerorte. |
+| Daten | `PATCH /inventory/spools/{id}` `{ location_id }`; Vorlagen-Art `location` |
+| Akzeptanz | Ort „Trockenbox“ scannen, 3 Spulen scannen → alle 3 dort; Spule scannen → Schnellmenü in < 1 s |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |

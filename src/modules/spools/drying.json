@@ -1,0 +1,15 @@
+{
+  "_quelle": "Dörrautomat/Filamenttrockner: übliche Spannen aus Herstellerangaben (u. a. Bambu Lab Wiki, Polymaker, Sunlu, Prusa). AMS: Standardwerte von Bambuddy für AMS 2 Pro (backend/app/services/print_scheduler.py, DEFAULT_DRYING_PRESETS). Werte hier ändern – kein Code nötig.",
+  "aliases": { "NYLON": "PA", "PA6": "PA", "PA11": "PA", "PA12": "PA", "PAHT": "PA", "PPA": "PA", "TPE": "TPU", "PET": "PETG" },
+  "materials": {
+    "PLA": { "temp": [45, 55], "hours": [4, 8], "ams": { "temp": 45, "hours": 12 } },
+    "PETG": { "temp": [60, 65], "hours": [4, 8], "ams": { "temp": 65, "hours": 12 } },
+    "TPU": { "temp": [50, 60], "hours": [6, 8], "ams": { "temp": 65, "hours": 12 } },
+    "ABS": { "temp": [65, 80], "hours": [4, 6], "ams": { "temp": 65, "hours": 12 } },
+    "ASA": { "temp": [65, 80], "hours": [4, 6], "ams": { "temp": 65, "hours": 12 } },
+    "PA": { "temp": [70, 80], "hours": [8, 12], "ams": { "temp": 65, "hours": 12 } },
+    "PC": { "temp": [70, 80], "hours": [6, 8], "ams": { "temp": 65, "hours": 12 } },
+    "PVA": { "temp": [45, 55], "hours": [6, 8], "ams": { "temp": 65, "hours": 12 } }
+  },
+  "dehydratorMax": 70
+}

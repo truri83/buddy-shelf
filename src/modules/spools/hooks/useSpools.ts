@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { bambuddy, type PrinterStatus, type SpoolCreate, type SpoolUpdate } from '@/core/api';
-import { buildSlots, staleAssignments, type Slot } from '../slots';
+import { bambuddy, type ExtrasPatch, type PrinterStatus, type SpoolCreate, type SpoolUpdate } from '@/core/api';
+import { buildSlots, type Slot } from '../slots';
 
 export const spoolKeys = {
   all: ['spools'] as const,
@@ -67,6 +67,15 @@ function useRefresh() {
   };
 }
 
+/** SP-15/16: Zusatzdaten (getrocknet, Etikett gedruckt) für eine oder viele Spulen. */
+export function useSetExtras() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ ids, patch }: { ids: number[]; patch: ExtrasPatch }) => bambuddy.spools.setExtras(ids, patch),
+    onSuccess: (_d, v) => (v.ids.length === 1 ? refresh(v.ids[0]) : refresh()),
+  });
+}
+
 /** SP-12: Lagerort für mehrere Spulen auf einmal. */
 export function useBulkMove() {
   const refresh = useRefresh();
@@ -114,13 +123,8 @@ export function useAssignSpool() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ spoolId, slot }: { spoolId: number; slot: Pick<Slot, 'printerId' | 'amsId' | 'trayId'> }) => {
-      const current = await bambuddy.assignments.list();
-      // erst den neuen Slot belegen – scheitert das, bleibt die Spule in ihrem alten Slot
-      const created = await bambuddy.assignments.create({ spool_id: spoolId, printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId });
-      for (const a of staleAssignments(spoolId, slot, current)) {
-        await bambuddy.assignments.remove(a.printer_id, a.ams_id, a.tray_id);
-      }
-      return created;
+      // Reihenfolge (alte Slots lösen / neuen belegen) hängt von der Datenquelle ab – siehe client.ts
+      return bambuddy.assignments.place({ spool_id: spoolId, printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId });
     },
     onSuccess: (_d, v) => {
       refresh(v.spoolId);

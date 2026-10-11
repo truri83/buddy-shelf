@@ -29,7 +29,7 @@ import {
   scaleOutline,
   swapVerticalOutline,
 } from 'ionicons/icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { ApiError, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { storage } from '@/core/platform';
@@ -49,6 +49,9 @@ export function SpoolListPage() {
   const { slots } = useSlots();
   const newRfid = slots.filter((x) => isNewRfid(x, spools.data ?? [])).length;
   const [query, setQuery] = useState('');
+  // SP-16: nur Spulen ohne Etikett (label_printed_at === null; undefined = unbekannt)
+  const [unlabeledOnly, setUnlabeledOnly] = useState(false);
+  const unlabeled = (spools.data ?? []).filter((s) => s.label_printed_at === null).length;
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
   // SP-12 Mehrfachauswahl
@@ -62,11 +65,11 @@ export function SpoolListPage() {
 
   const groups = useMemo(() => {
     const list = sortSpools(
-      (spools.data ?? []).filter((s) => matchesSearch(s, query)),
+      (spools.data ?? []).filter((s) => matchesSearch(s, query) && (!unlabeledOnly || s.label_printed_at === null)),
       sortBy,
     );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy, sortBy]);
+  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly]);
 
   const toggleSort = () => {
     const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';
@@ -171,7 +174,8 @@ export function SpoolListPage() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 'var(--bs-s2)',
+              flexWrap: 'wrap',
+              gap: 'var(--bs-s1) var(--bs-s2)',
               padding: 'var(--bs-s2) var(--bs-s4) 0',
               fontSize: 'var(--bs-fs-caption)',
               color: 'var(--bs-text-2)',
@@ -180,6 +184,18 @@ export function SpoolListPage() {
             <span className="bs-num" style={{ flex: 1, whiteSpace: 'nowrap' }}>
               {count === total ? t('spools.count', { n: total }) : t('spools.countOf', { n: count, total })}
             </span>
+            {(unlabeled > 0 || unlabeledOnly) && (
+              <IonButton
+                size="small"
+                fill={unlabeledOnly ? 'solid' : 'outline'}
+                onClick={() => setUnlabeledOnly((v) => !v)}
+                aria-pressed={unlabeledOnly}
+                style={{ '--border-radius': '999px', margin: 0, whiteSpace: 'nowrap', fontSize: 'var(--bs-fs-caption)' } as CSSProperties}
+              >
+                <IonIcon slot="start" icon={pricetagOutline} />
+                {t('labels.unlabeled', { n: unlabeled })}
+              </IonButton>
+            )}
             <IonSelect
               aria-label={t('spools.groupBy')}
               interface="popover"

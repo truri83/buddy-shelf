@@ -3,14 +3,16 @@ import { copyOutline, createOutline, cubeOutline, locationOutline, pricetagOutli
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed } from '@/core/api';
-import { fmtNum, otherLanguageName, t } from '@/core/i18n';
+import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
 import { encodeSpoolCode } from '@/core/qr/codes';
 import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss, StateView } from '@/core/ui';
 import { AmsSheet } from '../components/AmsSheet';
+import { DryingCard } from '../components/DryingCard';
 import { LabelSheet } from '../components/LabelSheet';
 import { MoveSheet } from '../components/MoveSheet';
 import { WeighSheet } from '../components/WeighSheet';
-import { useAssignments, useLocations, useSpool } from '../hooks/useSpools';
+import { todayIso } from '../drying';
+import { useAssignments, useLocations, useSetExtras, useSpool } from '../hooks/useSpools';
 import { isLow, locationName } from '../logic';
 
 type Sheet = 'ams' | 'move' | 'weigh' | 'label';
@@ -43,6 +45,7 @@ export function SpoolDetailPage() {
   const locations = useLocations();
   const assignments = useAssignments();
   const canEdit = useAllowed('inventory:update');
+  const setExtras = useSetExtras();
   // ?action=weigh usw. kommt aus dem ⋮-Menü der Spulenliste
   const [sheet, setSheet] = useState<Sheet | null>(() => {
     const a = params.get('action') as Sheet | null;
@@ -143,6 +146,8 @@ export function SpoolDetailPage() {
               ))}
             </div>
 
+            <DryingCard spool={s} canEdit={canEdit} style={card} />
+
             <section style={card}>
               <h2 style={{ margin: '0 0 var(--bs-s3)', fontSize: 'var(--bs-fs-title)' }}>{t('spools.detail.overview')}</h2>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--bs-s3) var(--bs-s4)' }}>
@@ -181,6 +186,24 @@ export function SpoolDetailPage() {
                 <Field label={t('spools.detail.code')}>
                   <span className="bs-num">{encodeSpoolCode(s.id)}</span>
                 </Field>
+                {s.label_printed_at !== undefined && (
+                  <Field label={t('labels.status')}>
+                    {s.label_printed_at ? t('labels.printedOn', { date: fmtDate(s.label_printed_at) }) : t('labels.none')}
+                    {canEdit && (
+                      <div>
+                        <IonButton
+                          size="small"
+                          fill="clear"
+                          disabled={setExtras.isPending}
+                          style={{ margin: 0, '--padding-start': 0 } as CSSProperties}
+                          onClick={() => void setExtras.mutate({ ids: [s.id], patch: { label_printed_at: s.label_printed_at ? null : todayIso() } })}
+                        >
+                          {s.label_printed_at ? t('labels.markNone') : t('labels.markHas')}
+                        </IonButton>
+                      </div>
+                    )}
+                  </Field>
+                )}
               </div>
             </section>
             <AmsSheet spool={s} isOpen={sheet === 'ams'} onDismiss={close} />

@@ -4,7 +4,7 @@ import { BUILTIN_TEMPLATES, fillVariables } from '@/core/printing';
 
 const SLOT_TEMPLATE = BUILTIN_TEMPLATES.find((x) => x.kind === 'slot')!;
 import { parseScan } from '@/core/qr/codes';
-import { buildSlots, slotLabel, slotLabelVariables, staleAssignments } from './slots';
+import { buildSlots, slotLabel, slotLabelVariables } from './slots';
 
 const status: PrinterStatus = {
   id: 1,
@@ -27,10 +27,6 @@ describe('Slots', () => {
   });
   it('Drucker ohne Status liefert keine Slots', () => {
     expect(buildSlots([{ id: 2, name: 'P1S', model: null, is_active: true }], {}, [])).toEqual([]);
-  });
-  it('alte Zuweisungen derselben Spule werden gefunden, die Ziel-Zuweisung nicht', () => {
-    const all = [a(4, 0, 2), a(4, 1, 0), a(5, 0, 1)];
-    expect(staleAssignments(4, { printerId: 1, amsId: 0, trayId: 2 }, all).map((x) => x.ams_id)).toEqual([1]);
   });
   it('Slot-Etikett: QR wird wieder als derselbe Slot erkannt', () => {
     const [slot] = buildSlots([{ id: 1, name: 'X2D', model: 'X2D', is_active: true }], { 1: status }, []);

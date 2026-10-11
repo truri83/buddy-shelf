@@ -15,16 +15,23 @@ interface Props {
   storageKey: string;
   isOpen: boolean;
   onDismiss: () => void;
+  /** nach erfolgreichem Druck bzw. PNG-Speichern (z. B. „Etikett gedruckt“ merken) */
+  onPrinted?: () => void;
 }
 
 const row = { display: 'grid', gap: 'var(--bs-s2)', padding: '0 var(--bs-s4)' } as const;
 
 /** SP-06: Vorschau → Drucken (Niimbot direkt) oder PNG. Baustein „Etikett-Vorschau“ als Detail-Sheet. */
-export function LabelPrintSheet({ templates, records, fileName, storageKey, isOpen, onDismiss }: Props) {
+export function LabelPrintSheet({ templates, records, fileName, storageKey, isOpen, onDismiss, onPrinted }: Props) {
   const lp = useLabelPrinter();
   const [templateId, setTemplateId] = useState(() => storage.get(storageKey, templates[0]!.id));
   const template = templates.find((x) => x.id === templateId) ?? templates[0]!;
-  const [quantity, setQuantity] = useState(1);
+  // Anzahl je Etikett wird gemerkt (z. B. immer 2: Spule + Karton)
+  const [quantity, setQuantity] = useState(() => storage.get('label.quantity', 1));
+  const changeQuantity = (q: number) => {
+    setQuantity(q);
+    storage.set('label.quantity', q);
+  };
   // Vorschau gehört zu genau einer Kombination aus Vorlage, Spule und Rot-Fähigkeit
   const previewKey = `${template.id}|${JSON.stringify(records[0] ?? {})}|${lp.printer?.supportsRed ?? '-'}`;
   const [shot, setShot] = useState<{ key: string; url: string } | null>(null);
@@ -56,7 +63,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
 
   const print = async () => {
     setDone(false);
-    await lp.print(template, records, quantity);
+    if (await lp.print(template, records, quantity)) onPrinted?.();
     setDone(true);
   };
 
@@ -67,7 +74,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
   const { width, height } = template.label.size;
 
   return (
-    <IonModal isOpen={isOpen} onWillPresent={() => (setDone(false), setQuantity(1))} onDidDismiss={onDismiss} initialBreakpoint={0.92} breakpoints={[0, 0.92]}>
+    <IonModal isOpen={isOpen} onWillPresent={() => setDone(false)} onDidDismiss={onDismiss} initialBreakpoint={0.92} breakpoints={[0, 0.92]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{records.length > 1 ? t('label.titleMany', { n: records.length }) : t('label.title')}</IonTitle>
@@ -110,13 +117,13 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>{t('label.quantity')}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)' }}>
-              <IonButton fill="outline" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)} aria-label={t('common.less')}>
+              <IonButton fill="outline" disabled={quantity <= 1} onClick={() => changeQuantity(quantity - 1)} aria-label={t('common.less')}>
                 −
               </IonButton>
               <span className="bs-num" style={{ minWidth: 24, textAlign: 'center' }}>
                 {quantity}
               </span>
-              <IonButton fill="outline" disabled={quantity >= 20} onClick={() => setQuantity((q) => q + 1)} aria-label={t('common.more')}>
+              <IonButton fill="outline" disabled={quantity >= 20} onClick={() => changeQuantity(quantity + 1)} aria-label={t('common.more')}>
                 +
               </IonButton>
             </div>
@@ -155,7 +162,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
           )}
           {tooWide && <IonNote color="danger">{t('label.tooWide', { w: headPixels(template), max: max ?? 0 })}</IonNote>}
           {lp.error && <IonNote color="danger">{lp.error}</IonNote>}
-          <IonButton expand="block" fill="clear" disabled={busy} onClick={() => void lp.savePng(template, records, fileName)}>
+          <IonButton expand="block" fill="clear" disabled={busy} onClick={() => void lp.savePng(template, records, fileName).then(() => onPrinted?.())}>
             {t('label.png')}
           </IonButton>
         </div>

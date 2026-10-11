@@ -15,9 +15,31 @@ buddy-shelf-Container (Unraid)          ┌── Druckdienst niimblue-node (opt
    leitet /api + /api/v1/ws weiter ─────┤
    ▼                                    └── /print
 Bambuddy (unverändert) ── MQTT im LAN ── Bambu X2D
+   │ Spoolman-Modus (Einstellung in Bambuddy)
+   ▼
+Spoolman ◄── /extras (Zusatzfelder: getrocknet, Etikett, Refill, Artikelnummer) ── buddy-shelf-Server
 
 Direktdruck ohne Server: Chrome/Edge (Web Bluetooth / Web Serial) oder native App (Capacitor-BLE).
 ```
+
+## Datenquelle: Bambuddy oder Spoolman
+
+Bambuddy führt den Bestand selbst oder in Spoolman (`GET /spoolman/status` → `enabled`). `src/core/api/client.ts`
+fragt das (1 Min. zwischengespeichert, ohne Antwort letzter bekannter Stand – nie raten) und nimmt dann die
+Spoolman-Pfade von Bambuddy (`/spoolman/inventory/…`, gleiches Spulenformat). Module merken davon nichts.
+Abweichungen im Spoolman-Modus, alle im Client gekapselt:
+
+| Thema | Bambuddy lokal | Bambuddy mit Spoolman |
+| --- | --- | --- |
+| Wiegen | `POST /spoolbuddy/scale/update-spool-weight` | `PATCH /spoolman/inventory/spools/{id}/weight` (brutto, Tara nach Spoolman-Regel) |
+| AMS-Zuweisung | `/inventory/assignments`, löschen je Slot | `/spoolman/inventory/slot-assignments`, löschen **je Spule** → erst lösen, dann belegen, bei Fehler zurücklegen |
+| RFID übernehmen | Antwort = Spule | Antwort `{ spool_id }` → Spule nachladen |
+| Refill, Artikelnummer | Felder in Bambuddy | Bambuddy reicht sie nicht durch → Spoolman-Zusatzfeld `category` bzw. `filament.article_number` über `/extras` |
+| Getrocknet, Etikett gedruckt | Datei `/data/spools.json` | Spoolman-Zusatzfelder `dried_at`, `label_printed_at` |
+
+Der Server wählt den Speicher der Zusatzdaten nach derselben Bambuddy-Einstellung (Spoolman-Adresse aus
+Bambuddy, Überschreiben mit `SPOOLMAN_URL`). Spoolman hat keine Anmeldung: Buddy Shelf spricht es nur
+serverseitig an, nie vom Handy aus.
 
 ## Schichten
 
@@ -26,7 +48,7 @@ Direktdruck ohne Server: Chrome/Edge (Web Bluetooth / Web Serial) oder native Ap
 | App-Shell (`src/app`) | Routing, Tab-Leiste, Scan-Verteiler, Einstellungen, Modul-Registry | Manifeste, Kern |
 | Module (`src/modules/*`) | Seiten, Komponenten, Abläufe eines Fachbereichs | nur Kern, nie andere Module |
 | Kern (`src/core/*`) | Bambuddy-Client, Live-Verbindung, Plattform-Adapter, Design-System, Texte, QR, Druck | Proxy, Geräte-APIs |
-| Proxy (`server/`) | Auslieferung, Weiterleitung an Bambuddy, WebSocket, Druckdienst | Bambuddy, niimblue-node |
+| Proxy (`server/`) | Auslieferung, Weiterleitung an Bambuddy, WebSocket, Druckdienst, Etikett-Vorlagen (`/labels`), Zusatzdaten (`/extras`) | Bambuddy, Spoolman, niimblue-node, Datenordner `/data` |
 
 ## Ordnerstruktur
 

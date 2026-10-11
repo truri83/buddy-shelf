@@ -11,7 +11,7 @@ auf dem Etikettendrucker drucken.
 
 | Punkt | Festlegung |
 | --- | --- |
-| Datenbasis | Bambuddy (selbst gehostet, Unraid) über REST-API – kein Fork, kein Spoolman, keine eigene DB |
+| Datenbasis | Bambuddy (selbst gehostet, Unraid) über REST-API, kein Fork. Bestand wahlweise in Bambuddy oder – empfohlen, seit 11.10.2026 – in **Spoolman** (Bambuddy im Spoolman-Modus). Buddy Shelf erkennt das selbst. Keine eigene Spulen-DB; nur Zusatzfelder, die Bambuddy nicht kennt, liegen in Spoolman (`extra`) bzw. ohne Spoolman in einer Datei |
 | Zielgeräte | Plattformneutral: iOS, Android, Windows, macOS – iPhone und Windows-PC zuerst |
 | Stufe 1 | Web-App (PWA), installierbar auf dem Homescreen |
 | Stufe 2 | Native Apps iOS/Android aus derselben Codebasis (Capacitor); Desktop als PWA, bei Bedarf Tauri |

@@ -20,7 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline } from 'ionicons/icons';
 import { useState } from 'react';
-import { ApiError, configureApi, getApiConfig, isTestedVersion, useAuthStatus, useBambuddyVersion, useMe } from '@/core/api';
+import { ApiError, configureApi, getApiConfig, isTestedVersion, useAuthStatus, useBambuddyVersion, useInventorySource, useMe } from '@/core/api';
 import { t } from '@/core/i18n';
 import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
@@ -46,6 +46,7 @@ export function SettingsPage() {
   const version = useBambuddyVersion();
   const me = useMe();
   const authStatus = useAuthStatus();
+  const source = useInventorySource();
   const actions = modules.flatMap((m) => m.quickActions ?? []);
 
   const save = () => {
@@ -121,6 +122,14 @@ export function SettingsPage() {
               </div>
             </IonLabel>
           </IonItem>
+          {source.data && (
+            <IonItem lines="none">
+              <IonLabel>
+                {source.data.spoolman ? t('settings.sourceSpoolman') : t('settings.sourceBambuddy')}
+                <div style={sub}>{source.data.spoolman ? (source.data.url ?? '') : t('settings.sourceBambuddyHint')}</div>
+              </IonLabel>
+            </IonItem>
+          )}
         </IonList>
 
         <IonAccordionGroup expand="inset">

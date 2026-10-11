@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { bambuddy } from './client';
+import { bambuddy, inventorySource } from './client';
 import type { Permission } from './types';
 
 /** Rechte des Schlüssels bzw. Nutzers (GET /auth/me). */
@@ -8,6 +8,11 @@ export function useMe() {
 }
 
 /** Ist die Anmeldung in Bambuddy eingeschaltet? (ohne Anmeldung liefert /auth/me immer 401) */
+/** Wo Bambuddy den Bestand führt: selbst oder in Spoolman. */
+export function useInventorySource() {
+  return useQuery({ queryKey: ['inventory-source'], queryFn: () => inventorySource(true), staleTime: 60_000 });
+}
+
 export function useAuthStatus() {
   return useQuery({ queryKey: ['auth-status'], queryFn: bambuddy.auth.status, staleTime: 5 * 60_000, retry: false });
 }
