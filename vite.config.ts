@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
+import { catalogMiddleware } from './server/catalog.js';
 
 // Dev: /api und /ws gehen an Bambuddy (BAMBUDDY_URL in .env.local).
 // Mock-Modus (npm run dev:mock): MSW beantwortet /api im Browser, kein Server nötig.
@@ -11,6 +12,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // Filament-Katalog wie im Produktionsserver (im Mock-Modus beantwortet MSW /catalog)
+      { name: 'filament-catalog', configureServer: (server) => void server.middlewares.use(catalogMiddleware()) },
       VitePWA({
         // Neue Version nach einem Deploy sofort übernehmen (sonst bleibt die Homescreen-App alt).
         registerType: 'autoUpdate',

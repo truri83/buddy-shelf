@@ -66,3 +66,15 @@ export const colors: ColorEntry[] = [
   { id: 4, manufacturer: 'Bambu Lab', color_name: 'Gray', hex_color: '#8E9089', material: 'PETG' },
   { id: 5, manufacturer: 'Sunlu', color_name: 'Grau', hex_color: '#8A8D91', material: 'PETG' },
 ];
+
+/** Auszug im Format von server/catalog.js (SpoolmanDB) */
+export const filamentDb = [
+  { id: 'bl_pla_black', manufacturer: 'Bambu Lab', name: 'Basic Black', material: 'PLA', color_hex: '000000', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
+  { id: 'bl_pla_jade', manufacturer: 'Bambu Lab', name: 'Basic Jade White', material: 'PLA', color_hex: 'FFFFFF', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
+  { id: 'bl_pla_green', manufacturer: 'Bambu Lab', name: 'Basic Bambu Green', material: 'PLA', color_hex: '00AE42', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
+  { id: 'bl_pla_charcoal', manufacturer: 'Bambu Lab', name: 'Matte Charcoal', material: 'PLA', color_hex: '000000', weight: 1000, spool_weight: 250, spool_type: null, finish: 'matte', translucent: false },
+  { id: 'bl_petg_gray', manufacturer: 'Bambu Lab', name: 'HF Gray', material: 'PETG', color_hex: '8E9089', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
+  { id: 'sunlu_petg_grey', manufacturer: 'Sunlu', name: 'Grey', material: 'PETG', color_hex: '8A8D91', weight: 1000, spool_weight: 160, spool_type: 'plastic', finish: null, translucent: false },
+  { id: 'sunlu_pla_red', manufacturer: 'Sunlu', name: 'Red', material: 'PLA', color_hex: 'C12E1F', weight: 1000, spool_weight: 120, spool_type: 'cardboard', finish: null, translucent: false },
+  { id: 'poly_pla_teal', manufacturer: 'Polymaker', name: 'PolyTerra Teal', material: 'PLA', color_hex: '00807F', weight: 1000, spool_weight: 140, spool_type: 'cardboard', finish: 'matte', translucent: false },
+];

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { registerAdmin } from './admin.js';
+import { registerCatalog } from './catalog.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
@@ -24,6 +25,9 @@ const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
 // Selbst-Update auf Unraid (nur mit BUDDY_SHELF_ADMIN_TOKEN). Statische Routen gehen vor den Proxy.
 await registerAdmin(app, { version: VERSION });
+
+// Filament-Katalog (SpoolmanDB) für Hersteller-/Material-/Farblisten
+await registerCatalog(app);
 
 /** Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt. */
 const withServerKey = (headers) =>

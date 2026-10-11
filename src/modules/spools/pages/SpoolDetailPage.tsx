@@ -1,5 +1,5 @@
 import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonPage, IonTitle, IonToolbar } from '@ionic/react';
-import { copyOutline, cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
+import { copyOutline, createOutline, cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import { useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
@@ -39,6 +39,9 @@ export function SpoolDetailPage() {
           <IonTitle>{s ? `#${s.id} ${name}` : ''}</IonTitle>
           {s && canEdit && (
             <IonButtons slot="end">
+              <IonButton routerLink={`/spools/${s.id}/edit`} aria-label={t('spools.action.edit')}>
+                <IonIcon slot="icon-only" icon={createOutline} />
+              </IonButton>
               <IonButton routerLink={`/spools/new?from=${s.id}`} aria-label={t('spools.action.duplicate')}>
                 <IonIcon slot="icon-only" icon={copyOutline} />
               </IonButton>
@@ -109,7 +112,13 @@ export function SpoolDetailPage() {
                 </IonItem>
               )}
               <IonItem>
-                <IonLabel color="medium">{t('spools.detail.emptyWeight')}</IonLabel>
+                <IonLabel color="medium">{t('new.colorHex')}</IonLabel>
+                <IonLabel slot="end" className="bs-num">
+                  {s.rgba ? `#${s.rgba.slice(0, 6)}` : '–'}
+                </IonLabel>
+              </IonItem>
+              <IonItem>
+                <IonLabel color="medium">{s.category === 'Refill' ? t('new.refillCore') : t('spools.detail.emptyWeight')}</IonLabel>
                 <IonLabel slot="end" className="bs-num">
                   {s.core_weight} g
                 </IonLabel>

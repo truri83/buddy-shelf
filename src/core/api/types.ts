@@ -15,6 +15,8 @@ export interface Spool {
   label_weight: number;
   core_weight: number;
   core_weight_catalog_id?: number | null;
+  /** Freie Kategorie in Bambuddy; „Refill“ = Filament auf Mehrwegspule */
+  category?: string | null;
   weight_used: number;
   note: string | null;
   tag_uid: string | null;
@@ -33,7 +35,7 @@ export interface Spool {
 export type SpoolUpdate = Partial<
   Pick<
     Spool,
-    'material' | 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'weight_used' | 'note' | 'storage_location' | 'location_id'
+    'material' | 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'weight_used' | 'note' | 'storage_location' | 'location_id' | 'category' | 'core_weight_catalog_id'
   >
 >;
 
@@ -71,8 +73,25 @@ export interface LocationCreate {
 
 /** POST /inventory/spools – nur `material` ist Pflicht. */
 export type SpoolCreate = { material: string } & Partial<
-  Pick<Spool, 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'location_id' | 'note' | 'material_number'>
+  Pick<Spool, 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'location_id' | 'note' | 'material_number' | 'category'>
 > & { core_weight_catalog_id?: number | null };
+
+/** Filament aus der Datenbank SpoolmanDB (über /catalog unseres Servers) */
+export interface FilamentEntry {
+  id: string;
+  manufacturer: string;
+  name: string;
+  material: string;
+  /** RRGGBB ohne # */
+  color_hex: string | null;
+  /** Nettogewicht g */
+  weight: number | null;
+  /** Leerspule g */
+  spool_weight: number | null;
+  spool_type: 'plastic' | 'cardboard' | 'metal' | null;
+  finish: string | null;
+  translucent: boolean;
+}
 
 /** GET /inventory/catalog – Leerspulen-Gewichte */
 export interface CatalogEntry {

@@ -123,3 +123,28 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 Unter **Mehr → Drucker & AMS**: alle Slots aller Drucker auflisten (aus `GET /printers/` + Status) und je Slot ein kleines Etikett drucken
 (QR `bm:t:…` + Text „X2D · AMS 1 · 3“). Druck über SP-06 (Niimbot-Profil), Ersatz: PNG/PDF zum Ausdrucken. Wird ein Drucker in Bambuddy neu
 angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden.
+
+## SP-07b Filament-Katalog, Farb-Hex, Refill, Bearbeiten
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt – geprüft im Mock; Katalog-Dienst gegen echte SpoolmanDB (67 Hersteller, Bambu PLA 148 Farben) |
+| Ziel | Spulen schnell und richtig erfassen: Hersteller und Material aus Listen, Filament mit Farbe (Hex), Nettogewicht und Leerspule aus einer Datenbank; Refills; vorhandene Spulen bearbeiten. |
+| Ablauf | Anlegen/Bearbeiten → Hersteller (Liste mit Suche) → Material (Liste) → Filament-Vorschläge mit Farbfeld → übernimmt Farbname, Hex, Nettogewicht, Leerspule. Hex jederzeit als `#RRGGBB` eintippbar oder per Farbwähler. Spulenart: Kunststoff / Pappe / Refill (Mehrwegspule, Gewicht wird gemerkt). |
+| Seite | Formular (`SpoolFormPage`, Anlegen `/spools/new`, Bearbeiten `/spools/:id/edit`), Auswahl-Sheet mit Suche (`core/ui/PickerSheet`) |
+| Daten | Filament-Datenbank **SpoolmanDB** (github.com/Donkie/SpoolmanDB, MIT, 8 000+ Filamente) über unseren Server: `GET /catalog/manufacturers`, `/catalog/materials`, `/catalog/filaments?manufacturer=&material=` (server/catalog.js lädt `filaments.json` täglich, liefert schlanke Auszüge). Zusätzlich Bambuddy-Farbkatalog. Speichern: `POST /inventory/spools/bulk` bzw. `PATCH /inventory/spools/{id}`; Refill → `category: "Refill"`, `core_weight` = Mehrwegspule. |
+| Entscheidung | 3dfilamentprofiles.com hat keine API und blockt automatische Abrufe → nicht genutzt; SpoolmanDB ist offen lizenziert und wird auch von Bambuddy/Spoolman verwendet. |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | „Bambu Lab“ + „PLA“ zeigt Basic-Farben mit Farbfeld; Auswahl füllt Name, Hex, 1000 g, Leerspule; Hex `#00AE42` eintippen färbt die Vorschau; Refill zieht das gemerkte Mehrwegspulen-Gewicht ab |
+
+## SP-09 Schnell-Wiegen und Inventur
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt – ohne Waagen-Anbindung: Etikett scannen, Waagenwert eintippen, Enter |
+| Ziel | Viele vorhandene Spulen nacheinander wiegen; bei der Inventur zusätzlich Lagerort bestätigen und sehen, welche Spulen fehlen. |
+| Ablauf | Mehr/Spulenliste → „Wiegen & Inventur“ → Kamera bleibt offen → Spule scannen → Gewichtsfeld ist sofort aktiv → Zahl + Enter = gespeichert → nächste Spule. Inventur-Schalter: Ort für diese Runde wählen (jede gescannte Spule wird dorthin gebucht), am Ende „Nicht gesehen“ mit Liste; Archivieren nur mit Bestätigung. Sitzung bleibt bei Unterbrechung erhalten. |
+| Seite | `pages/WeighSessionPage.tsx` (`/spools/weigh`): Scanner oben, aktuelle Spule mit Zahlenfeld, Liste „erledigt“ |
+| Daten | `POST /spoolbuddy/scale/update-spool-weight`, `PATCH /inventory/spools/{id}` `{ location_id }`, `POST /inventory/spools/{id}/archive` |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Pro Spule: 1 Scan + Gewicht + Enter; 10 Spulen ohne einen weiteren Tipp; Inventur zeigt nicht gescannte Spulen des gewählten Orts |

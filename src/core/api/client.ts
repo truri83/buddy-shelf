@@ -1,6 +1,7 @@
 import type {
   CatalogEntry,
   ColorEntry,
+  FilamentEntry,
   Location,
   LocationCreate,
   Me,
@@ -47,6 +48,13 @@ export function getApiConfig(): Readonly<ApiConfig> {
   return config;
 }
 
+/** Filament-Datenbank (SpoolmanDB) über unseren eigenen Server – gleicher Ursprung, ohne Schlüssel. */
+async function catalogRequest<T>(path: string): Promise<T> {
+  const res = await fetch(`/catalog${path}`, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new ApiError(res.status, `GET /catalog${path} → ${res.status}`);
+  return (await res.json()) as T;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -88,6 +96,7 @@ export const bambuddy = {
      * Waagenwert (brutto) übernehmen – Bambuddys eigener Waagen-Weg (SpoolBuddy): rechnet
      * weight_used = label_weight − (brutto − core_weight) und setzt last_scale_weight/last_weighed_at.
      */
+    archive: (id: number) => request<Spool>('POST', `/inventory/spools/${id}/archive`),
     weigh: (spoolId: number, grossGrams: number) =>
       request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
   },
@@ -114,6 +123,18 @@ export const bambuddy = {
       if (q.manufacturer) p.set('manufacturer', q.manufacturer);
       if (q.material) p.set('material', q.material);
       return request<ColorEntry[]>('GET', `/inventory/colors/search?${p}`);
+    },
+  },
+  /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
+  filamentDb: {
+    manufacturers: () => catalogRequest<string[]>('/manufacturers'),
+    materials: (manufacturer?: string) =>
+      catalogRequest<string[]>(`/materials${manufacturer ? `?manufacturer=${encodeURIComponent(manufacturer)}` : ''}`),
+    filaments: (q: { manufacturer?: string; material?: string }) => {
+      const p = new URLSearchParams();
+      if (q.manufacturer) p.set('manufacturer', q.manufacturer);
+      if (q.material) p.set('material', q.material);
+      return catalogRequest<FilamentEntry[]>(`/filaments?${p}`);
     },
   },
   auth: {

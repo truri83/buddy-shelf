@@ -1,8 +1,9 @@
 import { http, HttpResponse } from 'msw';
 import type { SpoolAssignmentCreate, SpoolCreate } from '../src/core/api/types';
-import { assignments, catalog, colors, locations, printers, printerStatus, spools } from './data';
+import { assignments, catalog, colors, filamentDb, locations, printers, printerStatus, spools } from './data';
 
 const api = (p: string) => `*/api/v1${p}`;
+const uniq = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'de'));
 
 export const handlers = [
   http.get(api('/inventory/spools'), () => HttpResponse.json(spools)),
@@ -101,5 +102,23 @@ export const handlers = [
   http.get(api('/auth/me'), () =>
     HttpResponse.json({ username: 'mock', permissions: ['inventory:read', 'inventory:update', 'inventory:view_assignments', 'printers:read'] }),
   ),
+  http.post(api('/inventory/spools/:id/archive'), ({ params }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    s.archived_at = new Date().toISOString();
+    return HttpResponse.json(s);
+  }),
+  // Filament-Datenbank (server/catalog.js)
+  http.get('*/catalog/manufacturers', () => HttpResponse.json(uniq(filamentDb.map((f) => f.manufacturer)))),
+  http.get('*/catalog/materials', ({ request }) => {
+    const m = new URL(request.url).searchParams.get('manufacturer');
+    return HttpResponse.json(uniq(filamentDb.filter((f) => !m || f.manufacturer === m).map((f) => f.material)));
+  }),
+  http.get('*/catalog/filaments', ({ request }) => {
+    const q = new URL(request.url).searchParams;
+    const m = q.get('manufacturer');
+    const mat = q.get('material');
+    return HttpResponse.json(filamentDb.filter((f) => (!m || f.manufacturer === m) && (!mat || f.material === mat)));
+  }),
   http.get(api('/updates/version'), () => HttpResponse.json({ version: '1.2.5.7', repo: 'maziggy/bambuddy' })),
 ];

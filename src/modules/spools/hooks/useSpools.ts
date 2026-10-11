@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { bambuddy, type PrinterStatus, type SpoolCreate } from '@/core/api';
+import { bambuddy, type PrinterStatus, type SpoolCreate, type SpoolUpdate } from '@/core/api';
 import { buildSlots, staleAssignments, type Slot } from '../slots';
 
 export const spoolKeys = {
@@ -125,6 +125,45 @@ export function useCreateSpools() {
   return useMutation({
     mutationFn: ({ spool, quantity }: { spool: SpoolCreate; quantity: number }) => bambuddy.spools.createMany(spool, quantity),
     onSuccess: () => refresh(),
+  });
+}
+
+/** Spule bearbeiten (SP-07b). */
+export function useUpdateSpool() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ spoolId, patch }: { spoolId: number; patch: SpoolUpdate }) => bambuddy.spools.update(spoolId, patch),
+    onSuccess: (_d, v) => refresh(v.spoolId),
+  });
+}
+
+/** Spule archivieren (Inventur: nicht gefunden). */
+export function useArchiveSpool() {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: (spoolId: number) => bambuddy.spools.archive(spoolId), onSuccess: (_d, id) => refresh(id) });
+}
+
+/** Filament-Datenbank (SpoolmanDB über /catalog). Fehler sind nicht schlimm – dann eben Freitext. */
+const DB_STALE = 6 * 60 * 60_000;
+export function useDbManufacturers(enabled: boolean) {
+  return useQuery({ queryKey: ['filamentDb', 'manufacturers'], queryFn: bambuddy.filamentDb.manufacturers, staleTime: DB_STALE, enabled, retry: false });
+}
+export function useDbMaterials(manufacturer: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['filamentDb', 'materials', manufacturer],
+    queryFn: () => bambuddy.filamentDb.materials(manufacturer || undefined),
+    staleTime: DB_STALE,
+    enabled,
+    retry: false,
+  });
+}
+export function useDbFilaments(manufacturer: string, material: string) {
+  return useQuery({
+    queryKey: ['filamentDb', 'filaments', manufacturer, material],
+    queryFn: () => bambuddy.filamentDb.filaments({ manufacturer, material }),
+    staleTime: DB_STALE,
+    enabled: !!manufacturer && !!material,
+    retry: false,
   });
 }
 
