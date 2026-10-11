@@ -19,7 +19,12 @@ SHA="$(git rev-parse HEAD)"
 [ "$(git rev-parse origin/main 2>/dev/null)" = "$SHA" ] || { echo "HEAD ist nicht origin/main – erst pushen/mergen"; exit 1; }
 
 echo "==> warte auf CI für ${SHA:0:7} …"
-RUN_ID="$(gh run list --commit "$SHA" --workflow CI --json databaseId --jq '.[0].databaseId')"
+# GitHub legt den Lauf erst einige Sekunden nach dem Push an
+for _ in $(seq 1 20); do
+  RUN_ID="$(gh run list --commit "$SHA" --workflow CI --json databaseId --jq '.[0].databaseId')"
+  [ -n "$RUN_ID" ] && break
+  sleep 5
+done
 [ -n "$RUN_ID" ] || { echo "kein CI-Lauf für $SHA gefunden"; exit 1; }
 gh run watch "$RUN_ID" --exit-status > /dev/null || { echo "CI fehlgeschlagen"; exit 1; }
 
