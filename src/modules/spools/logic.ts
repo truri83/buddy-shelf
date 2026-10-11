@@ -35,6 +35,12 @@ export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[],
   return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'de')).map(([key, list]) => ({ key, title: key, spools: list }));
 }
 
+/** Lagerorte für die Auswahl: zuletzt genutzter zuerst, sonst wie von Bambuddy sortiert. */
+export function orderLocations(locations: Location[], lastId: number | null): Location[] {
+  const last = locations.find((l) => l.id === lastId);
+  return last ? [last, ...locations.filter((l) => l !== last)] : locations;
+}
+
 export type SortBy = 'id' | 'remaining';
 
 /** Sortierung innerhalb der Gruppen: nach Nummer oder wenigster Rest zuerst (wie Spooly). */

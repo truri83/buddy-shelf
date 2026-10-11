@@ -35,7 +35,7 @@ export interface ModuleManifest {
   /** Beansprucht einen Scan-Treffer und liefert die Ziel-Route, sonst null. */
   scan?: (result: ScanResult) => string | null;
   requires?: {
-    /** Bambuddy-Berechtigungen, z. B. inventory_read */
+    /** Bambuddy-Berechtigungen, z. B. inventory:read (backend/app/core/permissions.py) */
     api?: string[];
     platform?: Capability[];
     optional?: Capability[];

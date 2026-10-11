@@ -1,4 +1,17 @@
-import type { Location, Spool, SpoolAssignment, SpoolAssignmentCreate, SpoolUpdate } from './types';
+import type {
+  CatalogEntry,
+  ColorEntry,
+  Location,
+  LocationCreate,
+  Me,
+  Printer,
+  PrinterStatus,
+  Spool,
+  SpoolAssignment,
+  SpoolAssignmentCreate,
+  SpoolCreate,
+  SpoolUpdate,
+} from './types';
 
 /**
  * Einziger Zugang zu Bambuddy (Regel 3). Module rufen nur diese Funktionen bzw.
@@ -58,7 +71,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const bambuddy = {
-  // TODO(Regel 14): Endpunkt für die Bambuddy-Version klären (siehe docs/BAMBUDDY-API.md, offene Fragen).
   spools: {
     list: () => request<Spool[]>('GET', '/inventory/spools'),
     get: (id: number) => request<Spool>('GET', `/inventory/spools/${id}`),
@@ -70,12 +82,44 @@ export const bambuddy = {
       return request<Spool>('GET', `/inventory/spools/by-tag?${p}`);
     },
     update: (id: number, patch: SpoolUpdate) => request<Spool>('PATCH', `/inventory/spools/${id}`, patch),
+    /** Mehrere gleiche Spulen in einem Schritt (quantity 1–100). */
+    createMany: (spool: SpoolCreate, quantity: number) => request<Spool[]>('POST', '/inventory/spools/bulk', { spool, quantity }),
+    /**
+     * Waagenwert (brutto) übernehmen – Bambuddys eigener Waagen-Weg (SpoolBuddy): rechnet
+     * weight_used = label_weight − (brutto − core_weight) und setzt last_scale_weight/last_weighed_at.
+     */
+    weigh: (spoolId: number, grossGrams: number) =>
+      request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
   },
   locations: {
     list: () => request<Location[]>('GET', '/inventory/locations'),
+    /** 409 bei gleichem Namen */
+    create: (l: LocationCreate) => request<Location>('POST', '/inventory/locations', l),
   },
   assignments: {
     list: () => request<SpoolAssignment[]>('GET', '/inventory/assignments'),
+    /** Belegter Slot wird von Bambuddy ersetzt (kein 409). */
     create: (a: SpoolAssignmentCreate) => request<SpoolAssignment>('POST', '/inventory/assignments', a),
+    remove: (printerId: number, amsId: number, trayId: number) =>
+      request<{ status: string }>('DELETE', `/inventory/assignments/${printerId}/${amsId}/${trayId}`),
   },
+  printers: {
+    list: () => request<Printer[]>('GET', '/printers/'),
+    status: (id: number) => request<PrinterStatus>('GET', `/printers/${id}/status`),
+  },
+  catalog: {
+    spools: () => request<CatalogEntry[]>('GET', '/inventory/catalog'),
+    colors: (q: { manufacturer?: string; material?: string }) => {
+      const p = new URLSearchParams();
+      if (q.manufacturer) p.set('manufacturer', q.manufacturer);
+      if (q.material) p.set('material', q.material);
+      return request<ColorEntry[]>('GET', `/inventory/colors/search?${p}`);
+    },
+  },
+  auth: {
+    /** Rechte des Schlüssels bzw. Nutzers */
+    me: () => request<Me>('GET', '/auth/me'),
+  },
+  /** Öffentlich, ohne Schlüssel (Regel 14) */
+  version: () => request<{ version: string }>('GET', '/updates/version'),
 };

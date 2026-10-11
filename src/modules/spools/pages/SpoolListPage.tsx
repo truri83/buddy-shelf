@@ -17,7 +17,7 @@ import {
   IonToolbar,
   type RefresherEventDetail,
 } from '@ionic/react';
-import { swapVerticalOutline } from 'ionicons/icons';
+import { add, swapVerticalOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { ApiError } from '@/core/api';
 import { t } from '@/core/i18n';
@@ -68,6 +68,9 @@ export function SpoolListPage() {
             <IonButton onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
               <IonIcon slot="start" icon={swapVerticalOutline} />
               {t(`spools.sort.${sortBy}`)}
+            </IonButton>
+            <IonButton routerLink="/spools/new" aria-label={t('spools.action.add')}>
+              <IonIcon slot="icon-only" icon={add} />
             </IonButton>
           </IonButtons>
         </IonToolbar>

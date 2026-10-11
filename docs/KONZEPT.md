@@ -65,6 +65,6 @@ Folgerungen:
 - [ ] Lizenz: MIT oder AGPL
 - [ ] Umfang Stufen 4–6 nach Test von DoYouHost und Sprout
 - [ ] Standort des B1 Pro und Rechner mit Bluetooth/USB in Reichweite (Druckdienst Phase 2)
-- [ ] Restgewicht per PATCH `weight_used` oder als Verbrauchseintrag? (siehe BAMBUDDY-API.md)
-- [ ] Endpunkt für die Bambuddy-Version (Regel 14)
+- [x] Restgewicht: Bambuddys Waagen-Endpunkt (siehe BAMBUDDY-API.md)
+- [x] Endpunkt für die Bambuddy-Version (Regel 14): `/updates/version`
 - [ ] Eigener API-Schlüssel für die App mit Rechten „Inventar verwalten“ + „Status lesen“

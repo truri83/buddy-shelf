@@ -4,23 +4,25 @@ Geprüft im Bambuddy-Code (github.com/maziggy/bambuddy, Stand 09.10.2026). Alle 
 Auth: Header `X-API-Key: bb_…` (alternativ `Authorization: Bearer bb_…`). Mit eingeschalteter
 Bambuddy-Anmeldung gelten die Rechte des Schlüssels bzw. Nutzers.
 
-## Phase 1 (Spulen)
+## Phase 1 (Spulen) – geprüft im Code und gegen die Live-Instanz (v1.2.5.7, 11.10.2026)
 | Zweck | Methode + Pfad | Hinweis |
 | --- | --- | --- |
-| Spulen | `GET /inventory/spools` | `SpoolResponse` (schemas/spool.py) |
+| Spulen | `GET /inventory/spools` | archivierte nur mit `?include_archived=true` |
 | Spule | `GET /inventory/spools/{id}` | |
-| Spule ändern | `PATCH /inventory/spools/{id}` | `SpoolUpdate`: u. a. `weight_used`, `location_id`, `storage_location`, `core_weight` |
-| Spule anlegen | `POST /inventory/spools`, `POST /inventory/spools/bulk` | Bulk: `{ spool, quantity 1–100 }` |
-| Dublette per NFC | `GET /inventory/spools/by-tag?tag_uid=…&tray_uuid=…` | Recht INVENTORY_READ oder _UPDATE |
-| Lagerorte | `GET/POST /inventory/locations`, `PATCH /inventory/locations/{id}` | `{ id, name, identifier, spool_count }` |
-| AMS-Zuweisungen | `GET/POST /inventory/assignments` | Create: `{ spool_id, printer_id, ams_id, tray_id }` (0-basiert) |
-| Spule aus Slot | `POST /inventory/spools/from-slot` | |
-| Verbrauch | `GET /inventory/spools/{id}/usage`, `GET /inventory/usage` | Phase 3 Prognose |
-| Katalog | `GET /inventory/catalog`, `GET /inventory/colors/*` | Phase 1 Anlegen |
+| Spule ändern | `PATCH /inventory/spools/{id}` | `SpoolUpdate`; `location_id` gewinnt vor `storage_location`; `weight_used` setzt `weight_locked` |
+| Spulen anlegen | `POST /inventory/spools/bulk` | `{ spool: SpoolCreate, quantity 1–100 }`, Pflicht nur `material` |
+| Wiegen | `POST /spoolbuddy/scale/update-spool-weight` | `{ spool_id, weight_grams }` brutto → `weight_used`, `last_scale_weight`, `last_weighed_at` |
+| Dublette per NFC | `GET /inventory/spools/by-tag?tag_uid=…&tray_uuid=…` | |
+| Lagerorte | `GET/POST /inventory/locations` | Create `{ name, identifier? }`, 409 bei gleichem Namen |
+| AMS-Zuweisungen | `GET/POST /inventory/assignments`, `DELETE /inventory/assignments/{printer}/{ams}/{tray}` | POST ersetzt belegten Slot; dieselbe Spule darf in mehreren Slots stehen (App räumt vorher auf); Lagerort bleibt unverändert |
+| Drucker | `GET /printers/`, `GET /printers/{id}/status` | `ams[].tray[]` (id, tray_color RRGGBBAA, tray_type, state 9/10/11), `vt_tray` id 254/255 → Zuweisung `ams_id 255, tray_id 0/1` |
+| Katalog | `GET /inventory/catalog`, `GET /inventory/colors/search?manufacturer=&material=` | Leerspulen `{id,name,weight}`, Farben `{manufacturer,color_name,hex_color,material}` |
+| Rechte | `GET /auth/me` | `permissions[]`, z. B. `inventory:read`, `inventory:update`, `inventory:view_assignments`, `printers:read` |
+| Version | `GET /updates/version` | öffentlich, `{ version }` (Regel 14) |
 | Etiketten (Bambuddy) | Labels-Router | QR auf Bambuddy-Etiketten: `<base>/inventory?spool=<id>` |
 
 Gewichte: Restgewicht = `label_weight − weight_used`; Waage: `weight_used = label_weight − (brutto − core_weight)`
-(`src/core/api/types.ts`).
+(`src/core/api/types.ts`). Schreibrechte: alle Inventar-Änderungen prüfen in Bambuddy `inventory:update`.
 
 ## Später
 | Zweck | Pfad |
@@ -45,9 +47,8 @@ Gewichte: Restgewicht = `label_weight − weight_used`; Waage: `weight_used = la
 | `<base>/inventory?spool=<id>` | Etikett aus Bambuddy |
 | `bambuddy://config?v=1&url=…&key=…` | Einrichtungs-QR aus Bambuddy (API-Schlüssel) |
 
-## Offene API-Fragen
-- [ ] Restgewicht nach Wiegen: `PATCH weight_used` direkt oder gibt es einen Waagen-Endpunkt
-      (`last_scale_weight`, SpoolBuddy)? Ziel: Verbrauchshistorie nicht verfälschen.
-- [ ] Endpunkt für die Bambuddy-Version (Regel 14) – `/system/info` braucht SYSTEM_READ.
-- [ ] Assignments: Verhalten bei belegtem Slot (alte Zuweisung automatisch ersetzt?).
-- [ ] Rechte-Namen für `requires.api` aus `backend/app/core/permissions` übernehmen.
+## Geklärt (11.10.2026)
+- Wiegen: eigener Waagen-Endpunkt (SpoolBuddy) statt `PATCH weight_used`.
+- Version: `GET /updates/version` ohne Schlüssel.
+- Belegter Slot: POST ersetzt die alte Zuweisung.
+- Rechte-Namen: siehe Tabelle; Module nutzen `useAllowed('inventory:update')`.

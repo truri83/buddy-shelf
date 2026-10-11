@@ -38,39 +38,39 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf |
+| Status | umgesetzt – mit echtem Drucker in Bambuddy noch zu prüfen (Instanz hat noch keinen Drucker) |
 | Ziel | Nach dem Scan die Spule mit max. 3 Tipps einem AMS-Slot zuweisen. |
 | Ablauf | Detail → „Ins AMS“ → Sheet: Drucker (falls mehrere) → AMS → Slot (belegte Slots zeigen aktuelle Spule) → Bestätigen |
-| Seite | Aktions-Sheet |
-| Daten | `GET /printers/` (Drucker/AMS-Aufbau), `GET/POST /inventory/assignments` |
+| Seite | `components/AmsSheet.tsx`: Slots aller Drucker (AMS + Extern L/R) mit Belegung; freier Slot = 1 Tipp, belegter = 1 Rückfrage; „Aus dem AMS nehmen“ |
+| Daten | `GET /printers/`, `GET /printers/{id}/status` (`ams[].tray[]`, `vt_tray` 254/255 → ams 255, tray 0/1), `GET/POST /inventory/assignments`, `DELETE /inventory/assignments/{p}/{a}/{t}` |
 | Plattform | – |
 | Zustände | Fehler beim Speichern → Sheet bleibt offen, Hinweis |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | nach Bestätigen zeigt die Karte das neue AMS-Badge; vorherige Spule im Slot erhält ihren Lagerort zurück |
-| Offen | Bambuddy-Verhalten bei belegtem Slot; AMS-Aufbau des X2D aus `/printers/{id}/status` lesen |
+| Offen | Belegter Slot: Bambuddy ersetzt die alte Zuweisung selbst (geprüft im Code). Dieselbe Spule in zwei Slots erlaubt Bambuddy – die App entfernt deshalb vorher ihre alten Zuweisungen. Lagerort bleibt beim Einlegen erhalten (Bambuddy ändert ihn nicht), damit hat die Spule beim Herausnehmen „ihren“ Ort zurück. |
 
 ## SP-04 Lagerort setzen (Verschieben)
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf |
+| Status | umgesetzt |
 | Ziel | Spule zurück ins Regal / in eine Drybox buchen. |
 | Ablauf | Detail → „Verschieben“ → Sheet mit Lagerorten (zuletzt genutzter oben) → Tipp = gespeichert |
-| Seite | Aktions-Sheet |
-| Daten | `GET /inventory/locations`, `PATCH /inventory/spools/{id}` `{ location_id }` |
+| Seite | `components/MoveSheet.tsx`: Lagerorte (zuletzt genutzter oben, ✓ = aktuell), „Ohne Lagerort“, neuen Lagerort direkt anlegen |
+| Daten | `GET/POST /inventory/locations` (409 bei gleichem Namen), `PATCH /inventory/spools/{id}` `{ location_id }` (null = ohne) |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Ort erscheint sofort in Karte und Detail; offline → Fehlerhinweis, nichts geht verloren |
-| Offen | Lagerorte anlegen in der App oder nur in Bambuddy? |
+| Offen | Entschieden: Lagerorte lassen sich auch in der App anlegen (Instanz hatte noch keine). |
 
 ## SP-05 Wiegen
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf |
+| Status | umgesetzt |
 | Ziel | Restgewicht per Küchenwaage korrigieren. |
 | Ablauf | Detail → „Wiegen“ → Bruttogewicht eingeben (Zifferntastatur) → Vorschau Rest → Speichern |
 | Seite | Aktions-Sheet mit Zahlenfeld und Kennzahl |
-| Daten | `PATCH /inventory/spools/{id}` – Berechnung `weightUsedFromScale` (`core/api/types.ts`, getestet) |
+| Daten | `POST /spoolbuddy/scale/update-spool-weight` `{ spool_id, weight_grams }` (Bambuddys Waagen-Weg: rechnet `weight_used`, setzt `last_scale_weight`/`last_weighed_at`); Vorschau mit `weightUsedFromScale` |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | 691 g brutto bei 237 g Leerspule → 454 g Rest |
 | Offen | PATCH `weight_used` vs. Waagen-Endpunkt (siehe BAMBUDDY-API.md) |
@@ -88,36 +88,36 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 | Plattform | `printer.bluetooth` / `printer.usb` (Chrome/Edge); sonst Hinweis + PNG |
 | Rechte | INVENTORY_READ |
 | Geprüft | QR aller Vorlagen per Decoder gelesen (`bm:s:1234`, `bm:t:1:0:2`); Druckbild nur exakte Farben; niimbluelib kodiert ein- und zweifarbig; Sheet hell/dunkel/Desktop; Produktions-Build lädt den Druckteil |
-| Offen | Druck am B1 Pro per Bluetooth und USB von Hand prüfen; Dichte/Etikettentyp einstellbar? Eigene Vorlagen von niim.blue importieren (Stufe 2/3, `parseTemplate` vorhanden); Mehrfachauswahl in der Liste (Ablauf E); iPhone-Druck über Druckdienst (Phase 2) |
+| Offen | Druck am B1 Pro per Bluetooth und USB von Hand prüfen; Dichte/Etikettentyp einstellbar? Eigene Vorlagen von niim.blue importieren (Stufe 2/3, `parseTemplate` vorhanden); Mehrfachauswahl in der Liste (Ablauf E); iPhone-Druck über Druckdienst (Phase 2). Druck-Sheet ist allgemein (`core/printing/LabelPrintSheet`), Stapeldruck wird von SP-07 und den Slot-Etiketten genutzt. |
 
 ## SP-07 Spule anlegen / duplizieren
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf |
+| Status | umgesetzt |
 | Ziel | Neue Spule mit wenigen Eingaben anlegen und gleich etikettieren. |
 | Ablauf | Plus → „Spule hinzufügen“ → aus Katalog/Farbkatalog wählen oder bestehende duplizieren → Anzahl → Speichern → Etikett (SP-06) |
-| Seite | Formular |
-| Daten | `GET /inventory/catalog`, `/inventory/colors/*`, `POST /inventory/spools` bzw. `/spools/bulk` |
+| Seite | `pages/SpoolNewPage.tsx` (`/spools/new`, Duplizieren `?from=<id>` aus dem Detail): Material-Chips, Sorte, Hersteller, Farbe aus Farbkatalog oder Farbwähler, Nettogewicht, Leerspule aus Katalog, Lagerort, Anzahl 1–20 → danach Etiketten-Sheet für alle neuen Spulen |
+| Daten | `POST /inventory/spools/bulk` `{ spool, quantity }`, `GET /inventory/catalog` (Leerspulen), `GET /inventory/colors/search?manufacturer=&material=` |
 | Rechte | INVENTORY_CREATE / UPDATE |
 | Akzeptanz | 3 gleiche Spulen in einem Schritt angelegt, danach Mehrfachdruck möglich |
-| Offen | Welche Pflichtfelder verlangt Bambuddy minimal (material)? |
+| Offen | Pflichtfeld ist nur `material` (geprüft). Anlegen braucht in Bambuddy `inventory:update`. |
 
 ## SP-08 Spulenwechsel per Doppelscan (Slot → Spule → fertig)
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | bereit (QR-Format `bm:t:` erkannt, Ablauf offen) |
+| Status | umgesetzt – mit echtem Drucker noch zu prüfen |
 | Ziel | Spulenwechsel am AMS in zwei Scans erledigen, ohne Menüs. |
 | Ablauf | 1. Slot-Etikett am AMS scannen → Sheet „AMS 1 · Slot 3“ zeigt die Spule, die dort gerade zugewiesen ist. 2. Kamera bleibt offen: neue Spule scannen. 3. Zuweisung wird gespeichert, kurze Bestätigung (Haptik + Hinweis) – **fertig**. Die alte Spule bekommt ihren letzten Lagerort zurück (rückgängig machen per Hinweis-Knopf). Reihenfolge Spule → Slot funktioniert genauso. |
-| Seite | Scan-Vorlage mit Treffer-Karte oben (Slot), darunter Kamerabild für den zweiten Scan; Aktions-Sheet nur bei Rückfragen |
+| Seite | `pages/SlotPage.tsx` (`/spools/slot/:p/:a/:t`, vom Scan-Verteiler über `manifest.scan`): Treffer-Karte „Im Slot“, Kamera bleibt offen, Spule scannen → gespeichert + Hinweis mit „Rückgängig“; Ersatz Code/Nummer eingeben. `pages/SlotsPage.tsx` (`/spools/slots`, unter Mehr): alle Slots + „Alle Slot-Etiketten drucken“ |
 | Daten | `GET /inventory/assignments`, `POST /inventory/assignments` `{ spool_id, printer_id, ams_id, tray_id }`; alte Spule: `PATCH /inventory/spools/{id}` `{ location_id }`. Bambuddy stellt den AMS-Slot danach selbst per MQTT ein (Profil, Farbe, Material; bei leerem Slot sobald die Spule eingelegt ist). |
 | QR-Format | Slot: `bm:t:<druckerId>:<amsId>:<slot>` (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule). Spule: `bm:s:<id>`. Parser + Tests in `src/core/qr/codes.ts`. |
 | Plattform | `scanner` (SP-02); Haptik optional (`haptics`) |
 | Zustände | Slot unbekannt (Drucker gelöscht) → Hinweis „Slot-Etikett neu drucken“; Spule archiviert → Rückfrage; offline → nichts speichern, Hinweis |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Vom Öffnen des Scanners bis zur gespeicherten Zuweisung höchstens 2 Scans und 0–1 Tipp; Karte der neuen Spule zeigt danach das AMS-Badge; alte Spule zeigt wieder ihren Lagerort |
-| Offen | Verhalten von Bambuddy bei belegtem Slot (ersetzt POST die alte Zuweisung?); Lagerort der alten Spule: letzter Ort oder Rückfrage? |
+| Offen | Reihenfolge Spule → Slot: über „Ins AMS“ im Spulen-Detail (SP-03). |
 
 ### Slot-Etiketten drucken (Teil von SP-08)
 Unter **Mehr → Drucker & AMS**: alle Slots aller Drucker auflisten (aus `GET /printers/` + Status) und je Slot ein kleines Etikett drucken

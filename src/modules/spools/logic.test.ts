@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Spool } from '@/core/api';
-import { groupSpools, isLow, matchesSearch, sortSpools } from './logic';
+import { groupSpools, isLow, matchesSearch, orderLocations, sortSpools } from './logic';
 
 const base: Spool = {
   id: 1, material: 'PLA', subtype: 'Basic', color_name: 'Black', rgba: '000000FF', brand: 'Bambu Lab',
@@ -10,6 +10,12 @@ const base: Spool = {
 };
 
 describe('Spulen-Logik', () => {
+  it('zuletzt genutzter Lagerort steht oben', () => {
+    const locs = [1, 2, 3].map((id) => ({ id, name: `L${id}`, identifier: null, spool_count: 0 }));
+    expect(orderLocations(locs, 3).map((l) => l.id)).toEqual([3, 1, 2]);
+    expect(orderLocations(locs, 9).map((l) => l.id)).toEqual([1, 2, 3]);
+  });
+
   it('sortiert nach Nummer oder wenigstem Rest', () => {
     const a = { ...base, id: 3, weight_used: 100 };
     const b = { ...base, id: 1, weight_used: 900 };

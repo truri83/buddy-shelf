@@ -9,5 +9,5 @@ export const overviewModule: ModuleManifest = {
   stage: 1,
   routes: [{ path: '/overview', component: OverviewPage }],
   tab: { order: 1, href: '/overview' },
-  requires: { api: ['inventory_read'] },
+  requires: { api: ['inventory:read'] },
 };

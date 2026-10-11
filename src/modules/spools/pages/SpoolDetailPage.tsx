@@ -1,14 +1,17 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonPage, IonTitle, IonToast, IonToolbar } from '@ionic/react';
-import { cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { copyOutline, cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import { useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { fillRatio, remainingGrams } from '@/core/api';
+import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { encodeSpoolCode } from '@/core/qr/codes';
 import { ColorRing, FillBar, MaterialBadge, StateView } from '@/core/ui';
+import { AmsSheet } from '../components/AmsSheet';
 import { LabelSheet } from '../components/LabelSheet';
-import { useLocations, useSpool } from '../hooks/useSpools';
-import { isLow, locationName } from '../logic';
+import { MoveSheet } from '../components/MoveSheet';
+import { WeighSheet } from '../components/WeighSheet';
+import { useAssignments, useLocations, useSpool } from '../hooks/useSpools';
+import { amsLabel, isLow, locationName } from '../logic';
 
 /** Vorlage „Detail“: Kopf-Karte mit Kennzahl, Aktionsleiste, Abschnitte. */
 export function SpoolDetailPage() {
@@ -16,8 +19,12 @@ export function SpoolDetailPage() {
   const spoolId = Number(id);
   const spool = useSpool(spoolId);
   const locations = useLocations();
-  const [toast, setToast] = useState(false);
-  const [labelOpen, setLabelOpen] = useState(false);
+  const assignments = useAssignments();
+  const canEdit = useAllowed('inventory:update');
+  const [sheet, setSheet] = useState<'ams' | 'move' | 'weigh' | 'label' | null>(null);
+  const close = () => setSheet(null);
+  const assignment = assignments.data?.find((a) => a.spool_id === spoolId);
+  const ams = assignment ? `${assignment.printer_name ?? ''} ${amsLabel(assignment)}`.trim() : null;
 
   const s = spool.data;
   const name = s ? (s.color_name ?? s.subtype ?? s.material) : '';
@@ -30,6 +37,13 @@ export function SpoolDetailPage() {
             <IonBackButton defaultHref="/spools" text="" />
           </IonButtons>
           <IonTitle>{s ? `#${s.id} ${name}` : ''}</IonTitle>
+          {s && canEdit && (
+            <IonButtons slot="end">
+              <IonButton routerLink={`/spools/new?from=${s.id}`} aria-label={t('spools.action.duplicate')}>
+                <IonIcon slot="icon-only" icon={copyOutline} />
+              </IonButton>
+            </IonButtons>
+          )}
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -56,17 +70,19 @@ export function SpoolDetailPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--bs-s2)', padding: '0 var(--bs-s4)' }}>
               {(
                 [
-                  [cubeOutline, 'spools.action.toAms'],
-                  [locationOutline, 'spools.action.move'],
-                  [scaleOutline, 'spools.action.weigh'],
-                  [pricetagOutline, 'spools.action.label'],
+                  [cubeOutline, 'spools.action.toAms', 'ams', true],
+                  [locationOutline, 'spools.action.move', 'move', true],
+                  [scaleOutline, 'spools.action.weigh', 'weigh', true],
+                  [pricetagOutline, 'spools.action.label', 'label', false],
                 ] as const
-              ).map(([icon, key]) => (
+              ).map(([icon, key, target, needsEdit]) => (
                 <IonButton
                   key={key}
                   fill="outline"
                   expand="block"
-                  onClick={() => (key === 'spools.action.label' ? setLabelOpen(true) : setToast(true))}
+                  disabled={needsEdit && !canEdit}
+                  title={needsEdit && !canEdit ? t('common.noPermission') : undefined}
+                  onClick={() => setSheet(target)}
                   style={{ minHeight: 'var(--bs-touch)', '--padding-start': '4px', '--padding-end': '4px' } as CSSProperties}
                 >
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
@@ -86,6 +102,12 @@ export function SpoolDetailPage() {
                 <IonLabel color="medium">{t('spools.detail.location')}</IonLabel>
                 <IonLabel slot="end">{locationName(s, locations.data ?? []) ?? '–'}</IonLabel>
               </IonItem>
+              {ams && (
+                <IonItem>
+                  <IonLabel color="medium">AMS</IonLabel>
+                  <IonLabel slot="end">{ams}</IonLabel>
+                </IonItem>
+              )}
               <IonItem>
                 <IonLabel color="medium">{t('spools.detail.emptyWeight')}</IonLabel>
                 <IonLabel slot="end" className="bs-num">
@@ -99,8 +121,10 @@ export function SpoolDetailPage() {
                 </IonLabel>
               </IonItem>
             </IonList>
-            <LabelSheet spools={[s]} isOpen={labelOpen} onDismiss={() => setLabelOpen(false)} />
-            <IonToast isOpen={toast} message={t('spools.action.soon')} duration={2200} onDidDismiss={() => setToast(false)} />
+            <AmsSheet spool={s} isOpen={sheet === 'ams'} onDismiss={close} />
+            <MoveSheet spool={s} isOpen={sheet === 'move'} onDismiss={close} />
+            <WeighSheet spool={s} isOpen={sheet === 'weigh'} onDismiss={close} />
+            <LabelSheet spools={[s]} isOpen={sheet === 'label'} onDismiss={close} />
           </>
         )}
       </IonContent>

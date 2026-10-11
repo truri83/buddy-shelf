@@ -1,4 +1,4 @@
-import type { Location, Spool, SpoolAssignment } from '../src/core/api/types';
+import type { CatalogEntry, ColorEntry, Location, Printer, PrinterStatus, Spool, SpoolAssignment } from '../src/core/api/types';
 
 /** Beispieldaten im Bambuddy-Format für npm run dev:mock und Tests. */
 const now = '2026-10-11T12:00:00Z';
@@ -31,4 +31,38 @@ export const spools: Spool[] = [
 export const assignments: SpoolAssignment[] = [
   { id: 1, spool_id: 4, printer_id: 1, printer_name: 'X2D', ams_id: 1, tray_id: 1, ams_label: null, configured: true, pending_config: false },
   { id: 2, spool_id: 10, printer_id: 1, printer_name: 'X2D', ams_id: 0, tray_id: 2, ams_label: null, configured: true, pending_config: false },
+];
+
+export const printers: Printer[] = [{ id: 1, name: 'X2D', model: 'X2D', is_active: true }];
+
+const tray = (id: number, type: string | null, sub: string | null, color: string | null, remain: number | null) => ({
+  id, tray_type: type, tray_sub_brands: sub, tray_color: color, remain, state: type ? 11 : 9,
+});
+
+/** X2D mit zwei AMS (je 4 Slots) und zwei externen Halterungen (254/255). */
+export const printerStatus: Record<number, PrinterStatus> = {
+  1: {
+    id: 1,
+    name: 'X2D',
+    connected: true,
+    ams: [
+      { id: 0, is_ams_ht: false, tray: [tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80), tray(1, null, null, null, null), tray(2, 'ASA', 'ASA', 'FFFFFFFF', 100), tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65)] },
+      { id: 1, is_ams_ht: false, tray: [tray(0, null, null, null, null), tray(1, 'PLA', 'PLA Basic', '000000FF', 45), tray(2, null, null, null, null), tray(3, null, null, null, null)] },
+    ],
+    vt_tray: [tray(254, null, null, null, null), tray(255, null, null, null, null)],
+  },
+};
+
+export const catalog: CatalogEntry[] = [
+  { id: 24, name: 'Bambu Lab - Plastic', weight: 237, is_default: true },
+  { id: 30, name: 'Sunlu - Plastic', weight: 180, is_default: true },
+  { id: 41, name: 'Pappspule (allgemein)', weight: 140, is_default: true },
+];
+
+export const colors: ColorEntry[] = [
+  { id: 1, manufacturer: 'Bambu Lab', color_name: 'Jade White', hex_color: '#FFFFFF', material: 'PLA' },
+  { id: 2, manufacturer: 'Bambu Lab', color_name: 'Black', hex_color: '#000000', material: 'PLA' },
+  { id: 3, manufacturer: 'Bambu Lab', color_name: 'Bambu Green', hex_color: '#00AE42', material: 'PLA' },
+  { id: 4, manufacturer: 'Bambu Lab', color_name: 'Gray', hex_color: '#8E9089', material: 'PETG' },
+  { id: 5, manufacturer: 'Sunlu', color_name: 'Grau', hex_color: '#8A8D91', material: 'PETG' },
 ];
