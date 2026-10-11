@@ -1,4 +1,4 @@
-/** Materialfamilie → Token. Die Filamentfarbe selbst erscheint nur im Farbring. */
+/** Materialfamilie → Token. Die Filamentfarbe selbst erscheint nur in Farbring und Füllbalken. */
 export function materialToken(material: string): string {
   const m = material.toUpperCase();
   if (m.startsWith('PLA')) return 'var(--bs-mat-pla)';

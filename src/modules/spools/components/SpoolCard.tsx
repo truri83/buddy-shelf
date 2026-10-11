@@ -1,6 +1,8 @@
-import { IonCheckbox, IonItem } from '@ionic/react';
+import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet } from '@ionic/react';
+import { ellipsisVertical, locationOutline } from 'ionicons/icons';
+import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
-import { t } from '@/core/i18n';
+import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
 import { isLow } from '../logic';
 
@@ -8,54 +10,100 @@ interface Props {
   spool: Spool;
   location: string | null;
   ams: string | null;
+  canEdit?: boolean;
   /** Auswahlmodus: Tippen wählt statt zu öffnen */
   selecting?: boolean;
   selected?: boolean;
   onToggle?: () => void;
 }
 
-/** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken, Gramm. */
-export function SpoolCard({ spool, location, ams, selecting, selected, onToggle }: Props) {
+/** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken in Filamentfarbe, ⋮-Menü. */
+export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, onToggle }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
+  const navigate = useNavigate();
+  const [present] = useIonActionSheet();
+
+  // Aktionen öffnen die Detailseite mit dem passenden Blatt (?action=…)
+  const openMenu = () =>
+    void present({
+      header: `#${spool.id} ${name}`,
+      buttons: [
+        ...(canEdit
+          ? [
+              { text: t('spools.action.weigh'), handler: () => navigate(`/spools/${spool.id}?action=weigh`) },
+              { text: t('spools.action.toAms'), handler: () => navigate(`/spools/${spool.id}?action=ams`) },
+              { text: t('spools.action.move'), handler: () => navigate(`/spools/${spool.id}?action=move`) },
+            ]
+          : []),
+        { text: t('spools.action.label'), handler: () => navigate(`/spools/${spool.id}?action=label`) },
+        ...(canEdit ? [{ text: t('spools.action.edit'), handler: () => navigate(`/spools/${spool.id}/edit`) }] : []),
+        { text: t('common.cancel'), role: 'cancel' },
+      ],
+    });
+
   return (
-    <IonItem
+    <IonCard
       routerLink={selecting ? undefined : `/spools/${spool.id}`}
       button={selecting}
       onClick={selecting ? onToggle : undefined}
-      detail={false}
-      lines="full"
       aria-pressed={selecting ? selected : undefined}
+      className="bs-card"
+      style={{ margin: 'var(--bs-s2) var(--bs-s3)', borderRadius: 'var(--bs-r-md)', boxShadow: 'none', border: '1px solid var(--bs-border)' }}
     >
-      {selecting && <IonCheckbox slot="start" checked={selected} aria-label={`#${spool.id}`} style={{ pointerEvents: 'none' }} />}
-      <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center', width: '100%', padding: 'var(--bs-s3) 0' }}>
-        <ColorRing rgba={spool.rgba} fill={fill} label={name} />
-        <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--bs-s1)' }}>
-          <div style={{ display: 'flex', gap: 'var(--bs-s2)', alignItems: 'baseline' }}>
-            <span className="bs-num" style={{ color: 'var(--bs-accent)', fontSize: 'var(--bs-fs-caption)' }}>
-              #{spool.id}
-            </span>
+      <div style={{ display: 'grid', gap: 'var(--bs-s2)', padding: 'var(--bs-s3)', color: 'var(--bs-text)' }}>
+        <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center' }}>
+          {selecting && <IonCheckbox checked={selected} aria-label={`#${spool.id}`} style={{ pointerEvents: 'none' }} />}
+          <ColorRing rgba={spool.rgba} fill={fill} label={name} />
+          <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
             <strong style={{ fontSize: 'var(--bs-fs-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</strong>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--bs-s1)', flexWrap: 'wrap' }}>
-            <MaterialBadge material={[spool.material, spool.subtype].filter(Boolean).join(' ')} />
-            {ams && <Badge tone="good">{ams}</Badge>}
-            {low && <Badge tone="warn">{t('spools.low')}</Badge>}
-          </div>
-          <div style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
-            {[spool.brand, location].filter(Boolean).join(' · ')}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)' }}>
-            <div style={{ flex: 1 }}>
-              <FillBar fill={fill} low={low} />
-            </div>
-            <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', minWidth: 84, textAlign: 'right' }}>
-              {remainingGrams(spool)} g · {Math.round(fill * 100)} %
+            <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="bs-num" style={{ color: 'var(--bs-accent)' }}>
+                #{spool.id}
+              </span>
+              {spool.brand && ` · ${spool.brand}`}
             </span>
           </div>
+          {!selecting && (
+            <IonButton
+              fill="clear"
+              color="medium"
+              aria-label={t('spools.actions')}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openMenu();
+              }}
+              style={{ margin: 0, minHeight: 'var(--bs-touch)' }}
+            >
+              <IonIcon slot="icon-only" icon={ellipsisVertical} />
+            </IonButton>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--bs-s1)', flexWrap: 'wrap', alignItems: 'center' }}>
+          <MaterialBadge material={[spool.material, spool.subtype].filter(Boolean).join(' ')} />
+          {spool.category === 'Refill' && <Badge>{t('new.kind.refill')}</Badge>}
+          {spool.material_number && <Badge>{spool.material_number}</Badge>}
+          {ams && <Badge tone="good">{ams}</Badge>}
+          {low && <Badge tone="warn">{t('spools.low')}</Badge>}
+          {location && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
+              <IonIcon icon={locationOutline} aria-hidden />
+              {location}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)' }}>
+          <div style={{ flex: 1 }}>
+            <FillBar fill={fill} low={low} rgba={spool.rgba} height={8} />
+          </div>
+          <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', whiteSpace: 'nowrap' }}>
+            <strong>{fmtNum(remainingGrams(spool))} g</strong>
+            <span style={{ color: low ? 'var(--bs-warn)' : 'var(--bs-text-2)' }}> · {Math.round(fill * 100)} %</span>
+          </span>
         </div>
       </div>
-    </IonItem>
+    </IonCard>
   );
 }

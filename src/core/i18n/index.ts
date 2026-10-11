@@ -9,3 +9,6 @@ export function t(key: MessageKey | (string & {}), vars?: Record<string, string 
 
 export type { MessageKey };
 export { colorFamily, colorSearchText, colorToEnglish, colorToGerman, foldGerman, otherLanguageName, type ColorFamily } from './colors';
+
+/** Zahlen in deutscher Schreibweise (1.000 statt 1000). */
+export const fmtNum = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });

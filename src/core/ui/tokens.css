@@ -177,3 +177,61 @@ ion-accordion-group.accordion-group-expand-inset > ion-accordion {
 :root.ios-standalone {
   --ion-safe-area-top: calc(env(safe-area-inset-top, 0px) + 34px);
 }
+
+/* Spulenkarten: Fläche, leichtes Nachgeben beim Antippen */
+ion-card {
+  --background: var(--bs-surface);
+  --color: var(--bs-text);
+}
+.bs-card {
+  transition: transform 120ms ease;
+}
+.bs-card:active {
+  transform: scale(0.985);
+}
+
+/* Füllbalken wächst beim Erscheinen auf seinen Stand */
+.bs-fill {
+  transition: width 400ms ease;
+  animation: bs-fill-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes bs-fill-in {
+  from {
+    width: 0;
+  }
+}
+
+/* Tab-Leiste: Scannen als runder Mittelknopf (Vorbild Spooly „+“) */
+.bs-tab-fab {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--bs-accent-contrast);
+  background: var(--bs-accent);
+  box-shadow: 0 3px 10px rgba(var(--bs-accent-rgb), 0.35);
+  transition: transform 120ms ease;
+}
+.bs-tab-fab ion-icon {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  color: inherit;
+}
+ion-tab-button.bs-tab-scan:active .bs-tab-fab {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bs-card,
+  .bs-fill,
+  .bs-tab-fab {
+    transition: none;
+    animation: none;
+  }
+  .bs-card:active {
+    transform: none;
+  }
+}

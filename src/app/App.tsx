@@ -43,9 +43,11 @@ export function App() {
                   <IonLabel>{t(m.title)}</IonLabel>
                 </IonTabButton>
               ))}
-              <IonTabButton tab="scan" href="/scan">
-                <IonIcon icon={scanOutline} aria-hidden />
-                <IonLabel>{t('nav.scan')}</IonLabel>
+              {/* Scannen als runder Mittelknopf ohne Beschriftung; Name für Screenreader */}
+              <IonTabButton tab="scan" href="/scan" className="bs-tab-scan" aria-label={t('nav.scan')}>
+                <span className="bs-tab-fab">
+                  <IonIcon icon={scanOutline} aria-hidden />
+                </span>
               </IonTabButton>
               {rest.slice(1).map((m) => (
                 <IonTabButton key={m.id} tab={m.id} href={m.tab!.href}>

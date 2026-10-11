@@ -7,13 +7,12 @@ import {
   IonItem,
   IonItemDivider,
   IonLabel,
-  IonList,
   IonPage,
   IonRefresher,
   IonRefresherContent,
   IonSearchbar,
-  IonSegment,
-  IonSegmentButton,
+  IonSelect,
+  IonSelectOption,
   IonTitle,
   IonToolbar,
   IonFooter,
@@ -125,6 +124,7 @@ export function SpoolListPage() {
 
   const amsBySpool = useMemo(() => new Map((assignments.data ?? []).map((a) => [a.spool_id, amsLabel(a)])), [assignments.data]);
   const count = groups.reduce((n, g) => n + g.spools.length, 0);
+  const total = spools.data?.length ?? 0;
 
   return (
     <IonPage>
@@ -146,10 +146,6 @@ export function SpoolListPage() {
           <IonToolbar>
             <IonTitle>{t('spools.title')}</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
-                <IonIcon slot="start" icon={swapVerticalOutline} />
-                {t(`spools.sort.${sortBy}`)}
-              </IonButton>
               <IonButton onClick={() => setSelecting(true)} aria-label={t('select.start')}>
                 <IonIcon slot="icon-only" icon={checkmarkCircleOutline} />
               </IonButton>
@@ -165,38 +161,59 @@ export function SpoolListPage() {
         <IonToolbar>
           <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder={t('spools.search')} />
         </IonToolbar>
-        <IonToolbar>
-          <IonSegment
-            value={groupBy}
-            scrollable
-            onIonChange={(e) => {
-              const v = e.detail.value as GroupBy;
-              setGroupBy(v);
-              storage.set('spools.groupBy', v);
-            }}
-          >
-            {(['none', 'material', 'color', 'location', 'brand'] as const).map((g) => (
-              <IonSegmentButton key={g} value={g}>
-                <IonLabel>{t(`spools.group.${g}`)}</IonLabel>
-              </IonSegmentButton>
-            ))}
-          </IonSegment>
-        </IonToolbar>
       </IonHeader>
       <IonContent>
         <IonRefresher slot="fixed" onIonRefresh={(e) => void refresh(e)}>
           <IonRefresherContent />
         </IonRefresher>
+        {!spools.isPending && !spools.isError && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--bs-s2)',
+              padding: 'var(--bs-s2) var(--bs-s4) 0',
+              fontSize: 'var(--bs-fs-caption)',
+              color: 'var(--bs-text-2)',
+            }}
+          >
+            <span className="bs-num" style={{ flex: 1, whiteSpace: 'nowrap' }}>
+              {count === total ? t('spools.count', { n: total }) : t('spools.countOf', { n: count, total })}
+            </span>
+            <IonSelect
+              aria-label={t('spools.groupBy')}
+              interface="popover"
+              value={groupBy}
+              onIonChange={(e) => {
+                const v = e.detail.value as GroupBy;
+                setGroupBy(v);
+                storage.set('spools.groupBy', v);
+              }}
+              style={{ minHeight: 'var(--bs-touch)', fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-accent)' }}
+              selectedText={groupBy === 'none' ? t('spools.groupBy') : t(`spools.group.${groupBy}`)}
+            >
+              {(['none', 'material', 'color', 'location', 'brand'] as const).map((g) => (
+                <IonSelectOption key={g} value={g}>
+                  {t(`spools.group.${g}`)}
+                </IonSelectOption>
+              ))}
+            </IonSelect>
+            <IonButton size="small" fill="clear" onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
+              <IonIcon slot="start" icon={swapVerticalOutline} />
+              {t(`spools.sort.${sortBy}`)}
+            </IonButton>
+          </div>
+        )}
         {spools.isPending ? (
           <StateView state="loading" />
         ) : spools.isError ? (
           <StateView state={spools.error instanceof ApiError ? 'error' : 'offline'} onRetry={() => void spools.refetch()} />
         ) : count === 0 ? (
-          <StateView state="empty" />
+          <StateView state="empty" message={total > 0 ? t('spools.noMatch') : undefined} />
         ) : (
-          <IonList>
+          <div style={{ paddingBottom: 'var(--bs-s4)' }}>
             {newRfid > 0 && !selecting && (
-              <IonItem routerLink="/spools/slots" detail color="primary">
+              <IonItem routerLink="/spools/slots" detail color="primary" lines="none" style={{ margin: 'var(--bs-s2) var(--bs-s3)', borderRadius: 'var(--bs-r-md)' }}>
                 <IonLabel>{t('rfid.banner', { n: newRfid })}</IonLabel>
               </IonItem>
             )}
@@ -215,6 +232,7 @@ export function SpoolListPage() {
                     spool={s}
                     location={locationName(s, locations.data ?? [])}
                     ams={amsBySpool.get(s.id) ?? null}
+                    canEdit={canEdit}
                     selecting={selecting}
                     selected={selected.has(s.id)}
                     onToggle={() => toggle(s.id)}
@@ -222,7 +240,7 @@ export function SpoolListPage() {
                 ))}
               </div>
             ))}
-          </IonList>
+          </div>
         )}
       </IonContent>
       {selecting && (
