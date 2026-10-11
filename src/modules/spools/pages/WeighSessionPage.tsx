@@ -17,11 +17,12 @@ import {
   IonToggle,
   IonToolbar,
   useIonAlert,
+  useIonToast,
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { weightUsedFromScale, type Spool } from '@/core/api';
+import { useAllowed, weightUsedFromScale, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
@@ -52,6 +53,18 @@ export function WeighSessionPage() {
   const input = useRef<HTMLIonInputElement>(null);
   const [mode, setMode] = useWeighMode();
   const [alert] = useIonAlert();
+  const [toast] = useIonToast();
+  const canEdit = useAllowed('inventory:update');
+  // Für Scanner-Rückrufe: aktuelle Spule und laufendes Speichern ohne veraltete Closures
+  const currentRef = useRef<Spool | null>(null);
+  const saving = useRef(false);
+  useEffect(() => {
+    currentRef.current = current;
+  }, [current]);
+  const fail = useCallback((e: unknown) => {
+    haptic('warning');
+    setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+  }, []);
 
   useIonViewDidEnter(() => setActive(true));
   useIonViewWillLeave(() => setActive(false));
@@ -61,6 +74,8 @@ export function WeighSessionPage() {
 
   const openSpool = useCallback(
     (id: number) => {
+      // dieselbe Spule nochmal im Bild oder Speichern läuft: Eingabe nicht verwerfen
+      if (saving.current || currentRef.current?.id === id) return;
       const s = byId(id);
       if (!s) {
         haptic('warning');
@@ -74,13 +89,13 @@ export function WeighSessionPage() {
       // Inventur: gesehen + ggf. an den Ort der Runde buchen – auch ohne Gewicht
       if (session.inventory) {
         setSession((x) => record(x, { spoolId: s.id, gross: null, rest: null, at: new Date().toISOString() }));
-        if (session.locationId != null && s.location_id !== session.locationId) {
-          void move.mutateAsync({ spoolId: s.id, locationId: session.locationId }).catch((e: unknown) => setMessage(String(e)));
+        if (canEdit && session.locationId != null && s.location_id !== session.locationId) {
+          move.mutateAsync({ spoolId: s.id, locationId: session.locationId }).catch(fail);
         }
       }
       setTimeout(() => void input.current?.setFocus(), 150);
     },
-    [byId, session.inventory, session.locationId, move],
+    [byId, session.inventory, session.locationId, move, canEdit, fail],
   );
 
   const onCode = useCallback(
@@ -100,16 +115,20 @@ export function WeighSessionPage() {
   const rest = current && gross != null ? Math.round(current.label_weight - weightUsedFromScale(gross, current)) : null;
 
   const save = async () => {
-    if (!current || gross == null) return;
+    if (!current || gross == null || saving.current || !canEdit) return;
+    const savedId = current.id;
+    saving.current = true;
     try {
-      await weigh.mutateAsync({ spoolId: current.id, gross });
+      await weigh.mutateAsync({ spoolId: savedId, gross });
       haptic();
-      setSession((x) => record(x, { spoolId: current.id, gross, rest, at: new Date().toISOString() }));
-      setCurrent(null);
-      setValue('');
+      setSession((x) => record(x, { spoolId: savedId, gross, rest, at: new Date().toISOString() }));
+      // nur leeren, wenn inzwischen keine andere Spule geöffnet wurde
+      setCurrent((c) => (c?.id === savedId ? null : c));
+      if (currentRef.current?.id === savedId) setValue('');
     } catch (e) {
-      haptic('warning');
-      setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      fail(e);
+    } finally {
+      saving.current = false;
     }
   };
 
@@ -121,10 +140,21 @@ export function WeighSessionPage() {
     setManual('');
   };
 
-  const restart = (inventory: boolean, locationId: number | null) => {
-    setSession(newSession(inventory, locationId));
-    setCurrent(null);
-    setShowMissing(false);
+  const restart = () => {
+    const go = () => {
+      setSession((x) => newSession(x.inventory, x.locationId));
+      setCurrent(null);
+      setShowMissing(false);
+    };
+    if (session.done.length === 0) return go();
+    void alert({
+      header: t('weighs.newRound'),
+      message: t('weighs.newRoundQ', { n: session.done.length }),
+      buttons: [
+        { text: t('common.cancel'), role: 'cancel' },
+        { text: t('weighs.newRound'), role: 'destructive', handler: go },
+      ],
+    });
   };
 
   const missing = missingSpools(session, spools.data ?? []);
@@ -136,7 +166,16 @@ export function WeighSessionPage() {
       message: t('weighs.archiveQ'),
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
-        { text: t('weighs.archive'), role: 'destructive', handler: () => void archive.mutateAsync(s.id) },
+        {
+          text: t('weighs.archive'),
+          role: 'destructive',
+          handler: () => {
+            archive
+              .mutateAsync(s.id)
+              .then(() => void toast({ message: t('weighs.archived', { id: s.id }), duration: 2000, position: 'top' }))
+              .catch(fail);
+          },
+        },
       ],
     });
 
@@ -153,12 +192,19 @@ export function WeighSessionPage() {
       <IonContent className="ion-padding">
         {spools.isPending ? (
           <StateView state="loading" />
+        ) : spools.isError ? (
+          <StateView state="offline" onRetry={() => void spools.refetch()} />
         ) : (
           <>
+            {!canEdit && (
+              <IonNote color="warning" style={{ display: 'block', marginBottom: 'var(--bs-s3)' }}>
+                {t('common.noPermission')}
+              </IonNote>
+            )}
             {/* Modus */}
             <IonList inset style={{ margin: '0 0 var(--bs-s3)' }}>
               <IonItem>
-                <IonToggle checked={session.inventory} onIonChange={(e) => restart(e.detail.checked, session.locationId)}>
+                <IonToggle checked={session.inventory} onIonChange={(e) => setSession((x) => ({ ...x, inventory: e.detail.checked }))}>
                   {t('weighs.inventory')}
                 </IonToggle>
               </IonItem>
@@ -208,7 +254,7 @@ export function WeighSessionPage() {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 'var(--bs-s2)' }}>
-                  <IonButton style={{ flex: 1 }} disabled={gross == null || weigh.isPending} onClick={() => void save()}>
+                  <IonButton style={{ flex: 1 }} disabled={gross == null || weigh.isPending || !canEdit} onClick={() => void save()}>
                     {t('common.save')}
                   </IonButton>
                   <IonButton fill="outline" onClick={() => setCurrent(null)}>
@@ -245,7 +291,7 @@ export function WeighSessionPage() {
               <IonListHeader>
                 <IonLabel>{t('weighs.done', { n: session.done.length })}</IonLabel>
                 {session.done.length > 0 && (
-                  <IonButton size="small" fill="clear" onClick={() => restart(session.inventory, session.locationId)}>
+                  <IonButton size="small" fill="clear" onClick={restart}>
                     {t('weighs.newRound')}
                   </IonButton>
                 )}
@@ -279,7 +325,7 @@ export function WeighSessionPage() {
                         {spoolTitle(s)}
                         <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{locName(s.location_id)}</div>
                       </IonLabel>
-                      <IonButton slot="end" size="small" fill="clear" color="danger" onClick={() => confirmArchive(s)}>
+                      <IonButton slot="end" size="small" fill="clear" color="danger" disabled={!canEdit} onClick={() => confirmArchive(s)}>
                         {t('weighs.archive')}
                       </IonButton>
                     </IonItem>

@@ -28,7 +28,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
   // Vorschau gehört zu genau einer Kombination aus Vorlage, Spule und Rot-Fähigkeit
   const previewKey = `${template.id}|${JSON.stringify(records[0] ?? {})}|${lp.printer?.supportsRed ?? '-'}`;
   const [shot, setShot] = useState<{ key: string; url: string } | null>(null);
-  const img = shot?.key === previewKey ? shot.url : null;
+  const img = shot?.key === previewKey ? shot.url : null; // '' = Vorschau fehlgeschlagen
   const [done, setDone] = useState(false);
 
   // Druckteil vorladen, damit die Geräteauswahl direkt im Klick passiert (Browser-Vorgabe)
@@ -39,7 +39,9 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
   useEffect(() => {
     if (!isOpen || !records[0]) return;
     let alive = true;
-    void lp.preview(template, records[0]).then((url) => alive && setShot({ key: previewKey, url }));
+    lp.preview(template, records[0])
+      .then((url) => alive && setShot({ key: previewKey, url }))
+      .catch(() => alive && setShot({ key: previewKey, url: '' }));
     return () => {
       alive = false;
     };
@@ -65,7 +67,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
   const { width, height } = template.label.size;
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.92} breakpoints={[0, 0.92]}>
+    <IonModal isOpen={isOpen} onWillPresent={() => (setDone(false), setQuantity(1))} onDidDismiss={onDismiss} initialBreakpoint={0.92} breakpoints={[0, 0.92]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{records.length > 1 ? t('label.titleMany', { n: records.length }) : t('label.title')}</IonTitle>
@@ -85,7 +87,13 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
               overflow: 'hidden',
             }}
           >
-            {img ? <img src={img} alt={t('label.title')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <IonSpinner />}
+            {img ? (
+              <img src={img} alt={t('label.title')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : img === '' ? (
+              <IonNote color="danger">{t('label.previewFailed')}</IonNote>
+            ) : (
+              <IonSpinner />
+            )}
           </div>
 
           {templates.length > 1 && (
@@ -102,13 +110,13 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>{t('label.quantity')}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)' }}>
-              <IonButton fill="outline" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)} aria-label="−">
+              <IonButton fill="outline" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)} aria-label={t('common.less')}>
                 −
               </IonButton>
               <span className="bs-num" style={{ minWidth: 24, textAlign: 'center' }}>
                 {quantity}
               </span>
-              <IonButton fill="outline" disabled={quantity >= 20} onClick={() => setQuantity((q) => q + 1)} aria-label="+">
+              <IonButton fill="outline" disabled={quantity >= 20} onClick={() => setQuantity((q) => q + 1)} aria-label={t('common.more')}>
                 +
               </IonButton>
             </div>
@@ -124,7 +132,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
               </IonButton>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <IonNote>{t('label.connected', { name: lp.printer.name })}</IonNote>
-                <IonButton fill="clear" size="small" disabled={busy} onClick={() => void lp.disconnect()}>
+                <IonButton fill="clear" size="small" disabled={busy} onClick={() => void lp.disconnect().catch(() => undefined)}>
                   {t('label.disconnect')}
                 </IonButton>
               </div>

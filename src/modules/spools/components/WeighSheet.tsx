@@ -44,7 +44,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   };
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
+    <IonModal isOpen={isOpen} onWillPresent={() => (setValue(''), setError(null))} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('weigh.title')}</IonTitle>

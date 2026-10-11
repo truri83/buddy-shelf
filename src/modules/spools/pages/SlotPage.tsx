@@ -18,7 +18,7 @@ import {
 } from '@ionic/react';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fillRatio, remainingGrams } from '@/core/api';
+import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
@@ -33,7 +33,8 @@ import { spoolTitle } from '../slots';
 export function SlotPage() {
   const params = useParams();
   const target = { printerId: Number(params.printer), amsId: Number(params.ams), trayId: Number(params.tray) };
-  const { slots, isPending, isError, refetch } = useSlots();
+  const { slots, printers, isPending, isError, statusError, refetch } = useSlots();
+  const canEdit = useAllowed('inventory:update');
   const spools = useSpools();
   const assign = useAssignSpool();
   const unassign = useUnassign();
@@ -54,6 +55,10 @@ export function SlotPage() {
   const assignSpool = useCallback(
     async (spoolId: number) => {
       if (!slot || busy.current) return;
+      if (!canEdit) {
+        setMessage(t('common.noPermission'));
+        return;
+      }
       const spool = spools.data?.find((s) => s.id === spoolId);
       if (spool?.archived_at) {
         haptic('warning');
@@ -76,7 +81,9 @@ export function SlotPage() {
               text: t('common.undo'),
               handler: () => {
                 // vorherige Spule zurück bzw. Slot wieder leeren
-                void (previous ? assign.mutateAsync({ spoolId: previous, slot }) : unassign.mutateAsync(slot));
+                (previous ? assign.mutateAsync({ spoolId: previous, slot }) : unassign.mutateAsync(slot)).catch((e: unknown) =>
+                  setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })),
+                );
               },
             },
           ],
@@ -88,7 +95,7 @@ export function SlotPage() {
         busy.current = false;
       }
     },
-    [slot, spools.data, assign, unassign, toast],
+    [slot, spools.data, assign, unassign, toast, canEdit],
   );
 
   const onCode = useCallback(
@@ -118,7 +125,13 @@ export function SlotPage() {
       message: t('ams.remove') + '?',
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
-        { text: t('ams.remove'), role: 'destructive', handler: () => void unassign.mutateAsync(slot) },
+        {
+          text: t('ams.remove'),
+          role: 'destructive',
+          handler: () => {
+            unassign.mutateAsync(slot).catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })));
+          },
+        },
       ],
     });
 
@@ -138,7 +151,12 @@ export function SlotPage() {
         ) : isError ? (
           <StateView state="offline" onRetry={() => void refetch()} />
         ) : !slot ? (
-          <StateView state="error" message={t('slot.unknown')} />
+          // Drucker bekannt, aber ohne Status → nicht erreichbar; sonst gibt es den Slot wirklich nicht
+          printers.some((p) => p.id === target.printerId) || statusError ? (
+            <StateView state="offline" onRetry={() => void refetch()} />
+          ) : (
+            <StateView state="error" message={t('slot.unknown')} />
+          )
         ) : (
           <>
             {/* Treffer-Karte: was liegt gerade im Slot */}

@@ -1,4 +1,4 @@
-import { fillRatio, type Location, type Spool, type SpoolAssignment } from '@/core/api';
+import { fillRatio, slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
 
 export const DEFAULT_LOW_PCT = 20;
 
@@ -19,9 +19,11 @@ export function locationName(s: Spool, locations: Location[]): string | null {
   return s.storage_location || null;
 }
 
+/** Kurze Slot-Bezeichnung für Badges („AMS 2 · 2“, „Extern L“). */
 export function amsLabel(a: SpoolAssignment): string {
-  return `${a.ams_label ?? `AMS ${a.ams_id + 1}`}-${a.tray_id + 1}`;
+  return a.ams_label ?? slotLabel(a.ams_id, a.tray_id);
 }
+
 
 export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[], noLocationTitle: string): SpoolGroup[] {
   const active = spools.filter((s) => !s.archived_at);

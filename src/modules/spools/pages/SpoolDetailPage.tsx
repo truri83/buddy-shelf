@@ -50,7 +50,9 @@ export function SpoolDetailPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {spool.isPending ? (
+        {!(spoolId > 0) ? (
+          <StateView state="error" message={t('scan.unknown')} />
+        ) : spool.isPending ? (
           <StateView state="loading" />
         ) : spool.isError || !s ? (
           <StateView state="error" onRetry={() => void spool.refetch()} />
@@ -86,11 +88,11 @@ export function SpoolDetailPage() {
                   disabled={needsEdit && !canEdit}
                   title={needsEdit && !canEdit ? t('common.noPermission') : undefined}
                   onClick={() => setSheet(target)}
-                  style={{ minHeight: 'var(--bs-touch)', '--padding-start': '4px', '--padding-end': '4px' } as CSSProperties}
+                  style={{ minHeight: 'var(--bs-touch)', '--padding-start': 'var(--bs-s1)', '--padding-end': 'var(--bs-s1)' } as CSSProperties}
                 >
-                  <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
+                  <div style={{ display: 'grid', justifyItems: 'center', gap: 'var(--bs-s1)' }}>
                     <IonIcon icon={icon} />
-                    <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{t(key)}</span>
+                    <span style={{ fontSize: 'var(--bs-fs-caption)', whiteSpace: 'nowrap' }}>{t(key)}</span>
                   </div>
                 </IonButton>
               ))}

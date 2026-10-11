@@ -38,8 +38,9 @@ export function ScannerView({ active, onCode, hint }: Props) {
   useEffect(() => {
     if (!run || !video.current) return;
     let cancelled = false;
+    const abort = new AbortController();
     queueMicrotask(() => !cancelled && setCam({ kind: 'starting' }));
-    startScanner(video.current, (text) => onCodeRef.current(text))
+    startScanner(video.current, (text) => onCodeRef.current(text), abort.signal)
       .then((h) => {
         if (cancelled) return h.stop();
         handle.current = h;
@@ -48,6 +49,7 @@ export function ScannerView({ active, onCode, hint }: Props) {
       .catch((e: unknown) => !cancelled && setCam({ kind: 'error', error: e instanceof ScannerError ? e.kind : 'failed' }));
     return () => {
       cancelled = true;
+      abort.abort();
       handle.current?.stop();
       handle.current = null;
       setTorchOn(false);

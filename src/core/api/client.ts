@@ -1,3 +1,4 @@
+import { t } from '@/core/i18n';
 import type {
   CatalogEntry,
   ColorEntry,
@@ -64,8 +65,8 @@ export function describeError(status: number, body: unknown): string | null {
     const parts = d.map((x: { msg?: string; loc?: unknown[] }) => [x.loc?.slice(1).join('.'), x.msg].filter(Boolean).join(': ')).filter(Boolean);
     if (parts.length) return parts.join('; ');
   }
-  if (status === 401) return 'Nicht angemeldet – API-Schlüssel fehlt oder ist falsch';
-  if (status === 403) return 'Keine Berechtigung in Bambuddy';
+  if (status === 401) return t('error.401');
+  if (status === 403) return t('error.403');
   return null;
 }
 

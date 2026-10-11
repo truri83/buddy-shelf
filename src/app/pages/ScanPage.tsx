@@ -1,10 +1,25 @@
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonNote, IonPage, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewWillLeave } from '@ionic/react';
-import { useCallback, useState } from 'react';
+import {
+  IonButton,
+  IonContent,
+  IonHeader,
+  IonInput,
+  IonItem,
+  IonList,
+  IonNote,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  useIonAlert,
+  useIonViewDidEnter,
+  useIonViewWillLeave,
+} from '@ionic/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { ScannerView } from '@/core/ui';
-import { dispatchScan } from '../scan';
+import { applyConfig, dispatchScan } from '../scan';
 
 /**
  * Vorlage „Scan“ (SP-02): Kamera mit Zielrahmen, Treffer → Scan-Verteiler. Code-Eingabe bleibt als Ersatz.
@@ -15,26 +30,46 @@ export function ScanPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [active, setActive] = useState(false);
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [alert] = useIonAlert();
+  // Nach dem Zurückkehren nicht sofort wieder zum Etikett springen, das noch im Bild ist
+  const lastJump = useRef({ raw: '', at: 0 });
 
   useIonViewDidEnter(() => setActive(true));
   useIonViewWillLeave(() => setActive(false));
 
   const handleCode = useCallback(
-    (raw: string) => {
+    (raw: string, fromCamera = false) => {
       const out = dispatchScan(raw);
       if ('route' in out) {
+        if (fromCamera && raw === lastJump.current.raw && Date.now() - lastJump.current.at < 8000) return;
+        lastJump.current = { raw, at: Date.now() };
         haptic();
         setMessage(null);
         navigate(out.route);
-      } else if ('configured' in out) {
+      } else if ('config' in out) {
         haptic();
-        setMessage(t('settings.saved'));
+        void alert({
+          header: t('settings.server'),
+          message: t('scan.configQ'),
+          buttons: [
+            { text: t('common.cancel'), role: 'cancel' },
+            {
+              text: t('scan.configApply'),
+              handler: () => {
+                applyConfig(out.config);
+                void qc.invalidateQueries();
+                setMessage(t('settings.saved'));
+              },
+            },
+          ],
+        });
       } else {
         haptic('warning');
         setMessage(t('scan.unknown'));
       }
     },
-    [navigate],
+    [navigate, alert, qc],
   );
 
   return (
@@ -45,7 +80,7 @@ export function ScanPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
-        <ScannerView active={active} onCode={handleCode} />
+        <ScannerView active={active} onCode={(raw) => handleCode(raw, true)} />
         {message && (
           <p role="status" style={{ textAlign: 'center', color: 'var(--bs-text-2)', margin: '0 0 var(--bs-s3)' }}>
             {message}

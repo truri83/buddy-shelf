@@ -55,7 +55,7 @@ export function MoveSheet({ spool, isOpen, onDismiss }: Props) {
   const busy = move.isPending || create.isPending;
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
+    <IonModal isOpen={isOpen} onWillPresent={() => (setName(''), setError(null))} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('move.title')}</IonTitle>

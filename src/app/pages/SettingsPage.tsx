@@ -1,4 +1,4 @@
-import { IonButton, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonListHeader, IonNote, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonButton, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonListHeader, IonNote, IonPage, IonTitle, IonToolbar, useIonViewWillEnter } from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { configureApi, getApiConfig, isTestedVersion, useBambuddyVersion } from '@/core/api';
@@ -13,6 +13,12 @@ export function SettingsPage() {
   const [url, setUrl] = useState(current.baseUrl);
   const [key, setKey] = useState(current.apiKey ?? '');
   const [saved, setSaved] = useState(false);
+  useIonViewWillEnter(() => {
+    const c = getApiConfig();
+    setUrl(c.baseUrl);
+    setKey(c.apiKey ?? '');
+    setSaved(false);
+  });
   const qc = useQueryClient();
   const version = useBambuddyVersion();
   const actions = modules.flatMap((m) => m.quickActions ?? []);
@@ -95,7 +101,7 @@ export function SettingsPage() {
             <IonItem key={c}>
               <IonLabel className="bs-num">{c}</IonLabel>
               <IonLabel slot="end" color={can(c) ? 'success' : 'medium'}>
-                {can(c) ? 'ja' : 'nein'}
+                {can(c) ? t('common.yes') : t('common.no')}
               </IonLabel>
             </IonItem>
           ))}

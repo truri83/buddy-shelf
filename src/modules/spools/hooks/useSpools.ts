@@ -37,7 +37,7 @@ export function useSlots() {
   // combine liefert strukturell geteilte (stabile) Ergebnisse
   const statuses = useQueries({
     queries: (printers.data ?? []).map((p) => ({ queryKey: spoolKeys.printerStatus(p.id), queryFn: () => bambuddy.printers.status(p.id), staleTime: 10_000 })),
-    combine: (results) => ({ data: results.map((r) => r.data), pending: results.some((r) => r.isPending) }),
+    combine: (results) => ({ data: results.map((r) => r.data), pending: results.some((r) => r.isPending), failed: results.some((r) => r.isError) }),
   });
   const qc = useQueryClient();
   const slots = useMemo(() => {
@@ -50,6 +50,8 @@ export function useSlots() {
     printers: printers.data ?? [],
     isPending: printers.isPending || assignments.isPending || statuses.pending,
     isError: printers.isError || assignments.isError,
+    /** Ein Drucker liefert gerade keinen Status (nicht erreichbar) */
+    statusError: statuses.failed,
     refetch: () => Promise.all([printers.refetch(), assignments.refetch(), qc.invalidateQueries({ queryKey: spoolKeys.printers })]),
   };
 }
@@ -98,10 +100,12 @@ export function useAssignSpool() {
   return useMutation({
     mutationFn: async ({ spoolId, slot }: { spoolId: number; slot: Pick<Slot, 'printerId' | 'amsId' | 'trayId'> }) => {
       const current = await bambuddy.assignments.list();
+      // erst den neuen Slot belegen – scheitert das, bleibt die Spule in ihrem alten Slot
+      const created = await bambuddy.assignments.create({ spool_id: spoolId, printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId });
       for (const a of staleAssignments(spoolId, slot, current)) {
         await bambuddy.assignments.remove(a.printer_id, a.ams_id, a.tray_id);
       }
-      return bambuddy.assignments.create({ spool_id: spoolId, printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId });
+      return created;
     },
     onSuccess: (_d, v) => {
       refresh(v.spoolId);

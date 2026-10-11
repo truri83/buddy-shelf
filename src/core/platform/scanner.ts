@@ -26,7 +26,7 @@ interface Detector {
 
 let detectorPromise: Promise<Detector> | null = null;
 
-/** QR-Erkenner: nativ, sonst zxing-wasm. Einmal je Sitzung. */
+/** QR-Erkenner: nativ, sonst zxing-wasm. Einmal je Sitzung; nach einem Fehler beim nächsten Aufruf neu versuchen. */
 export function getQrDetector(): Promise<Detector> {
   detectorPromise ??= (async () => {
     const Native = (globalThis as { BarcodeDetector?: { new (o: object): Detector; getSupportedFormats(): Promise<string[]> } }).BarcodeDetector;
@@ -39,6 +39,7 @@ export function getQrDetector(): Promise<Detector> {
     });
     return new BarcodeDetector({ formats: ['qr_code'] });
   })();
+  detectorPromise.catch(() => (detectorPromise = null));
   return detectorPromise;
 }
 
@@ -51,9 +52,10 @@ function toScannerError(e: unknown): ScannerError {
 
 /**
  * Startet die Rückkamera im Video-Element und meldet jeden erkannten QR-Inhalt.
- * Gleiche Inhalte kurz hintereinander werden nur einmal gemeldet.
+ * Ein Code wird nur einmal gemeldet, solange er im Bild bleibt (erst nach 2,5 s ohne ihn wieder).
+ * `signal`: Abbruch während des Starts – die Kamera wird dann sofort wieder freigegeben.
  */
-export async function startScanner(video: HTMLVideoElement, onCode: (text: string) => void): Promise<ScannerHandle> {
+export async function startScanner(video: HTMLVideoElement, onCode: (text: string) => void, signal?: AbortSignal): Promise<ScannerHandle> {
   if (!window.isSecureContext) throw new ScannerError('insecure');
   if (!navigator.mediaDevices?.getUserMedia) throw new ScannerError('nocamera');
 
@@ -61,10 +63,21 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      // 640×480 reicht für QR auf Etiketten-Distanz und spart Rechenzeit/Akku gegenüber HD
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 } },
     });
   } catch (e) {
     throw toScannerError(e);
+  }
+
+  const release = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    // nur das eigene Bild entfernen – ein inzwischen gestarteter Scanner nutzt dasselbe Video-Element
+    if (video.srcObject === stream) video.srcObject = null;
+  };
+  if (signal?.aborted) {
+    release();
+    throw new ScannerError('failed', 'abgebrochen');
   }
 
   video.srcObject = stream;
@@ -72,30 +85,49 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
   video.playsInline = true;
   await video.play().catch(() => undefined);
 
-  const detector = await getQrDetector();
+  let detector: Detector;
+  try {
+    detector = await getQrDetector();
+  } catch (e) {
+    release();
+    throw new ScannerError('failed', e instanceof Error ? e.message : String(e));
+  }
+  if (signal?.aborted) {
+    release();
+    throw new ScannerError('failed', 'abgebrochen');
+  }
   const track = stream.getVideoTracks()[0];
   const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean };
 
   let stopped = false;
   let last = { text: '', at: 0 };
+  // ~5 Erkennungen pro Sekunde; nach einem Treffer kurz Pause (der Nutzer reagiert ohnehin erst)
+  const INTERVAL_MS = 200;
+  const AFTER_HIT_MS = 900;
+  let pauseUntil = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const tick = async () => {
     if (stopped) return;
-    if (video.readyState >= 2) {
+    if (video.readyState >= 2 && !document.hidden && Date.now() >= pauseUntil) {
       try {
         const found = await detector.detect(video);
         const text = found[0]?.rawValue;
         const now = Date.now();
-        if (text && (text !== last.text || now - last.at > 2500)) {
+        if (text) {
+          const isNew = text !== last.text || now - last.at > 2500;
+          // jede Sichtung verlängert die Sperre – ein Code im Bild wird nicht alle 2,5 s erneut gemeldet
           last = { text, at: now };
-          onCode(text);
+          if (isNew) {
+            pauseUntil = now + AFTER_HIT_MS;
+            onCode(text);
+          }
         }
       } catch {
         /* einzelnes Bild nicht lesbar – weiter */
       }
     }
-    timer = setTimeout(() => void tick(), 120);
+    timer = setTimeout(() => void tick(), INTERVAL_MS);
   };
   void tick();
 
@@ -107,8 +139,7 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
     stop() {
       stopped = true;
       clearTimeout(timer);
-      stream.getTracks().forEach((t) => t.stop());
-      video.srcObject = null;
+      release();
     },
   };
 }

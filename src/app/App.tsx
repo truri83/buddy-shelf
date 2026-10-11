@@ -5,14 +5,16 @@ import { ellipsisHorizontal, scanOutline } from 'ionicons/icons';
 import { Navigate, Route } from 'react-router-dom';
 import { t } from '@/core/i18n';
 import { ScanPage } from './pages/ScanPage';
+import { UpdateToast } from './UpdateToast';
 import { SettingsPage } from './pages/SettingsPage';
 import { modules, tabModules } from './registry';
 
 // Ionic wählt iOS- oder Material-Stil anhand der Plattform (UI-Regel 4).
-setupIonicReact();
+setupIonicReact({ animated: !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1, networkMode: 'offlineFirst' } },
+  // Schreibvorgänge nie still pausieren: offline sofort Fehler zeigen statt später unbemerkt nachzuholen
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1, networkMode: 'offlineFirst' }, mutations: { networkMode: 'always' } },
 });
 
 export function App() {
@@ -58,6 +60,7 @@ export function App() {
             </IonTabBar>
           </IonTabs>
         </IonReactRouter>
+        <UpdateToast />
       </IonApp>
     </QueryClientProvider>
   );

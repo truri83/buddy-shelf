@@ -2,7 +2,6 @@ import {
   IonBackButton,
   IonButton,
   IonButtons,
-  IonChip,
   IonContent,
   IonFooter,
   IonHeader,
@@ -26,7 +25,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { FilamentEntry, Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
-import { PickerSheet, rgbaToCss, type PickerItem } from '@/core/ui';
+import { ChoiceChip, GramInput, PickerSheet, rgbaToCss, StateView, type PickerItem } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import {
   useCatalog,
@@ -62,7 +61,23 @@ export function SpoolFormPage() {
   const fromId = Number(new URLSearchParams(useLocation().search).get('from') ?? 0);
   const sourceId = editId || fromId;
   const source = useSpool(sourceId);
-  if (sourceId > 0 && source.isPending) return null;
+  if (sourceId > 0 && !source.data) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/spools" text="" />
+            </IonButtons>
+            <IonTitle>{editId ? t('edit.title', { id: editId }) : t('new.duplicateOf', { id: fromId })}</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          {source.isError ? <StateView state="error" onRetry={() => void source.refetch()} /> : <StateView state="loading" />}
+        </IonContent>
+      </IonPage>
+    );
+  }
   return <SpoolForm key={`${editId}-${fromId}`} source={source.data} editing={editId > 0} />;
 }
 
@@ -110,7 +125,8 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
     setError(null);
     if (draft.kind === 'refill') storage.set(REFILL_KEY, draft.coreWeight);
     try {
-      if (editing && source) {
+      if (editing) {
+        if (!source) return;
         await update.mutateAsync({ spoolId: source.id, patch: draftToUpdate(draft, source) });
         haptic();
         void toast({ message: t('edit.saved', { id: source.id }), duration: 2000, position: 'top' });
@@ -139,7 +155,7 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
       (filaments.data ?? []).map((f) => ({
         value: f.id,
         label: f.name,
-        sublabel: [f.weight ? `${f.weight} g` : null, f.spool_weight ? `Leerspule ${f.spool_weight} g` : null, f.finish].filter(Boolean).join(' · '),
+        sublabel: [f.weight ? `${f.weight} g` : null, f.spool_weight ? `${t('weigh.coreRow')} ${f.spool_weight} g` : null, f.finish].filter(Boolean).join(' · '),
         color: f.color_hex ? `#${f.color_hex}` : null,
       })),
     [filaments.data],
@@ -168,16 +184,16 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
           <IonListHeader>{t('new.material')}</IonListHeader>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
             {COMMON_MATERIALS.map((m) => (
-              <IonChip key={m} outline={draft.material !== m} color={draft.material === m ? 'primary' : undefined} onClick={() => set('material', m)}>
+              <ChoiceChip key={m} selected={draft.material === m} onSelect={() => set('material', m)}>
                 {m}
-              </IonChip>
+              </ChoiceChip>
             ))}
             {!COMMON_MATERIALS.includes(draft.material as (typeof COMMON_MATERIALS)[number]) && draft.material && (
-              <IonChip color="primary">{draft.material}</IonChip>
+              <ChoiceChip selected onSelect={() => setPicker('material')}>
+                {draft.material}
+              </ChoiceChip>
             )}
-            <IonChip outline onClick={() => setPicker('material')}>
-              {t('new.pickMaterial')} …
-            </IonChip>
+            <ChoiceChip onSelect={() => setPicker('material')}>{t('new.pickMaterial')} …</ChoiceChip>
           </div>
           <IonItem>
             <IonInput label={t('new.subtype')} labelPlacement="stacked" value={draft.subtype} onIonInput={(e) => set('subtype', String(e.detail.value ?? ''))} />
@@ -202,17 +218,17 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
           {(colors.data ?? []).length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }} aria-label={t('new.colorSuggest')}>
               {(colors.data ?? []).slice(0, 24).map((c) => (
-                <IonChip
+                <ChoiceChip
                   key={c.id}
-                  outline={draft.colorName !== c.color_name}
-                  onClick={() => {
+                  selected={draft.colorName === c.color_name}
+                  onSelect={() => {
                     set('colorName', c.color_name);
                     setRgba(parseHex(c.hex_color));
                   }}
                 >
                   <span aria-hidden style={{ width: 14, height: 14, borderRadius: '50%', background: c.hex_color, border: '1px solid var(--bs-border)', marginRight: 6 }} />
                   {c.color_name}
-                </IonChip>
+                </ChoiceChip>
               ))}
             </div>
           )}
@@ -255,20 +271,13 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
           <IonListHeader>{t('new.labelWeight')}</IonListHeader>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
             {NET_WEIGHTS.map((w) => (
-              <IonChip key={w} outline={draft.labelWeight !== w} color={draft.labelWeight === w ? 'primary' : undefined} onClick={() => set('labelWeight', w)}>
+              <ChoiceChip key={w} selected={draft.labelWeight === w} onSelect={() => set('labelWeight', w)}>
                 {w >= 1000 ? `${w / 1000} kg` : `${w} g`}
-              </IonChip>
+              </ChoiceChip>
             ))}
           </div>
           <IonItem>
-            <IonInput
-              label={t('new.labelWeight')}
-              labelPlacement="stacked"
-              inputmode="numeric"
-              value={String(draft.labelWeight)}
-              onIonInput={(e) => set('labelWeight', Number(e.detail.value) || 0)}
-              className="bs-num"
-            />
+            <GramInput label={t('new.labelWeight')} value={draft.labelWeight} onChange={(n) => set('labelWeight', n)} />
           </IonItem>
           <IonListHeader>{t('new.kind')}</IonListHeader>
           <div style={{ padding: 'var(--bs-s2) var(--bs-s3)' }}>
@@ -283,14 +292,7 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
           {draft.kind === 'refill' ? (
             <>
               <IonItem>
-                <IonInput
-                  label={t('new.refillCore')}
-                  labelPlacement="stacked"
-                  inputmode="numeric"
-                  value={String(draft.coreWeight)}
-                  onIonInput={(e) => set('coreWeight', Number(e.detail.value) || 0)}
-                  className="bs-num"
-                />
+                <GramInput label={t('new.refillCore')} value={draft.coreWeight} max={2000} onChange={(n) => set('coreWeight', Math.round(n))} />
               </IonItem>
               <IonNote style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4)' }}>{t('new.refillHint')}</IonNote>
             </>
@@ -318,14 +320,7 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
               </IonItem>
               {draft.coreCatalogId == null && (
                 <IonItem>
-                  <IonInput
-                    label={t('new.coreWeightCustom')}
-                    labelPlacement="stacked"
-                    inputmode="numeric"
-                    value={String(draft.coreWeight)}
-                    onIonInput={(e) => set('coreWeight', Number(e.detail.value) || 0)}
-                    className="bs-num"
-                  />
+                  <GramInput label={t('new.coreWeightCustom')} value={draft.coreWeight} max={2000} onChange={(n) => set('coreWeight', Math.round(n))} />
                 </IonItem>
               )}
             </>
@@ -363,13 +358,13 @@ function SpoolForm({ source, editing }: { source?: Spool; editing: boolean }) {
             {!editing && (
               <>
                 <IonLabel>{t('new.quantity')}</IonLabel>
-                <IonButton fill="outline" size="small" disabled={draft.quantity <= 1} onClick={() => set('quantity', draft.quantity - 1)} aria-label="−">
+                <IonButton fill="outline" size="small" disabled={draft.quantity <= 1} onClick={() => set('quantity', draft.quantity - 1)} aria-label={t('common.less')}>
                   −
                 </IonButton>
                 <span className="bs-num" style={{ minWidth: 24, textAlign: 'center' }}>
                   {draft.quantity}
                 </span>
-                <IonButton fill="outline" size="small" disabled={draft.quantity >= 20} onClick={() => set('quantity', draft.quantity + 1)} aria-label="+">
+                <IonButton fill="outline" size="small" disabled={draft.quantity >= 20} onClick={() => set('quantity', draft.quantity + 1)} aria-label={t('common.more')}>
                   +
                 </IonButton>
               </>

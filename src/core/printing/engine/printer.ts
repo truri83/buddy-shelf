@@ -27,6 +27,15 @@ export interface PrinterInfo {
 let client: NiimbotAbstractClient | null = null;
 let info: PrinterInfo | null = null;
 
+/** Akku: Statusabfrage alle 10 s statt 2 s; nach 10 min ohne Druck Verbindung trennen. */
+const HEARTBEAT_MS = 10_000;
+const IDLE_DISCONNECT_MS = 10 * 60_000;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
+const armIdle = () => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => void disconnectPrinter(), IDLE_DISCONNECT_MS);
+};
+
 export function connectedPrinter(): PrinterInfo | null {
   return client?.isConnected() ? info : null;
 }
@@ -35,7 +44,9 @@ export function connectedPrinter(): PrinterInfo | null {
 export async function connectPrinter(transport: Transport): Promise<PrinterInfo> {
   await disconnectPrinter();
   const c = transport === 'bluetooth' ? new NiimbotBluetoothClient() : new NiimbotSerialClient();
+  c.setHeartbeatInterval(HEARTBEAT_MS);
   const conn = await c.connect();
+  armIdle();
   client = c;
   const meta = c.getModelMetadata();
   const task = c.getPrintTaskType();
@@ -50,6 +61,7 @@ export async function connectPrinter(transport: Transport): Promise<PrinterInfo>
 }
 
 export async function disconnectPrinter(): Promise<void> {
+  clearTimeout(idleTimer);
   const c = client;
   client = null;
   info = null;
@@ -78,7 +90,9 @@ export async function printPages(job: PrintJob): Promise<void> {
 
   const onProgress = (e: { page: number; pagePrintProgress: number; pageFeedProgress: number }) => {
     const page = (e.pagePrintProgress + e.pageFeedProgress) / 2;
-    job.onProgress?.(Math.min(100, Math.floor(((e.page + page / 100) / total) * 100)));
+    // e.page = bereits gestartete Seiten inkl. aller Kopien der aktuellen
+    const done = Math.max(0, e.page - job.quantity) + (job.quantity * page) / 100;
+    job.onProgress?.(Math.min(100, Math.floor((done / total) * 100)));
   };
 
   c.stopHeartbeat();
@@ -102,5 +116,6 @@ export async function printPages(job: PrintJob): Promise<void> {
     await task.printEnd().catch(() => undefined);
     c.off('printprogress', onProgress);
     c.startHeartbeat();
+    armIdle();
   }
 }

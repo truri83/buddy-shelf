@@ -15,9 +15,9 @@ export default defineConfig(({ mode }) => {
       // Filament-Katalog wie im Produktionsserver (im Mock-Modus beantwortet MSW /catalog)
       { name: 'filament-catalog', configureServer: (server) => void server.middlewares.use(catalogMiddleware()) },
       VitePWA({
-        // Neue Version nach einem Deploy sofort übernehmen (sonst bleibt die Homescreen-App alt).
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
+        // Neue Version nach einem Deploy: Hinweis mit „Aktualisieren“ (src/app/UpdateToast.tsx), kein Neuladen mitten in einer Eingabe
+        registerType: 'prompt',
+        includeAssets: ['icon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
         manifest: {
           name: 'Buddy Shelf',
           short_name: 'Buddy Shelf',
@@ -27,7 +27,25 @@ export default defineConfig(({ mode }) => {
           background_color: '#14161a',
           display: 'standalone',
           start_url: '/',
-          icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+          // PNG-Icons aus public/icon.svg (npm run icons); iOS nutzt kein SVG für den Homescreen
+          icons: [
+            { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
+        },
+        workbox: {
+          // Mock-Worker (nur dev:mock) nicht in den Offline-Speicher der echten App
+          globIgnores: ['**/mockServiceWorker.js'],
+          runtimeCaching: [
+            {
+              // Filament-Katalog: sofort aus dem Speicher, im Hintergrund aktualisieren (spart Netz und Akku)
+              urlPattern: ({ url }) => url.pathname.startsWith('/catalog/'),
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'filament-catalog', expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 3600 } },
+            },
+          ],
         },
         devOptions: { enabled: false },
       }),

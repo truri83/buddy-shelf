@@ -61,12 +61,12 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
   };
 
   const choose = (slot: Slot) => {
-    const other = slot.assignment && slot.assignment.spool_id !== spool.id ? byId.get(slot.assignment.spool_id) : undefined;
     if (slot.assignment?.spool_id === spool.id) return;
-    if (!other) return void doAssign(slot);
+    if (!slot.assignment) return void doAssign(slot);
+    const other = byId.get(slot.assignment.spool_id);
     void alert({
       header: slot.label,
-      message: t('ams.replace', { spool: spoolTitle(other) }),
+      message: t('ams.replace', { spool: other ? spoolTitle(other) : `#${slot.assignment.spool_id}` }),
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
         { text: t('ams.title'), handler: () => void doAssign(slot) },
@@ -91,7 +91,7 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
   const multiPrinter = printers.length > 1;
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss} initialBreakpoint={0.85} breakpoints={[0, 0.85, 1]}>
+    <IonModal isOpen={isOpen} onWillPresent={() => setError(null)} onDidDismiss={onDismiss} initialBreakpoint={0.85} breakpoints={[0, 0.85, 1]}>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('ams.title')}</IonTitle>

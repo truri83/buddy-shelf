@@ -6,3 +6,4 @@ export { materialToken, rgbaToCss } from './material';
 export { ScannerView } from './components/ScannerView';
 export { PickerSheet, type PickerItem } from './components/PickerSheet';
 export { StatTile } from './components/StatTile';
+export { ChoiceChip, GramInput, parseAmount } from './components/Inputs';
