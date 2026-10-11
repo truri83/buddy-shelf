@@ -92,8 +92,10 @@ Capacitor-Client, unterstützt B1 Pro inkl. Rot).
 14. Beim Start Bambuddy-Version prüfen; unbekannte Versionen → Hinweis, kein Fehler.
 
 ## Sicherheit
-- Kein Generalschlüssel im Server. Ein Gerät = ein eigener Bambuddy-API-Schlüssel (einzeln widerrufbar),
-  später Login über Bambuddy „Connected Apps“ (OAuth 2.0 + PKCE).
+- Server-Schlüssel (Entscheidung 11.10.2026, Nutzerwunsch): `BAMBUDDY_API_KEY` im Container; der Proxy setzt
+  ihn bei Anfragen ohne eigenen Schlüssel ein, damit nicht jedes Gerät einen Schlüssel braucht. Folge: Wer die
+  App erreicht (LAN/Tailscale), hat dessen Rechte → Schlüssel nur mit nötigen Rechten anlegen, App nicht ins
+  Internet stellen. Ein im Gerät eingetragener Schlüssel geht vor; später Login über Bambuddy „Connected Apps“.
 - Schlüssel nativ nur im sicheren Speicher; im Browser so kurzlebig wie möglich.
 - Rechte kommen aus Bambuddy; Module blenden Funktionen ohne Recht aus (`requires.api`).
 

@@ -13,6 +13,7 @@
   <Icon>https://raw.githubusercontent.com/truri83/buddy-shelf/main/public/icon.svg</Icon>
   <Config Name="Web UI" Target="8080" Default="8096" Mode="tcp" Type="Port" Display="always" Required="true">8096</Config>
   <Config Name="BAMBUDDY_URL" Target="BAMBUDDY_URL" Default="http://192.168.178.50:8008" Type="Variable" Display="always" Required="true" Description="Adresse der Bambuddy-Instanz">http://192.168.178.50:8008</Config>
+  <Config Name="Bambuddy-API-Schlüssel" Target="BAMBUDDY_API_KEY" Default="" Type="Variable" Display="always" Required="false" Mask="true" Description="Wird für alle Geräte verwendet, die keinen eigenen Schlüssel eintragen"/>
   <Config Name="Admin-Token" Target="BUDDY_SHELF_ADMIN_TOKEN" Default="" Mode="" Type="Variable" Display="always" Required="false" Mask="true" Description="Token für Selbst-Updates (POST /api/admin/self-recreate). Leer = aus."/>
   <Config Name="Docker-Socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Type="Path" Display="advanced" Required="false" Description="Nötig für Selbst-Updates per Admin-Token">/var/run/docker.sock</Config>
   <Config Name="BUDDY_SHELF_SELF_CONTAINER" Target="BUDDY_SHELF_SELF_CONTAINER" Default="buddy-shelf" Type="Variable" Display="advanced" Required="false" Description="Name dieses Containers (für Selbst-Update)">buddy-shelf</Config>

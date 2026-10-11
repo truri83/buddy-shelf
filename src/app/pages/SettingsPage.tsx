@@ -36,7 +36,7 @@ export function SettingsPage() {
             <IonInput
               label={t('settings.url')}
               labelPlacement="stacked"
-              placeholder="https://…"
+              placeholder={t('settings.urlHint')}
               value={url}
               onIonInput={(e) => setUrl(String(e.detail.value ?? ''))}
             />
@@ -46,6 +46,7 @@ export function SettingsPage() {
               label={t('settings.apiKey')}
               labelPlacement="stacked"
               type="password"
+              placeholder={t('settings.apiKeyHint')}
               value={key}
               onIonInput={(e) => setKey(String(e.detail.value ?? ''))}
             />

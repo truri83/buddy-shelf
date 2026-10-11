@@ -36,7 +36,13 @@ export default defineConfig(({ mode }) => {
         mode === 'mock'
           ? undefined
           : {
-              '/api': { target, changeOrigin: true, ws: true },
+              '/api': {
+                target,
+                changeOrigin: true,
+                ws: true,
+                // wie server/index.js: Server-Schlüssel, falls das Gerät keinen schickt
+                ...(env.BAMBUDDY_API_KEY ? { headers: { 'x-api-key': env.BAMBUDDY_API_KEY } } : {}),
+              },
             },
     },
     test: {

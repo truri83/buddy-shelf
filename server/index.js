@@ -1,5 +1,6 @@
 // Produktionsserver: liefert die gebaute App aus und leitet /api (inkl. WebSocket /api/v1/ws)
-// an Bambuddy weiter. Kein Generalschlüssel – Auth kommt vom Client (X-API-Key bzw. Login).
+// an Bambuddy weiter. Ist BAMBUDDY_API_KEY gesetzt, ergänzt der Proxy ihn bei Anfragen ohne eigenen
+// Schlüssel – dann muss kein Gerät einen Schlüssel eintragen (ein Schlüssel im Gerät geht vor).
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import proxy from '@fastify/http-proxy';
@@ -11,6 +12,7 @@ import { registerAdmin } from './admin.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
 const PORT = Number(process.env.PORT ?? 8080);
+const BAMBUDDY_API_KEY = (process.env.BAMBUDDY_API_KEY ?? '').trim();
 const VERSION = JSON.parse(readFileSync(join(root, '..', 'package.json'), 'utf8')).version;
 
 if (!BAMBUDDY_URL) {
@@ -23,7 +25,18 @@ const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 // Selbst-Update auf Unraid (nur mit BUDDY_SHELF_ADMIN_TOKEN). Statische Routen gehen vor den Proxy.
 await registerAdmin(app, { version: VERSION });
 
-await app.register(proxy, { upstream: BAMBUDDY_URL, prefix: '/api', rewritePrefix: '/api', websocket: true });
+/** Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt. */
+const withServerKey = (headers) =>
+  BAMBUDDY_API_KEY && !headers['x-api-key'] && !headers.authorization ? { ...headers, 'x-api-key': BAMBUDDY_API_KEY } : headers;
+
+await app.register(proxy, {
+  upstream: BAMBUDDY_URL,
+  prefix: '/api',
+  rewritePrefix: '/api',
+  websocket: true,
+  replyOptions: { rewriteRequestHeaders: (_req, headers) => withServerKey(headers) },
+  wsClientOptions: { rewriteRequestHeaders: (headers) => withServerKey(headers) },
+});
 
 // Phase 2: Druckdienst (niimblue-node) für den Etikettendruck vom iPhone.
 if (process.env.NIIMBLUE_URL) {
