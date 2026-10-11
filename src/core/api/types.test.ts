@@ -19,3 +19,13 @@ describe('Gewichte', () => {
     expect(weightUsedFromScale(100, spool)).toBe(1000);
   });
 });
+
+describe('Fehlertexte', async () => {
+  const { describeError } = await import('./client');
+  it('nimmt Bambuddys detail', () => {
+    expect(describeError(409, { detail: 'Location already exists' })).toBe('Location already exists');
+    expect(describeError(422, { detail: [{ loc: ['body', 'weight_grams'], msg: 'Input should be greater than 0' }] })).toBe('weight_grams: Input should be greater than 0');
+    expect(describeError(401, undefined)).toMatch(/API-Schlüssel/);
+    expect(describeError(500, 'x')).toBeNull();
+  });
+});

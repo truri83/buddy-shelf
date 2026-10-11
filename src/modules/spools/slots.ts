@@ -1,4 +1,4 @@
-import type { Printer, PrinterStatus, Spool, SpoolAssignment } from '@/core/api';
+import { slotLabel, type Printer, type PrinterStatus, type Spool, type SpoolAssignment } from '@/core/api';
 import { EXTERNAL_AMS_ID, encodeSlotCode } from '@/core/qr/codes';
 
 /** Ein Platz für eine Spule: AMS-Slot oder externe Halterung (Bambuddy-Adressierung). */
@@ -15,14 +15,9 @@ export interface Slot {
   assignment: SpoolAssignment | null;
 }
 
-export const slotKey = (s: Pick<Slot, 'printerId' | 'amsId' | 'trayId'>) => `${s.printerId}:${s.amsId}:${s.trayId}`;
+export { slotLabel };
 
-export function slotLabel(amsId: number, trayId: number, isHt = false): string {
-  if (amsId === EXTERNAL_AMS_ID) return trayId === 0 ? 'Extern L' : 'Extern R';
-  // AMS-HT (ID ab 128) hat nur einen Slot
-  if (isHt || amsId >= 128) return `AMS HT ${amsId - 127}`;
-  return `AMS ${amsId + 1} · ${trayId + 1}`;
-}
+export const slotKey = (s: Pick<Slot, 'printerId' | 'amsId' | 'trayId'>) => `${s.printerId}:${s.amsId}:${s.trayId}`;
 
 /** Alle Slots aller Drucker, mit aktueller Zuweisung. Externe Halterungen: vt_tray 254/255 → ams 255, tray 0/1. */
 export function buildSlots(printers: Printer[], statuses: Record<number, PrinterStatus | undefined>, assignments: SpoolAssignment[]): Slot[] {

@@ -17,6 +17,9 @@
   --bs-good: #1f9d57;
   --bs-warn: #b7791f;
   --bs-critical: #d4353b;
+  /* RGB-Gegenstücke für Ionic-Komponenten mit Transparenz (Ripple, Segment, Fokus) */
+  --bs-accent-rgb: 232, 101, 10;
+  --bs-text-2-rgb: 91, 99, 112;
 
   /* Materialfamilien (Badge-Farben, in beiden Modi lesbar) */
   --bs-mat-pla: #1f9d57;
@@ -67,6 +70,8 @@
     --bs-good: #3ccf7f;
     --bs-warn: #f2b84b;
     --bs-critical: #ff5c61;
+    --bs-accent-rgb: 255, 122, 26;
+    --bs-text-2-rgb: 154, 163, 176;
     --bs-mat-pla: #3ccf7f;
     --bs-mat-petg: #6aa1ff;
     --bs-mat-asa: #ff9a4d;
@@ -78,8 +83,10 @@
   }
 }
 
-/* Ionic auf Tokens mappen */
-:root {
+/* Ionic auf Tokens mappen – :root.ios/.md, damit wir vor Ionics Dunkel-Palette gewinnen */
+:root,
+:root.ios,
+:root.md {
   --ion-font-family: var(--bs-font);
   --ion-background-color: var(--bs-bg);
   --ion-text-color: var(--bs-text);
@@ -96,6 +103,8 @@
   --ion-color-warning: var(--bs-warn);
   --ion-color-danger: var(--bs-critical);
   --ion-color-medium: var(--bs-text-2);
+  --ion-color-primary-rgb: var(--bs-accent-rgb);
+  --ion-color-medium-rgb: var(--bs-text-2-rgb);
 }
 
 body {
@@ -139,4 +148,12 @@ ion-segment-button {
   /* Ionics Standardfarbe ist im Dunkelmodus auf --bs-surface-2 kaum lesbar */
   --color: var(--bs-text-2);
   --color-checked: var(--bs-accent);
+}
+ion-list-header {
+  --color: var(--bs-text-2);
+}
+/* iOS: gewähltes Segment ist eine Fläche – Akzent mit Kontrastschrift statt Grau mit Akzentschrift */
+:root.ios ion-segment-button {
+  --indicator-color: var(--bs-accent);
+  --color-checked: var(--bs-accent-contrast);
 }

@@ -5,3 +5,4 @@ export { StateView } from './components/StateView';
 export { materialToken, rgbaToCss } from './material';
 export { ScannerView } from './components/ScannerView';
 export { PickerSheet, type PickerItem } from './components/PickerSheet';
+export { StatTile } from './components/StatTile';

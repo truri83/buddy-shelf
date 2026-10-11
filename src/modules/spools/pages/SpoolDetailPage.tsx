@@ -2,7 +2,7 @@ import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, I
 import { copyOutline, createOutline, cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import { useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
+import { assignmentLabel, fillRatio, remainingGrams, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { encodeSpoolCode } from '@/core/qr/codes';
 import { ColorRing, FillBar, MaterialBadge, StateView } from '@/core/ui';
@@ -11,7 +11,7 @@ import { LabelSheet } from '../components/LabelSheet';
 import { MoveSheet } from '../components/MoveSheet';
 import { WeighSheet } from '../components/WeighSheet';
 import { useAssignments, useLocations, useSpool } from '../hooks/useSpools';
-import { amsLabel, isLow, locationName } from '../logic';
+import { isLow, locationName } from '../logic';
 
 /** Vorlage „Detail“: Kopf-Karte mit Kennzahl, Aktionsleiste, Abschnitte. */
 export function SpoolDetailPage() {
@@ -24,7 +24,7 @@ export function SpoolDetailPage() {
   const [sheet, setSheet] = useState<'ams' | 'move' | 'weigh' | 'label' | null>(null);
   const close = () => setSheet(null);
   const assignment = assignments.data?.find((a) => a.spool_id === spoolId);
-  const ams = assignment ? `${assignment.printer_name ?? ''} ${amsLabel(assignment)}`.trim() : null;
+  const ams = assignment ? assignmentLabel(assignment) : null;
 
   const s = spool.data;
   const name = s ? (s.color_name ?? s.subtype ?? s.material) : '';

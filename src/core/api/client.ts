@@ -56,6 +56,19 @@ async function catalogRequest<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Bambuddy/FastAPI-Fehler lesbar machen: `{ detail: "…" }` oder Validierungsliste `{ detail: [{ msg, loc }] }`. */
+export function describeError(status: number, body: unknown): string | null {
+  const d = (body as { detail?: unknown } | undefined)?.detail;
+  if (typeof d === 'string' && d.trim()) return d;
+  if (Array.isArray(d)) {
+    const parts = d.map((x: { msg?: string; loc?: unknown[] }) => [x.loc?.slice(1).join('.'), x.msg].filter(Boolean).join(': ')).filter(Boolean);
+    if (parts.length) return parts.join('; ');
+  }
+  if (status === 401) return 'Nicht angemeldet – API-Schlüssel fehlt oder ist falsch';
+  if (status === 403) return 'Keine Berechtigung in Bambuddy';
+  return null;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -73,7 +86,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     } catch {
       detail = await res.text().catch(() => undefined);
     }
-    throw new ApiError(res.status, `${method} ${path} → ${res.status}`, detail);
+    throw new ApiError(res.status, describeError(res.status, detail) ?? `${method} ${path} → ${res.status}`, detail);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
