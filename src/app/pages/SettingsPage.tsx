@@ -13,6 +13,7 @@ import {
   IonNote,
   IonPage,
   IonTitle,
+  IonToggle,
   IonToolbar,
   useIonViewWillEnter,
 } from '@ionic/react';
@@ -21,7 +22,7 @@ import { alertCircle, checkmarkCircle, cloudOfflineOutline } from 'ionicons/icon
 import { useState } from 'react';
 import { ApiError, configureApi, getApiConfig, isTestedVersion, useBambuddyVersion, useMe } from '@/core/api';
 import { t } from '@/core/i18n';
-import { can, storage, type Capability } from '@/core/platform';
+import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
 
 const CAPS: Capability[] = ['scanner', 'printer.bluetooth', 'printer.usb', 'printer.service', 'nfc', 'push', 'share', 'haptics'];
@@ -34,6 +35,7 @@ export function SettingsPage() {
   const [url, setUrl] = useState(() => getApiConfig().baseUrl);
   const [key, setKey] = useState(() => getApiConfig().apiKey ?? '');
   const [saved, setSaved] = useState(false);
+  const [sound, setSound] = useState(scanSoundEnabled);
   useIonViewWillEnter(() => {
     const c = getApiConfig();
     setUrl(c.baseUrl);
@@ -83,6 +85,21 @@ export function SettingsPage() {
             ))}
           </IonList>
         )}
+
+        <IonList inset>
+          <IonItem lines="none">
+            <IonToggle
+              checked={sound}
+              onIonChange={(e) => {
+                setSound(e.detail.checked);
+                setScanSound(e.detail.checked);
+              }}
+            >
+              {t('settings.scanSound')}
+              <div style={sub}>{t('settings.scanSoundHint')}</div>
+            </IonToggle>
+          </IonItem>
+        </IonList>
 
         <IonList inset>
           <IonListHeader>{t('settings.connection')}</IonListHeader>

@@ -12,10 +12,11 @@ import '@ionic/react/css/palettes/dark.system.css';
 import './core/ui/tokens.css';
 
 import { configureApi, type ApiConfig } from './core/api';
-import { storage } from './core/platform';
+import { storage, unlockAudio } from './core/platform';
 import { App } from './app/App';
 
 async function start() {
+  unlockAudio();
   configureApi(storage.get<Partial<ApiConfig>>('api', {}));
 
   if (import.meta.env.MODE === 'mock') {

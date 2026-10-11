@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAllowed, weightUsedFromScale, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
-import { haptic, storage } from '@/core/platform';
+import { haptic, warnFeedback, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ScannerView, StateView } from '@/core/ui';
 import { CoreRow, useWeighMode, WeighModeSwitch } from '../components/CoreRow';
@@ -62,7 +62,7 @@ export function WeighSessionPage() {
     currentRef.current = current;
   }, [current]);
   const fail = useCallback((e: unknown) => {
-    haptic('warning');
+    warnFeedback();
     setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
   }, []);
 
@@ -78,7 +78,7 @@ export function WeighSessionPage() {
       if (saving.current || currentRef.current?.id === id) return;
       const s = byId(id);
       if (!s) {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('weighs.unknown', { id }));
         return;
       }
@@ -103,7 +103,7 @@ export function WeighSessionPage() {
       const r = parseScan(raw);
       if (r.kind === 'spool') openSpool(r.spoolId);
       else {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('slot.notSpool'));
       }
     },

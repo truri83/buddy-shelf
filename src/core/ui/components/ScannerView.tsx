@@ -1,7 +1,7 @@
 import { IonButton } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { t } from '@/core/i18n';
-import { can, QR_ONLY, ScannerError, startScanner, type ScanFormat, type ScanHit, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
+import { can, QR_ONLY, scanFeedback, ScannerError, startScanner, type ScanFormat, type ScanHit, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
 
 type CamState = { kind: 'off' } | { kind: 'starting' } | { kind: 'running'; torch: boolean } | { kind: 'error'; error: ScannerErrorKind };
 
@@ -90,7 +90,10 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) 
     queueMicrotask(() => !cancelled && setCam({ kind: 'starting' }));
     startScanner(
       video.current,
-      (text) => onCodeRef.current(text),
+      (text) => {
+        scanFeedback();
+        onCodeRef.current(text);
+      },
       abort.signal,
       formatKey.split(',') as ScanFormat[],
       (hit) => {

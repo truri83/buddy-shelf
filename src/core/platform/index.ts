@@ -13,3 +13,4 @@ export {
   type ScanFormat,
   type ScanHit,
 } from './scanner';
+export { scanFeedback, warnFeedback, unlockAudio, scanSoundEnabled, setScanSound } from './feedback';

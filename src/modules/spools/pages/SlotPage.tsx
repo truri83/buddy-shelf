@@ -20,7 +20,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
-import { haptic } from '@/core/platform';
+import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, MaterialBadge, ScannerView, StateView } from '@/core/ui';
 import { useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
@@ -61,7 +61,7 @@ export function SlotPage() {
       }
       const spool = spools.data?.find((s) => s.id === spoolId);
       if (spool?.archived_at) {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('slot.archived', { id: spoolId }));
         return;
       }
@@ -89,7 +89,7 @@ export function SlotPage() {
           ],
         });
       } catch (e) {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
       } finally {
         busy.current = false;
@@ -104,7 +104,7 @@ export function SlotPage() {
       if (r.kind === 'spool') void assignSpool(r.spoolId);
       else if (r.kind === 'slot') navigate(`/spools/slot/${r.printerId}/${r.amsId}/${r.trayId}`, { replace: true });
       else {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('slot.notSpool'));
       }
     },

@@ -17,7 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/core/i18n';
-import { haptic, QR_AND_BARCODES } from '@/core/platform';
+import { haptic, warnFeedback, QR_AND_BARCODES } from '@/core/platform';
 import { ScannerView } from '@/core/ui';
 import { applyConfig, dispatchScan } from '../scan';
 
@@ -65,7 +65,7 @@ export function ScanPage() {
           ],
         });
       } else {
-        haptic('warning');
+        warnFeedback();
         setMessage(t('scan.unknown'));
       }
     },
