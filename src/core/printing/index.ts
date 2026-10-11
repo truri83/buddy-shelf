@@ -4,3 +4,4 @@ export * from './templates';
 export { useLabelPrinter, loadEngine, type LabelPrinterState } from './useLabelPrinter';
 export type { PrinterInfo, Transport } from './engine';
 export { LabelPrintSheet } from './LabelPrintSheet';
+export { useDeleteTemplate, useLabelTemplates, useSaveTemplate } from './useLabelTemplates';

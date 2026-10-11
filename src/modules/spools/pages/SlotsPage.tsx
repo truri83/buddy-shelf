@@ -17,7 +17,7 @@ import {
 import { useMemo, useState } from 'react';
 import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
-import { LabelPrintSheet, SLOT_TEMPLATE } from '@/core/printing';
+import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
 import { Badge, rgbaToCss, StateView } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { useAdoptFromSlot, useSlots, useSpools } from '../hooks/useSpools';
@@ -49,6 +49,7 @@ export function SlotsPage() {
       );
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
   const records = useMemo(() => slots.map(slotLabelVariables), [slots]);
+  const { templates } = useLabelTemplates('slot');
 
   return (
     <IonPage>
@@ -132,7 +133,7 @@ export function SlotsPage() {
             </div>
             <LabelSheet spools={adopted ? [adopted] : []} isOpen={!!adopted} onDismiss={() => setAdopted(null)} />
             <LabelPrintSheet
-              templates={[SLOT_TEMPLATE]}
+              templates={templates}
               records={records}
               fileName={(r) => `slot-${r.code?.replace(/[^0-9]+/g, '-')}.png`}
               storageKey="label.slotTemplate"

@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { registerAdmin } from './admin.js';
 import { registerCatalog } from './catalog.js';
+import { registerTemplates } from './templates.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
@@ -28,6 +29,9 @@ await registerAdmin(app, { version: VERSION });
 
 // Filament-Katalog (SpoolmanDB) für Hersteller-/Material-/Farblisten
 await registerCatalog(app);
+
+// Eigene Etikett-Vorlagen im Datenordner (BUDDY_SHELF_TEMPLATES_DIR)
+await registerTemplates(app);
 
 /** Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt. */
 const withServerKey = (headers) =>

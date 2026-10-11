@@ -18,7 +18,7 @@ import {
   useIonViewWillEnter,
 } from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { alertCircle, checkmarkCircle, cloudOfflineOutline } from 'ionicons/icons';
+import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline } from 'ionicons/icons';
 import { useState } from 'react';
 import { ApiError, configureApi, getApiConfig, isTestedVersion, useAuthStatus, useBambuddyVersion, useMe } from '@/core/api';
 import { t } from '@/core/i18n';
@@ -80,16 +80,18 @@ export function SettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {actions.length > 0 && (
-          <IonList inset>
-            {actions.map((a) => (
-              <IonItem key={a.id} routerLink={a.href} detail>
-                <IonIcon icon={a.icon} slot="start" color="primary" aria-hidden />
-                <IonLabel>{t(a.label)}</IonLabel>
-              </IonItem>
-            ))}
-          </IonList>
-        )}
+        <IonList inset>
+          {actions.map((a) => (
+            <IonItem key={a.id} routerLink={a.href} detail>
+              <IonIcon icon={a.icon} slot="start" color="primary" aria-hidden />
+              <IonLabel>{t(a.label)}</IonLabel>
+            </IonItem>
+          ))}
+          <IonItem routerLink="/more/templates" detail>
+            <IonIcon icon={documentTextOutline} slot="start" color="primary" aria-hidden />
+            <IonLabel>{t('templates.title')}</IonLabel>
+          </IonItem>
+        </IonList>
 
         <IonList inset>
           <IonItem lines="none">

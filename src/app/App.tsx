@@ -7,6 +7,7 @@ import { t } from '@/core/i18n';
 import { ScanPage } from './pages/ScanPage';
 import { UpdateToast } from './UpdateToast';
 import { SettingsPage } from './pages/SettingsPage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { modules, tabModules } from './registry';
 
 // Ionic wählt iOS- oder Material-Stil anhand der Plattform (UI-Regel 4).
@@ -28,6 +29,7 @@ export function App() {
               {modules.flatMap((m) => m.routes.map((r) => <Route key={r.path} path={r.path} element={<r.component />} />))}
               <Route path="/scan" element={<ScanPage />} />
               <Route path="/more" element={<SettingsPage />} />
+              <Route path="/more/templates" element={<TemplatesPage />} />
               <Route path="/" element={<Navigate to={first?.tab?.href ?? '/more'} replace />} />
             </IonRouterOutlet>
             <IonTabBar slot="bottom">

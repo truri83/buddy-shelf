@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { PrinterStatus, SpoolAssignment } from '@/core/api';
-import { fillVariables, SLOT_TEMPLATE } from '@/core/printing';
+import { BUILTIN_TEMPLATES, fillVariables } from '@/core/printing';
+
+const SLOT_TEMPLATE = BUILTIN_TEMPLATES.find((x) => x.kind === 'slot')!;
 import { parseScan } from '@/core/qr/codes';
 import { buildSlots, slotLabel, slotLabelVariables, staleAssignments } from './slots';
 

@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { catalogMiddleware } from './server/catalog.js';
+import { templatesMiddleware } from './server/templates.js';
 
 // Dev: /api und /ws gehen an Bambuddy (BAMBUDDY_URL in .env.local).
 // Mock-Modus (npm run dev:mock): MSW beantwortet /api im Browser, kein Server nötig.
@@ -20,6 +21,8 @@ export default defineConfig(({ mode }) => {
       react(),
       // Filament-Katalog wie im Produktionsserver (im Mock-Modus beantwortet MSW /catalog)
       { name: 'filament-catalog', configureServer: (server) => void server.middlewares.use(catalogMiddleware()) },
+      // Etikett-Vorlagen wie im Produktionsserver (Ordner ./data/templates)
+      { name: 'label-templates', configureServer: (server) => void server.middlewares.use(templatesMiddleware()) },
       VitePWA({
         // Neue Version nach einem Deploy: Hinweis mit „Aktualisieren“ (src/app/UpdateToast.tsx), kein Neuladen mitten in einer Eingabe
         registerType: 'prompt',

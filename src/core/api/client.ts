@@ -58,6 +58,18 @@ async function catalogRequest<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Eigene Etikett-Vorlagen auf unserem Server (gleicher Ursprung, ohne Schlüssel). */
+async function labelsRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`/labels${path}`, {
+    method,
+    headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data: unknown = res.status === 204 ? undefined : await res.json().catch(() => undefined);
+  if (!res.ok) throw new ApiError(res.status, describeError(res.status, data) ?? `${method} /labels${path} → ${res.status}`, data);
+  return data as T;
+}
+
 /** Bambuddy/FastAPI-Fehler lesbar machen: `{ detail: "…" }` oder Validierungsliste `{ detail: [{ msg, loc }] }`. */
 export function describeError(status: number, body: unknown): string | null {
   const d = (body as { detail?: unknown } | undefined)?.detail;
@@ -151,6 +163,12 @@ export const bambuddy = {
       if (q.material) p.set('material', q.material);
       return request<ColorEntry[]>('GET', `/inventory/colors/search?${p}`);
     },
+  },
+  /** Eigene Etikett-Vorlagen (NiimBlue-JSON), gespeichert im Datenordner des Servers */
+  labelTemplates: {
+    list: () => labelsRequest<unknown[]>('GET', '/templates'),
+    save: (tpl: { id: string } & Record<string, unknown>) => labelsRequest<unknown>('PUT', `/templates/${encodeURIComponent(tpl.id)}`, tpl),
+    remove: (id: string) => labelsRequest<void>('DELETE', `/templates/${encodeURIComponent(id)}`),
   },
   /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
   filamentDb: {

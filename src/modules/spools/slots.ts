@@ -87,7 +87,7 @@ export function staleAssignments(spoolId: number, target: Pick<Slot, 'printerId'
   return assignments.filter((a) => a.spool_id === spoolId && slotKey({ printerId: a.printer_id, amsId: a.ams_id, trayId: a.tray_id }) !== slotKey(target));
 }
 
-/** Platzhalter für Slot-Etiketten (Vorlage SLOT_TEMPLATE). */
+/** Platzhalter für Slot-Etiketten (Vorlagen der Art „slot“). */
 export function slotLabelVariables(s: Slot) {
   return { code: encodeSlotCode(s.printerId, s.amsId, s.trayId), printer: s.printerName, ams: s.label.split(' · ')[0]!, slot: s.amsId === EXTERNAL_AMS_ID ? (s.trayId === 0 ? 'L' : 'R') : String(s.trayId + 1) };
 }

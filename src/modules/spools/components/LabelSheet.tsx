@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Spool } from '@/core/api';
-import { LabelPrintSheet, SPOOL_TEMPLATES } from '@/core/printing';
+import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
 import { labelFileName, spoolLabelVariables } from '../labels';
 
 interface Props {
@@ -13,5 +13,6 @@ interface Props {
 /** SP-06: Spulen-Etiketten über das allgemeine Druck-Sheet. */
 export function LabelSheet({ spools, isOpen, onDismiss }: Props) {
   const records = useMemo(() => spools.map(spoolLabelVariables), [spools]);
-  return <LabelPrintSheet templates={SPOOL_TEMPLATES} records={records} fileName={labelFileName} storageKey="label.template" isOpen={isOpen} onDismiss={onDismiss} />;
+  const { templates } = useLabelTemplates('spool');
+  return <LabelPrintSheet templates={templates} records={records} fileName={labelFileName} storageKey="label.template" isOpen={isOpen} onDismiss={onDismiss} />;
 }

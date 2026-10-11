@@ -9,3 +9,4 @@ coverage
 .DS_Store
 Thumbs.db
 native/ios/App/Pods
+data/

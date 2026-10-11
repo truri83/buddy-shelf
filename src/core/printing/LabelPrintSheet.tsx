@@ -97,7 +97,7 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
           </div>
 
           {templates.length > 1 && (
-            <IonSegment value={template.id} onIonChange={(e) => chooseTemplate(String(e.detail.value))}>
+            <IonSegment scrollable value={template.id} onIonChange={(e) => chooseTemplate(String(e.detail.value))}>
               {templates.map((x) => (
                 <IonSegmentButton key={x.id} value={x.id}>
                   {x.title}

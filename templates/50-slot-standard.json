@@ -1,0 +1,82 @@
+{
+  "id": "slot-standard",
+  "title": "AMS-Slot",
+  "kind": "slot",
+  "label": {
+    "printDirection": "top",
+    "size": {
+      "width": 567,
+      "height": 354
+    }
+  },
+  "canvas": {
+    "version": "7.4.0",
+    "objects": [
+      {
+        "type": "QRCode",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 16,
+        "top": 42,
+        "width": 270,
+        "height": 270,
+        "text": "{code}",
+        "ecl": "M",
+        "mode": "Byte",
+        "qrVersion": 0
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 40,
+        "width": 243,
+        "text": "{printer}",
+        "fontSize": 48,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 120,
+        "width": 243,
+        "text": "{ams}",
+        "fontSize": 60,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 210,
+        "width": 243,
+        "text": "Slot {slot}",
+        "fontSize": 76,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      }
+    ]
+  }
+}

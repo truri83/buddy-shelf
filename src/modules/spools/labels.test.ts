@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Spool } from '@/core/api';
-import { fillVariables, SPOOL_TEMPLATE, SPOOL_TEMPLATES } from '@/core/printing';
+import { BUILTIN_TEMPLATES, fillVariables } from '@/core/printing';
+
+const SPOOL_TEMPLATES = BUILTIN_TEMPLATES.filter((x) => x.kind === 'spool');
+const SPOOL_TEMPLATE = SPOOL_TEMPLATES[0]!;
 import { spoolLabelVariables } from './labels';
 
 const spool = {

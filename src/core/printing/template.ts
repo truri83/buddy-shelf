@@ -8,10 +8,16 @@
 
 export type PrintDirection = 'left' | 'top';
 
+/** Wofür die Vorlage ist: Spulen-Etikett oder AMS-Slot-Etikett (andere Platzhalter). */
+export type TemplateKind = 'spool' | 'slot';
+
 export interface LabelTemplate {
   /** Stabile ID (für gespeicherte Auswahl) */
   id: string;
   title: string;
+  kind: TemplateKind;
+  /** mitgeliefert (nicht löschbar) */
+  builtin?: boolean;
   canvas: { version: string; objects: Record<string, unknown>[] };
   label: { printDirection: PrintDirection; size: { width: number; height: number } };
 }
@@ -55,7 +61,7 @@ export function headPixels(t: LabelTemplate): number {
  * @throws Error mit verständlicher Meldung
  */
 export function parseTemplate(json: unknown, fallbackId = 'import'): LabelTemplate {
-  const o = json as Partial<LabelTemplate> & { title?: string; id?: string };
+  const o = json as Partial<LabelTemplate> & { title?: string; id?: string; kind?: string };
   const size = o?.label?.size;
   if (!o?.canvas || !Array.isArray(o.canvas.objects) || !size || !(size.width > 0) || !(size.height > 0)) {
     throw new Error('Keine gültige Etiketten-Vorlage (NiimBlue-Export erwartet).');
@@ -64,7 +70,37 @@ export function parseTemplate(json: unknown, fallbackId = 'import'): LabelTempla
   return {
     id: o.id ?? fallbackId,
     title: o.title ?? 'Importiert',
+    kind: o.kind === 'slot' || o.kind === 'spool' ? o.kind : guessKind(o.canvas.objects),
     canvas: { version: o.canvas.version ?? '7.0.0', objects: o.canvas.objects },
     label: { printDirection: dir, size: { width: size.width, height: size.height } },
   };
+}
+
+/** Vorlage ohne App-interne Felder – so wird sie gespeichert und exportiert. */
+export function templateData(tpl: LabelTemplate): Omit<LabelTemplate, 'builtin'> {
+  const copy: Partial<LabelTemplate> = { ...tpl };
+  delete copy.builtin;
+  return copy as Omit<LabelTemplate, 'builtin'>;
+}
+
+/** Slot-Platzhalter ⇒ Slot-Etikett, sonst Spulen-Etikett (NiimBlue kennt `kind` nicht). */
+export function guessKind(objects: Record<string, unknown>[]): TemplateKind {
+  return objects.some((o) => typeof o.text === 'string' && /{\s*(slot|ams|printer)\s*}/.test(o.text)) ? 'slot' : 'spool';
+}
+
+/** Kennung für eine neu importierte Vorlage: aus dem Titel, eindeutig durch Zufallsanhang. */
+export function newTemplateId(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return `${slug || 'vorlage'}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Größe in Millimetern bei 300 dpi (B1 Pro), für Listen. */
+export function templateSizeMm(t: LabelTemplate): string {
+  const mm = (px: number) => Math.round((px / 300) * 25.4);
+  return `${mm(t.label.size.width)} × ${mm(t.label.size.height)} mm`;
 }
