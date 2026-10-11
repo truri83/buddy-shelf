@@ -8,4 +8,4 @@ export function t(key: MessageKey | (string & {}), vars?: Record<string, string 
 }
 
 export type { MessageKey };
-export { colorFamily, colorSearchText, colorToEnglish, colorToGerman, otherLanguageName, type ColorFamily } from './colors';
+export { colorFamily, colorSearchText, colorToEnglish, colorToGerman, foldGerman, otherLanguageName, type ColorFamily } from './colors';

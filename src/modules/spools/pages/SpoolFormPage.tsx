@@ -23,11 +23,11 @@ import {
   useIonToast,
 } from '@ionic/react';
 import { barcodeOutline } from 'ionicons/icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { FilamentEntry, GtinHit, Spool } from '@/core/api';
 import { colorSearchText, otherLanguageName, t } from '@/core/i18n';
-import { haptic, QR_AND_BARCODES, storage } from '@/core/platform';
+import { BARCODES_ONLY, haptic, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ChoiceChip, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
@@ -70,7 +70,14 @@ export function SpoolFormPage() {
   const sourceId = editId || fromId;
   const source = useSpool(sourceId);
   const barcode = useGtin(gtin);
-  if (gtin && barcode.isPending) {
+  // kurz auf den Treffer warten (meist < 1 s); hängt die Datenbank, nicht länger als 4 s blockieren
+  const [gaveUp, setGaveUp] = useState(false);
+  useEffect(() => {
+    if (!gtin || !barcode.isPending) return;
+    const id = setTimeout(() => setGaveUp(true), 4000);
+    return () => clearTimeout(id);
+  }, [gtin, barcode.isPending]);
+  if (gtin && barcode.isPending && !gaveUp) {
     return (
       <IonPage>
         <IonContent>
@@ -96,10 +103,10 @@ export function SpoolFormPage() {
       </IonPage>
     );
   }
-  return <SpoolForm key={`${editId}-${fromId}-${gtin}`} source={source.data} editing={editId > 0} gtin={gtin ? { code: gtin, hits: barcode.data ?? [] } : undefined} />;
+  return <SpoolForm key={`${editId}-${fromId}-${gtin}`} source={source.data} editing={editId > 0} gtin={gtin ? { code: gtin, hits: barcode.data ?? [], failed: barcode.isError || barcode.isPending } : undefined} />;
 }
 
-function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean; gtin?: { code: string; hits: GtinHit[] } }) {
+function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean; gtin?: { code: string; hits: GtinHit[]; failed: boolean } }) {
   const [draft, setDraft] = useState<SpoolDraft>(() => {
     const base = source ? draftFromSpool(source) : emptyDraft();
     return gtin ? applyGtin(base, gtin.hits) : base;
@@ -206,7 +213,9 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
                   {gtin
                     ? gtin.hits.length
                       ? t('barcode.found', { code: gtin.code, what: [gtin.hits[0]!.brand, gtin.hits[0]!.filament, gtin.hits[0]!.color].join(' · ') })
-                      : t('barcode.unknown', { code: gtin.code })
+                      : gtin.failed
+                        ? t('barcode.unreachable', { code: gtin.code })
+                        : t('barcode.unknown', { code: gtin.code })
                     : t('barcode.hint')}
                 </div>
               </IonLabel>
@@ -461,7 +470,8 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
         <IonContent className="ion-padding">
           <ScannerView
             active={scanOpen}
-            formats={QR_AND_BARCODES}
+            formats={BARCODES_ONLY}
+            accept={(raw) => parseScan(raw).kind === 'gtin'}
             hint={t('barcode.aim')}
             onCode={(raw) => {
               const r = parseScan(raw);

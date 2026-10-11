@@ -164,6 +164,8 @@ export const bambuddy = {
   auth: {
     /** Rechte des Schlüssels bzw. Nutzers */
     me: () => request<Me>('GET', '/auth/me'),
+    /** Öffentlich: ist die Anmeldung in Bambuddy eingeschaltet? */
+    status: () => request<{ auth_enabled: boolean }>('GET', '/auth/status'),
   },
   /** Öffentlich, ohne Schlüssel (Regel 14) */
   version: () => request<{ version: string }>('GET', '/updates/version'),

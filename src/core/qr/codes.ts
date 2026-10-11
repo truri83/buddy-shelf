@@ -91,7 +91,9 @@ export function parseScan(raw: string): ScanResult {
     /* keine URL */
   }
 
-  if (isValidGtin(text)) return { kind: 'gtin', code: text };
+  // Packungs-Barcode, auch von Hand mit Leerzeichen/Strichen eingegeben („4 006381 333931“)
+  const digits = text.replace(/[\s-]/g, '');
+  if (/^\d+$/.test(digits) && isValidGtin(digits)) return { kind: 'gtin', code: digits };
 
   return { kind: 'unknown', raw: text };
 }

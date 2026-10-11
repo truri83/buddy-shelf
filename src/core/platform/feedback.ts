@@ -21,21 +21,31 @@ function audio(): AudioContext | null {
   return ctx;
 }
 
-/** Einmal bei der ersten Berührung aufrufen – danach darf die App Töne abspielen. */
+/**
+ * Ton freischalten. iOS erlaubt das nur in einem echten Aktivierungs-Ereignis (Loslassen/Klick, nicht
+ * pointerdown). Die Zuhörer bleiben, bis der Ton läuft; nach Anruf/Siri/Hintergrund wird neu freigeschaltet.
+ */
 export function unlockAudio(): void {
-  const once = () => {
+  const events = ['pointerup', 'touchend', 'click', 'keydown'] as const;
+  const tryResume = () => {
     const a = audio();
-    if (a?.state === 'suspended') void a.resume();
-    window.removeEventListener('pointerdown', once);
-    window.removeEventListener('keydown', once);
+    if (!a) return;
+    if (a.state === 'running') return detach();
+    void a.resume().then(() => a.state === 'running' && detach());
   };
-  window.addEventListener('pointerdown', once);
-  window.addEventListener('keydown', once);
+  const attach = () => events.forEach((e) => window.addEventListener(e, tryResume, { capture: true, passive: true }));
+  const detach = () => events.forEach((e) => window.removeEventListener(e, tryResume, { capture: true }));
+  attach();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && ctx && ctx.state !== 'running') attach();
+  });
 }
 
 function beep(freq: number, ms: number, when = 0) {
   const a = audio();
-  if (!a || a.state !== 'running') return;
+  if (!a) return;
+  // nach einer Unterbrechung (iOS: „interrupted“) still neu versuchen – beim nächsten Mal klappt es
+  if (a.state !== 'running') return void a.resume().catch(() => undefined);
   const t = a.currentTime + when;
   const osc = a.createOscillator();
   const gain = a.createGain();

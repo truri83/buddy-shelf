@@ -1,12 +1,13 @@
 /**
  * Farbnamen Deutsch ⇄ Englisch, ohne zwei gespeicherte Namen:
  * In Bambuddy steht genau eine Bezeichnung (meist der Herstellername, z. B. „Jade White“).
- * Die andere Sprache wird hier abgeleitet – Grundfarben und Zusätze übersetzt, Eigennamen bleiben,
- * deutsche Komposita werden gebildet („Light Gray“ → „Hellgrau“, „Jade White“ → „Jadeweiß“).
- * Dazu eine Farbfamilie aus dem Hex-Wert, damit „grün“ auch „Bambu Green“ oder Fantasienamen findet.
+ * Die andere Sprache wird hier abgeleitet – Grundfarben und Zusätze übersetzt, deutsche Komposita
+ * gebildet („Light Gray“ → „Hellgrau“, „Navy Blue“ → „Marineblau“). Enthält ein Name ein Wort, das wir
+ * nicht kennen („Arctic Whisper“, „Burnt Titanium“), bleibt er unübersetzt – lieber keine als eine
+ * falsche Übersetzung. Dazu eine Farbfamilie aus dem Hex-Wert für Suche und Gruppierung.
  */
 
-/** Grundfarben: englisch → deutsch (Kleinschreibung; deutsche Grundform). */
+/** Grundfarben: englisch → deutsch (deutsche Grundform). */
 const BASE: Record<string, string> = {
   black: 'schwarz',
   white: 'weiß',
@@ -21,7 +22,8 @@ const BASE: Record<string, string> = {
   blue: 'blau',
   purple: 'lila',
   violet: 'violett',
-  pink: 'rosa',
+  pink: 'pink',
+  rose: 'rosé',
   magenta: 'magenta',
   brown: 'braun',
   beige: 'beige',
@@ -45,9 +47,14 @@ const BASE: Record<string, string> = {
   khaki: 'khaki',
   sand: 'sand',
   bone: 'knochenweiß',
+  burgundy: 'bordeaux',
+  tan: 'hellbraun',
 };
 
-/** Zusätze vor der Farbe: werden im Deutschen vorangestellt und zusammengeschrieben. */
+/** Form einer Grundfarbe als erster Teil eines Kompositums („Limettengrün“, nicht „Limettegrün“). */
+const COMPOUND_FORM: Record<string, string> = { limette: 'limetten', koralle: 'korallen' };
+
+/** Zusätze vor der Farbe: im Deutschen vorangestellt und zusammengeschrieben. Eigennamen = sich selbst. */
 const PREFIX: Record<string, string> = {
   light: 'hell',
   dark: 'dunkel',
@@ -64,6 +71,35 @@ const PREFIX: Record<string, string> = {
   jet: 'tief',
   snow: 'schnee',
   ash: 'asch',
+  lemon: 'zitronen',
+  apple: 'apfel',
+  ocean: 'ozean',
+  lilac: 'flieder',
+  mistletoe: 'mistel',
+  cocoa: 'kakao',
+  ruby: 'rubin',
+  moss: 'moos',
+  midnight: 'mitternachts',
+  hot: 'knall',
+  royal: 'königs',
+  baby: 'baby',
+  signal: 'signal',
+  traffic: 'verkehrs',
+  sun: 'sonnen',
+  fire: 'feuer',
+  grass: 'gras',
+  steel: 'stahl',
+  slate: 'schiefer',
+  stone: 'stein',
+  coffee: 'kaffee',
+  chocolate: 'schokoladen',
+  wine: 'wein',
+  // Eigennamen, die im Deutschen genauso zusammengeschrieben werden
+  jade: 'jade',
+  titan: 'titan',
+  bambu: 'bambu',
+  sakura: 'sakura',
+  space: 'space',
 };
 
 /** Eigenschaften (eigenes Wort). */
@@ -82,80 +118,122 @@ const WORDS: Record<string, string> = {
   rainbow: 'regenbogen',
 };
 
-const DE_BASE = invert(BASE);
-const DE_PREFIX = invert(PREFIX);
-const DE_WORDS = invert(WORDS);
+/** Für Vergleiche: Kleinschreibung, ß/Umlaute ausgeschrieben („Weiß“ = „weiss“, „Grün“ = „gruen“). */
+export function foldGerman(s: string): string {
+  return s.toLowerCase().replace(/ß/g, 'ss').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/é/g, 'e');
+}
 
 function invert(m: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const [en, de] of Object.entries(m)) out[de] ??= en;
+  for (const [en, de] of Object.entries(m)) out[foldGerman(de)] ??= en;
   return out;
 }
 
+const DE_BASE = invert(BASE);
+const DE_PREFIX = invert(PREFIX);
+const DE_WORDS = invert(WORDS);
+const DE_COMPOUND = invert(Object.fromEntries(Object.entries(COMPOUND_FORM).map(([de, c]) => [DE_BASE[foldGerman(de)] ?? de, c])));
+/** Wörter, die in beiden Sprachen gleich sind – sagen nichts über die Sprache */
+const SHARED = new Set(['gold', 'orange', 'beige', 'bronze', 'magenta', 'cyan', 'khaki', 'sand', 'transparent', 'mint', 'metallic', 'pink', 'galaxy', 'jade', 'titan', 'bambu', 'sakura', 'space', 'baby', 'signal']);
+
 const cap = (s: string) => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
 const title = (s: string) => s.split(' ').map(cap).join(' ');
+const isWord = (t: string) => /^\p{L}+$/u.test(t);
 
-/** Erkennt, ob ein Name (vermutlich) deutsch ist: enthält ein deutsches Farbwort. */
-export function looksGerman(name: string): boolean {
-  const n = name.toLowerCase();
-  return Object.keys(DE_BASE).some((de) => n.includes(de)) && !Object.keys(BASE).some((en) => new RegExp(`\\b${en}\\b`).test(n));
+/** Teilt ein deutsches Kompositum in Kopf + Grundfarbe („rotbraun“ → [„rot“, „braun“]). */
+function splitCompound(k: string): [string, string] | null {
+  const base = Object.keys(DE_BASE)
+    .filter((b) => k.length > b.length && k.endsWith(b))
+    .sort((a, b) => b.length - a.length)[0];
+  return base ? [k.slice(0, -base.length), base] : null;
 }
 
-/** Englischer Name → deutsch („Light Gray“ → „Hellgrau“, „Jade White“ → „Jadeweiß“, „Matte Black“ → „Matt Schwarz“). */
-export function colorToGerman(name: string): string {
-  const words = name.trim().split(/[\s_-]+/).filter(Boolean);
-  const out: string[] = [];
-  let pending: string[] = []; // Zusätze/Eigennamen, die mit der nächsten Grundfarbe zusammengeschrieben werden
+const headToEnglish = (head: string) => DE_PREFIX[head] ?? DE_BASE[head] ?? DE_COMPOUND[head] ?? null;
+
+/** Erkennt, ob ein Name (vermutlich) deutsch ist. */
+export function looksGerman(name: string): boolean {
+  const words = foldGerman(name).split(/[^a-z]+/).filter(Boolean);
+  let de = 0;
+  let en = 0;
   for (const w of words) {
-    const k = w.toLowerCase();
-    if (BASE[k]) {
-      const base = BASE[k];
-      if (pending.length === 1) out.push(cap(pending[0]!.toLowerCase() + base));
-      else {
-        out.push(...pending.map(cap));
-        out.push(cap(base));
-      }
-      pending = [];
-    } else if (PREFIX[k]) pending.push(PREFIX[k]);
-    else if (WORDS[k]) {
-      out.push(...pending.map(cap), cap(WORDS[k]));
-      pending = [];
-    } else pending.push(w);
+    if (SHARED.has(w)) continue;
+    if (BASE[w] || WORDS[w] || PREFIX[w]) en++;
+    else if (DE_BASE[w] || DE_WORDS[w] || DE_PREFIX[w]) de++;
+    else {
+      const c = splitCompound(w);
+      if (c && headToEnglish(c[0])) de++;
+    }
   }
-  out.push(...pending);
+  return de > en;
+}
+
+/** Englischer Name → deutsch. Unbekannte Wörter ⇒ Name bleibt unverändert. */
+export function colorToGerman(name: string): string {
+  // „Black & White“: Teile einzeln übersetzen
+  if (/[&/]/.test(name)) {
+    const parts = name.split(/\s*([&/])\s*/);
+    const de = parts.map((p) => (/^[&/]$/.test(p) ? ` ${p} ` : colorToGerman(p)));
+    return de.join('');
+  }
+  const tokens = name.trim().split(/[\s_-]+/).filter(Boolean);
+  const out: string[] = [];
+  let stems: string[] = []; // Zusätze, die mit der nächsten Grundfarbe zusammengeschrieben werden
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i]!;
+    const k = tok.toLowerCase();
+    if (/^\d+$/.test(tok)) {
+      if (stems.length) return name;
+      out.push(tok);
+      continue;
+    }
+    if (!isWord(tok)) return name;
+    if (BASE[k]) {
+      let base = BASE[k];
+      // Grundfarbe + Grundfarbe → ein Wort („Blue Grey“ → „Blaugrau“, „Navy Blue“ → „Marineblau“)
+      while (i + 1 < tokens.length && BASE[tokens[i + 1]!.toLowerCase()]) {
+        const next = BASE[tokens[++i]!.toLowerCase()]!;
+        if (!base.endsWith(next)) base = (COMPOUND_FORM[base] ?? base) + next;
+      }
+      out.push(cap(stems.join('') + base));
+      stems = [];
+    } else if (PREFIX[k]) stems.push(PREFIX[k]);
+    else if (WORDS[k]) {
+      if (stems.length) return name;
+      out.push(cap(WORDS[k]));
+    } else return name; // unbekanntes Wort ⇒ nicht übersetzen
+  }
+  if (stems.length) return name; // Zusatz ohne Farbe („Ash“) ⇒ nicht übersetzen
   return out.join(' ');
 }
 
-/** Deutscher Name → englisch („Hellgrau“ → „Light Gray“, „Schwarz Matt“ → „Black Matte“). */
+/** Deutscher Name → englisch („Hellgrau“ → „Light Gray“, „Rotbraun“ → „Red Brown“). Unbekannt ⇒ unverändert. */
 export function colorToEnglish(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((w) => {
-      const k = w.toLowerCase();
-      if (DE_BASE[k]) return title(DE_BASE[k]);
-      if (DE_WORDS[k]) return title(DE_WORDS[k]);
-      // Kompositum: Zusatz + Grundfarbe („hellgrau“, „jadeweiß“)
-      for (const [de, en] of Object.entries(DE_BASE)) {
-        if (k.endsWith(de) && k.length > de.length) {
-          const head = k.slice(0, -de.length);
-          return `${DE_PREFIX[head] ? title(DE_PREFIX[head]) : cap(head)} ${title(en)}`;
-        }
-      }
-      return w;
-    })
-    .join(' ');
+  const parts: string[] = [];
+  for (const w of name.trim().split(/\s+/)) {
+    const k = foldGerman(w);
+    if (/^\d+$/.test(w)) parts.push(w);
+    else if (DE_BASE[k]) parts.push(title(DE_BASE[k]));
+    else if (DE_WORDS[k]) parts.push(title(DE_WORDS[k]));
+    else if (DE_PREFIX[k]) parts.push(title(DE_PREFIX[k]));
+    else {
+      const c = splitCompound(k);
+      const headEn = c ? headToEnglish(c[0]) : null;
+      if (!c || !headEn) return name;
+      parts.push(`${title(headEn)} ${title(DE_BASE[c[1]]!)}`);
+    }
+  }
+  return parts.join(' ');
 }
 
-/** Name in der jeweils anderen Sprache – oder null, wenn nichts zu übersetzen ist. */
+/** Name in der jeweils anderen Sprache – oder null, wenn nichts (sicher) zu übersetzen ist. */
 export function otherLanguageName(name: string | null | undefined): string | null {
   if (!name?.trim()) return null;
   const other = looksGerman(name) ? colorToEnglish(name) : colorToGerman(name);
-  return other.toLowerCase() === name.trim().toLowerCase() ? null : other;
+  return foldGerman(other) === foldGerman(name.trim()) ? null : other;
 }
 
-/** Farbfamilien (deutsche Anzeigenamen) */
-export type ColorFamily = 'schwarz' | 'weiß' | 'grau' | 'rot' | 'orange' | 'gelb' | 'grün' | 'türkis' | 'blau' | 'lila' | 'rosa' | 'braun';
+/** Farbfamilien (Schlüssel; Anzeige über t('color.family.…')) */
+export type ColorFamily = 'schwarz' | 'weiß' | 'grau' | 'beige' | 'braun' | 'rot' | 'orange' | 'gelb' | 'grün' | 'türkis' | 'blau' | 'lila' | 'rosa';
 
 /** Farbfamilie aus RRGGBB(AA) über HSL. */
 export function colorFamily(rgba: string | null | undefined): ColorFamily | null {
@@ -167,32 +245,53 @@ export function colorFamily(rgba: string | null | undefined): ColorFamily | null
   const d = max - min;
   const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
   if (l < 0.13) return 'schwarz';
-  if (l > 0.9 && s < 0.5) return 'weiß';
-  if (s < 0.15) return l < 0.25 ? 'schwarz' : l > 0.85 ? 'weiß' : 'grau';
   let h = 0;
-  if (max === r) h = ((g - b) / d) % 6;
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  h = (h * 60 + 360) % 360;
-  // Braun: dunkles, wenig gesättigtes Orange/Rot
-  if (h >= 10 && h < 45 && l < 0.45) return 'braun';
-  if (h >= 325 && h < 350) return 'rosa'; // Pink/Magenta-Rot
-  if (h < 12 || h >= 350) return l > 0.7 ? 'rosa' : 'rot';
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  if (l > 0.93 && s < 0.6 && !(h >= 15 && h < 65 && s > 0.35)) return 'weiß';
+  // helle, wenig gesättigte Warmtöne: Beige („Desert Tan“, „Latte“, „Cream“)
+  if (h >= 15 && h < 65 && l > 0.68 && s >= 0.12 && s < 0.75) return 'beige';
+  if (s < 0.15) return l < 0.25 ? 'schwarz' : l > 0.85 ? 'weiß' : 'grau';
+  // Braun: dunkle oder entsättigte Orange-/Gelbtöne („Caramel“, „Bronze“, „Cocoa“)
+  if (h >= 10 && h < 60 && (l < 0.45 || (s < 0.45 && l < 0.8))) return 'braun';
+  if (h >= 60 && h < 70 && l < 0.35) return 'grün'; // Oliv
+  if (h >= 325 && h < 350) return l < 0.35 ? 'rot' : 'rosa'; // Bordeaux vs. Pink
+  if (h < 10 || h >= 350) return l > 0.75 ? 'rosa' : 'rot';
   if (h < 40) return 'orange';
   if (h < 70) return 'gelb';
   if (h < 160) return 'grün';
   if (h < 195) return 'türkis';
-  if (h < 255) return 'blau';
+  if (h < 245) return 'blau';
   if (h < 300) return 'lila';
-  return 'rosa';
+  return l < 0.35 ? 'rot' : 'rosa';
 }
 
-/** Suchbegriffe für eine Farbe: Originalname, Übersetzung, Familie (de + en). */
+const FAMILY_EN: Record<ColorFamily, string> = {
+  schwarz: 'black',
+  weiß: 'white',
+  grau: 'gray grey',
+  beige: 'beige',
+  braun: 'brown',
+  rot: 'red',
+  orange: 'orange',
+  gelb: 'yellow',
+  grün: 'green',
+  türkis: 'turquoise',
+  blau: 'blue',
+  lila: 'purple',
+  rosa: 'pink',
+};
+
+/** Suchtext für eine Farbe: Originalname, Übersetzung, Familie (de + en), alles gefaltet (ß→ss …). */
 export function colorSearchText(name: string | null | undefined, rgba?: string | null): string {
   const parts = [name ?? '', otherLanguageName(name) ?? ''];
   const fam = colorFamily(rgba);
-  if (fam) parts.push(fam, DE_BASE[fam] ?? '');
-  const text = parts.join(' ').toLowerCase();
+  if (fam) parts.push(fam, FAMILY_EN[fam]);
+  const text = foldGerman(parts.join(' '));
   // britische/amerikanische Schreibweise gleichwertig
   return /gr[ae]y/.test(text) ? `${text} gray grey` : text;
 }

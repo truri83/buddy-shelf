@@ -15,7 +15,20 @@ import { configureApi, type ApiConfig } from './core/api';
 import { storage, unlockAudio } from './core/platform';
 import { App } from './app/App';
 
+/**
+ * iOS 26 zeichnet in Homescreen-Apps ein Unschärfe-Band über den oberen Rand der Webseite (WebKit-Bug 301994,
+ * offen). Liegt die Kopfzeile darin, wirkt sie verwischt → im Standalone-Modus auf iOS etwas tiefer setzen.
+ */
+function markIosStandalone() {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (ios && (nav.standalone || window.matchMedia('(display-mode: standalone)').matches)) {
+    document.documentElement.classList.add('ios-standalone');
+  }
+}
+
 async function start() {
+  markIosStandalone();
   unlockAudio();
   configureApi(storage.get<Partial<ApiConfig>>('api', {}));
 

@@ -97,7 +97,9 @@ export function applyGtin(d: SpoolDraft, hits: GtinHit[]): SpoolDraft {
   const hit = hits.find((h) => !h.refill) ?? hits[0];
   if (!hit) return d;
   const material = hit.material.toUpperCase();
-  const subtype = hit.filament.toUpperCase().startsWith(material) ? hit.filament.slice(material.length).trim() : hit.filament;
+  // Material als ganzes Wort entfernen, egal wo („Silk PLA“, „PLA Basic“, „Fiber HT Matte PLA“)
+  const escaped = material.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const subtype = hit.filament.replace(new RegExp(`(^|\\s)${escaped}(?=\\s|$)`, 'gi'), ' ').replace(/\s+/g, ' ').trim();
   return {
     ...d,
     brand: hit.brand,

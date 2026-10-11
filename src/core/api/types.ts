@@ -109,6 +109,8 @@ export interface GtinHit {
   refill: boolean;
   /** Herstellernummer, bei Bambu z. B. 10102 → Bambuddy material_number */
   article_number: string | null;
+  /** Variante nicht geladen (Farbe/Refill evtl. unvollständig) */
+  partial?: boolean;
 }
 
 /** Typisches Leerspulen-Gewicht eines Herstellers laut Filament-Datenbank (/catalog/spools) */

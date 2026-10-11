@@ -29,8 +29,9 @@ export default defineConfig(({ mode }) => {
           short_name: 'Buddy Shelf',
           description: 'Spulen scannen, zuweisen und etikettieren – für Bambuddy',
           lang: 'de',
-          theme_color: '#14161a',
-          background_color: '#14161a',
+          // = --bs-bg (dunkel); hell/dunkel wechselt index.html per theme-color-Media-Query
+          theme_color: '#0f1114',
+          background_color: '#0f1114',
           display: 'standalone',
           start_url: '/',
           // PNG-Icons aus public/icon.svg (npm run icons); iOS nutzt kein SVG für den Homescreen

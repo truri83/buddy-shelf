@@ -61,3 +61,16 @@ describe('Packungs-Barcode', async () => {
     expect(applyGtin(emptyDraft(), [])).toEqual(emptyDraft());
   });
 });
+
+describe('Sorte aus Barcode', async () => {
+  const { applyGtin } = await import('./newSpool');
+  const hit = (filament: string) => ({ gtin: '1', brand: 'X', material: 'PLA', filament, color: 'Red', color_hex: null, weight: 1000, spool_weight: null, refill: false, article_number: null });
+  it.each([
+    ['PLA Basic', 'Basic'],
+    ['Silk PLA', 'Silk'],
+    ['Fiber HT Matte PLA', 'Fiber HT Matte'],
+    ['PLA+', 'PLA+'],
+  ])('%s → %s', (filament, expected) => {
+    expect(applyGtin(emptyDraft(), [hit(filament)]).subtype).toBe(expected);
+  });
+});

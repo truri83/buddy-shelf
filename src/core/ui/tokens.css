@@ -19,6 +19,8 @@
   --bs-critical: #d4353b;
   /* RGB-Gegenstücke für Ionic-Komponenten mit Transparenz (Ripple, Segment, Fokus) */
   --bs-accent-rgb: 232, 101, 10;
+  /* Abdunklung außerhalb des Kamera-Zielrahmens */
+  --bs-scrim: rgba(0, 0, 0, 0.35);
   --bs-text-2-rgb: 91, 99, 112;
 
   /* Materialfamilien (Badge-Farben, in beiden Modi lesbar) */
@@ -169,4 +171,9 @@ ion-accordion-group.accordion-group-expand-inset > ion-accordion {
 :root.ios ion-segment-button {
   --indicator-color: var(--bs-accent);
   --color-checked: var(--bs-accent-contrast);
+}
+
+/* iOS-26-Homescreen-App: Unschärfe-Band des Systems (~40 pt unter der Statusleiste) freihalten */
+:root.ios-standalone {
+  --ion-safe-area-top: calc(env(safe-area-inset-top, 0px) + 34px);
 }

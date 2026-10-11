@@ -73,28 +73,37 @@ const OFD = process.env.OFD_API_URL || 'https://api.openfilamentdatabase.org/api
 let gtinCache = { at: 0, codes: /** @type {Record<string, any[]> | null} */ (null), loading: /** @type {Promise<any> | null} */ (null) };
 const variantCache = new Map();
 
+const FAIL_MS = 5 * 60_000;
+let gtinFailedAt = 0;
+
+/** Index laden; ist er älter als 24 h, im Hintergrund erneuern und solange den alten liefern. */
 async function loadGtinIndex() {
-  if (gtinCache.codes && Date.now() - gtinCache.at < TTL_MS) return gtinCache.codes;
-  gtinCache.loading ??= (async () => {
-    try {
-      const res = await fetch(`${OFD}/gtin-index.json`, { signal: AbortSignal.timeout(30_000) });
-      if (!res.ok) throw new Error(`Open Filament Database HTTP ${res.status}`);
-      const j = await res.json();
-      gtinCache = { at: Date.now(), codes: j.codes ?? {}, loading: null };
-      return gtinCache.codes;
-    } catch (e) {
-      gtinCache.loading = null;
-      if (gtinCache.codes) return gtinCache.codes;
-      throw e;
-    }
-  })();
-  return gtinCache.loading;
+  const fresh = gtinCache.codes && Date.now() - gtinCache.at < TTL_MS;
+  if (fresh) return gtinCache.codes;
+  if (!gtinCache.loading && Date.now() - gtinFailedAt > FAIL_MS) {
+    gtinCache.loading = (async () => {
+      try {
+        const res = await fetch(`${OFD}/gtin-index.json`, { signal: AbortSignal.timeout(20_000) });
+        if (!res.ok) throw new Error(`Open Filament Database HTTP ${res.status}`);
+        const j = await res.json();
+        gtinCache = { at: Date.now(), codes: j.codes ?? {}, loading: null };
+        return gtinCache.codes;
+      } catch (e) {
+        gtinFailedAt = Date.now(); // Ausfall 5 min merken – sonst wartet jeder Scan erneut
+        gtinCache.loading = null;
+        throw e;
+      }
+    })();
+  }
+  if (gtinCache.codes) return gtinCache.codes; // alter Index, während der neue lädt
+  if (gtinCache.loading) return gtinCache.loading;
+  throw new Error('Open Filament Database gerade nicht erreichbar');
 }
 
 async function loadVariant(href) {
   const hit = variantCache.get(href);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
-  const res = await fetch(`${OFD}/${href}`, { signal: AbortSignal.timeout(15_000) });
+  const res = await fetch(`${OFD}/${href}`, { signal: AbortSignal.timeout(8_000) });
   if (!res.ok) return null;
   const data = await res.json();
   if (variantCache.size > 2000) variantCache.delete(variantCache.keys().next().value);
@@ -114,9 +123,11 @@ async function gtinLookup(code) {
   if (!key) return [];
   const codes = await loadGtinIndex();
   const entries = codes[key] ?? [];
+  // Varianten parallel; fehlt eine, ist das Ergebnis unvollständig (partial) und wird nicht zwischengespeichert
+  const variants = await Promise.all(entries.map((e) => loadVariant(e.href).catch(() => null)));
   const out = [];
-  for (const e of entries) {
-    const v = await loadVariant(e.href).catch(() => null);
+  for (const [i, e] of entries.entries()) {
+    const v = variants[i];
     const size = v?.sizes?.find((s) => s.uuid === e.size_uuid) ?? null;
     out.push({
       gtin: key,
@@ -129,6 +140,7 @@ async function gtinLookup(code) {
       spool_weight: size?.empty_spool_weight ?? null,
       refill: !!size?.spool_refill,
       article_number: size?.article_number ?? null,
+      partial: !v,
     });
   }
   return out;
@@ -164,7 +176,9 @@ export async function registerCatalog(app) {
     try {
       const body = await catalogResponse(url.pathname.replace(/^\/catalog/, ''), url.searchParams);
       if (body === null) return reply.code(404).send({ detail: 'Not found' });
-      return reply.header('cache-control', 'public, max-age=3600').send(body);
+      // unvollständige Barcode-Treffer (Variante nicht geladen) nicht zwischenspeichern
+      const partial = Array.isArray(body) && body.some((x) => x?.partial);
+      return reply.header('cache-control', partial ? 'no-store' : 'public, max-age=3600').send(body);
     } catch (e) {
       return reply.code(502).send({ detail: `Filament-Katalog nicht erreichbar: ${e.message}` });
     }

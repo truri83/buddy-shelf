@@ -8,9 +8,11 @@ export {
   getQrDetector,
   QR_ONLY,
   QR_AND_BARCODES,
+  BARCODES_ONLY,
   type ScannerHandle,
   type ScannerErrorKind,
   type ScanFormat,
   type ScanHit,
+  type ScannerOptions,
 } from './scanner';
 export { scanFeedback, warnFeedback, unlockAudio, scanSoundEnabled, setScanSound } from './feedback';

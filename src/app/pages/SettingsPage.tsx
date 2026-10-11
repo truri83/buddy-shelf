@@ -20,7 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { alertCircle, checkmarkCircle, cloudOfflineOutline } from 'ionicons/icons';
 import { useState } from 'react';
-import { ApiError, configureApi, getApiConfig, isTestedVersion, useBambuddyVersion, useMe } from '@/core/api';
+import { ApiError, configureApi, getApiConfig, isTestedVersion, useAuthStatus, useBambuddyVersion, useMe } from '@/core/api';
 import { t } from '@/core/i18n';
 import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
@@ -45,6 +45,7 @@ export function SettingsPage() {
   const qc = useQueryClient();
   const version = useBambuddyVersion();
   const me = useMe();
+  const authStatus = useAuthStatus();
   const actions = modules.flatMap((m) => m.quickActions ?? []);
 
   const save = () => {
@@ -57,13 +58,17 @@ export function SettingsPage() {
 
   // Verbindungsstatus: angemeldet / Schlüssel fehlt / nicht erreichbar
   const authFailed = me.error instanceof ApiError && (me.error.status === 401 || me.error.status === 403);
+  const offline = me.fetchStatus === 'paused' || (me.isError && !(me.error instanceof ApiError));
   const status = me.data
     ? { icon: checkmarkCircle, color: 'var(--bs-good)', title: t('settings.connected', { user: me.data.username }) }
-    : authFailed
-      ? { icon: alertCircle, color: 'var(--bs-warn)', title: t('settings.authMissing') }
-      : me.isError
-        ? { icon: cloudOfflineOutline, color: 'var(--bs-critical)', title: t('state.offline') }
-        : null;
+    : authFailed && authStatus.data?.auth_enabled === false
+      ? // Bambuddy ohne Anmeldung: /auth/me ist dann immer 401 – das ist kein Fehler
+        { icon: checkmarkCircle, color: 'var(--bs-good)', title: t('settings.connectedNoAuth') }
+      : authFailed
+        ? { icon: alertCircle, color: 'var(--bs-warn)', title: t('settings.authMissing') }
+        : offline
+          ? { icon: cloudOfflineOutline, color: 'var(--bs-critical)', title: t('state.offline') }
+          : null;
   const v = version.data?.version;
   const ownKey = !!getApiConfig().apiKey;
 

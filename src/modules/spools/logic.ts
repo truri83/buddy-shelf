@@ -1,9 +1,8 @@
 import { fillRatio, slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
-import { colorFamily, colorSearchText } from '@/core/i18n';
+import { colorFamily, colorSearchText, foldGerman, t } from '@/core/i18n';
 
 export const DEFAULT_LOW_PCT = 20;
 
-const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
 
 export function isLow(s: Spool): boolean {
   return fillRatio(s) * 100 < (s.low_stock_threshold_pct ?? DEFAULT_LOW_PCT);
@@ -39,7 +38,7 @@ export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[],
         : by === 'brand'
           ? (s.brand ?? '–')
           : by === 'color'
-            ? capitalize(colorFamily(s.rgba) ?? '–')
+            ? t(`color.family.${colorFamily(s.rgba) ?? 'none'}`)
             : (locationName(s, locations) ?? noLocationTitle);
     map.set(key, [...(map.get(key) ?? []), s]);
   }
@@ -63,9 +62,8 @@ export function sortSpools(list: Spool[], by: SortBy): Spool[] {
 export function matchesSearch(s: Spool, q: string): boolean {
   if (!q) return true;
   // Farbe in beiden Sprachen + Farbfamilie aus dem Hex-Wert („schwarz“ findet „Black“)
-  const hay = [s.id, s.material, s.subtype, s.brand, s.material_number, colorSearchText(s.color_name, s.rgba)].join(' ').toLowerCase();
-  return q
-    .toLowerCase()
+  const hay = foldGerman([s.id, s.material, s.subtype, s.brand, s.material_number, colorSearchText(s.color_name, s.rgba)].join(' '));
+  return foldGerman(q)
     .split(/\s+/)
     .every((w) => hay.includes(w.replace(/^#/, '')));
 }

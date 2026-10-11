@@ -1,6 +1,6 @@
 import { IonContent, IonHeader, IonItem, IonLabel, IonList, IonModal, IonNote, IonSearchbar, IonSpinner, IonTitle, IonToolbar } from '@ionic/react';
 import { useMemo, useState } from 'react';
-import { t } from '@/core/i18n';
+import { foldGerman, t } from '@/core/i18n';
 
 export interface PickerItem {
   value: string;
@@ -28,8 +28,8 @@ interface Props {
 export function PickerSheet({ isOpen, title, items, value, loading, allowCustom, onSelect, onDismiss }: Props) {
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
-    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const list = words.length ? items.filter((i) => words.every((w) => `${i.label} ${i.sublabel ?? ''} ${i.keywords ?? ''}`.toLowerCase().includes(w))) : items;
+    const words = foldGerman(query).split(/\s+/).filter(Boolean);
+    const list = words.length ? items.filter((i) => words.every((w) => foldGerman(`${i.label} ${i.sublabel ?? ''} ${i.keywords ?? ''}`).includes(w))) : items;
     return list.slice(0, 300);
   }, [items, query]);
   const custom = allowCustom && query.trim() && !items.some((i) => i.label.toLowerCase() === query.trim().toLowerCase()) ? query.trim() : null;

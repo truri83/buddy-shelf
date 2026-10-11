@@ -57,3 +57,11 @@ describe('Packungs-Barcode', async () => {
     expect(parseScan('12345').kind).toBe('unknown');
   });
 });
+
+describe('Barcode von Hand', async () => {
+  const { parseScan } = await import('./codes');
+  it('Leerzeichen und Striche sind erlaubt', () => {
+    expect(parseScan('4 006381 333931')).toEqual({ kind: 'gtin', code: '4006381333931' });
+    expect(parseScan('6975337-031390')).toEqual({ kind: 'gtin', code: '6975337031390' });
+  });
+});

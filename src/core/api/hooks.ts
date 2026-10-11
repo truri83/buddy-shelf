@@ -7,6 +7,11 @@ export function useMe() {
   return useQuery({ queryKey: ['me'], queryFn: bambuddy.auth.me, staleTime: 5 * 60_000, retry: false });
 }
 
+/** Ist die Anmeldung in Bambuddy eingeschaltet? (ohne Anmeldung liefert /auth/me immer 401) */
+export function useAuthStatus() {
+  return useQuery({ queryKey: ['auth-status'], queryFn: bambuddy.auth.status, staleTime: 5 * 60_000, retry: false });
+}
+
 /**
  * Darf der Nutzer das? Solange unbekannt (lädt, oder Bambuddy ohne Anmeldung) gilt ja –
  * Bambuddy prüft jede Änderung ohnehin selbst. Module blenden Aktionen nur bei klarem Nein aus.

@@ -13,6 +13,8 @@ interface Props {
   hint?: string;
   /** Welche Codes erkannt werden: nur QR (Etiketten) oder auch Packungs-Barcodes */
   formats?: ScanFormat[];
+  /** nur passende Codes melden (und nur dann piepen) */
+  accept?: (text: string) => boolean;
 }
 
 /** Treffer-Umriss: Videopixel → Anzeige (object-fit: cover). */
@@ -37,7 +39,7 @@ function Corners({ inset }: { inset: CSSProperties['inset'] }) {
     ...pos,
   });
   return (
-    <div aria-hidden style={{ position: 'absolute', inset, boxShadow: '0 0 0 100vmax rgba(0,0,0,.35)', borderRadius: 'var(--bs-r-md)' }}>
+    <div aria-hidden style={{ position: 'absolute', inset, boxShadow: '0 0 0 100vmax var(--bs-scrim)', borderRadius: 'var(--bs-r-md)' }}>
       <span style={c({ top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 'var(--bs-r-md)' })} />
       <span style={c({ top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 'var(--bs-r-md)' })} />
       <span style={c({ bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 'var(--bs-r-md)' })} />
@@ -50,7 +52,7 @@ function Corners({ inset }: { inset: CSSProperties['inset'] }) {
  * Baustein „Kamera mit Zielrahmen“ (SP-02/SP-11). Anvisierhilfe: quadratisch für QR, breit mit Ziellinie
  * für Packungs-Barcodes; der erkannte Code wird kurz umrandet. Kamera aus, wenn inaktiv oder im Hintergrund.
  */
-export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) {
+export function ScannerView({ active, onCode, hint, formats = QR_ONLY, accept }: Props) {
   const [cam, setCam] = useState<CamState>({ kind: 'off' });
   const [torchOn, setTorchOn] = useState(false);
   const [hidden, setHidden] = useState(() => document.hidden);
@@ -59,13 +61,15 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) 
   const box = useRef<HTMLDivElement>(null);
   const handle = useRef<ScannerHandle | null>(null);
   const onCodeRef = useRef(onCode);
+  const acceptRef = useRef(accept);
   const [attempt, setAttempt] = useState(0);
   const barcodes = formats.some((f) => f !== 'qr_code');
   const formatKey = formats.join(',');
 
   useEffect(() => {
     onCodeRef.current = onCode;
-  }, [onCode]);
+    acceptRef.current = accept;
+  }, [onCode, accept]);
 
   useEffect(() => {
     const onVis = () => setHidden(document.hidden);
@@ -77,7 +81,7 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) 
   useEffect(() => {
     if (!mark) return;
     // verschwindet, sobald der Code nicht mehr gesehen wird
-    const id = setTimeout(() => setMark(null), 700);
+    const id = setTimeout(() => setMark(null), 1000);
     return () => clearTimeout(id);
   }, [mark]);
 
@@ -94,11 +98,16 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY }: Props) 
         scanFeedback();
         onCodeRef.current(text);
       },
-      abort.signal,
-      formatKey.split(',') as ScanFormat[],
-      (hit) => {
-        const points = box.current ? toView(hit, box.current) : null;
-        if (points) setMark({ points, at: Date.now() });
+      {
+        signal: abort.signal,
+        formats: formatKey.split(',') as ScanFormat[],
+        accept: (text) => acceptRef.current?.(text) ?? true,
+        onSight: (hit) => {
+          const points = box.current ? toView(hit, box.current) : null;
+          if (points) setMark({ points, at: Date.now() });
+        },
+        // Kamera vom System beendet (andere App, Anruf): Meldung mit „erneut starten“ statt eingefrorenem Bild
+        onEnded: () => !cancelled && setCam({ kind: 'error', error: 'failed' }),
       },
     )
       .then((h) => {

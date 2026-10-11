@@ -57,3 +57,10 @@ describe('Farben in der Liste', () => {
     expect(g.map((x) => x.title)).toEqual(['Grün', 'Schwarz']);
   });
 });
+
+describe('Suche ohne Sonderzeichen', () => {
+  it('„weiss“ findet „Weiß“ und „White“', () => {
+    expect(matchesSearch({ ...base, color_name: 'Weiß', rgba: 'FFFFFFFF' }, 'weiss')).toBe(true);
+    expect(matchesSearch({ ...base, color_name: 'White', rgba: 'FFFFFFFF' }, 'weiss')).toBe(true);
+  });
+});

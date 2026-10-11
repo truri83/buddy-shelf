@@ -25,9 +25,11 @@ interface Detector {
 }
 
 /** QR für eigene Etiketten, EAN/UPC für Packungen. */
-export type ScanFormat = 'qr_code' | 'ean_13' | 'ean_8' | 'upc_a' | 'upc_e';
+export type ScanFormat = 'qr_code' | 'ean_13' | 'ean_8' | 'upc_a';
 export const QR_ONLY: ScanFormat[] = ['qr_code'];
-export const QR_AND_BARCODES: ScanFormat[] = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e'];
+// UPC-E bewusst nicht: kommt als 8 Ziffern, Prüfziffer gilt für die UPC-A-Langform (auf Filament kaum genutzt)
+export const QR_AND_BARCODES: ScanFormat[] = ['qr_code', 'ean_13', 'ean_8', 'upc_a'];
+export const BARCODES_ONLY: ScanFormat[] = ['ean_13', 'ean_8', 'upc_a'];
 
 /** Lage eines Treffers im Videobild (Pixel des Kamerabilds). */
 export interface ScanHit {
@@ -68,15 +70,22 @@ export function getQrDetector(formats: ScanFormat[] = QR_ONLY): Promise<Detector
  * so kommt die Abfrage höchstens einmal je Sitzung. Im Hintergrund wird sofort freigegeben (Datenschutz, Akku).
  */
 const LINGER_MS = 60_000;
-let shared: { stream: MediaStream; users: number; timer?: ReturnType<typeof setTimeout> } | null = null;
+interface Shared {
+  stream: MediaStream;
+  users: number;
+  timer?: ReturnType<typeof setTimeout>;
+}
+let shared: Shared | null = null;
+/** laufende Anfrage – gleichzeitige Starts teilen sich eine Kamera-Abfrage */
+let pending: Promise<MediaStream> | null = null;
 
 const live = (s: MediaStream) => s.getVideoTracks().some((t) => t.readyState === 'live');
 
-function stopShared() {
-  if (!shared) return;
-  clearTimeout(shared.timer);
-  shared.stream.getTracks().forEach((t) => t.stop());
-  shared = null;
+function stopShared(entry: Shared | null = shared) {
+  if (!entry) return;
+  clearTimeout(entry.timer);
+  entry.stream.getTracks().forEach((t) => t.stop());
+  if (shared === entry) shared = null;
 }
 
 if (typeof document !== 'undefined') {
@@ -91,23 +100,41 @@ async function acquireCamera(): Promise<MediaStream> {
     shared.users += 1;
     return shared.stream;
   }
-  stopShared();
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    // 640×480 reicht für QR auf Etiketten-Distanz und spart Rechenzeit/Akku gegenüber HD
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 } },
-  });
-  shared = { stream, users: 1 };
+  if (!pending) {
+    stopShared();
+    pending = navigator.mediaDevices
+      .getUserMedia({
+        audio: false,
+        // 640×480 reicht für QR auf Etiketten-Distanz und spart Rechenzeit/Akku gegenüber HD
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 } },
+      })
+      .then((stream) => {
+        shared = { stream, users: 0 };
+        return stream;
+      })
+      .finally(() => (pending = null));
+  }
+  const stream = await pending;
+  if (shared?.stream === stream) {
+    clearTimeout(shared.timer);
+    shared.users += 1;
+  }
   return stream;
 }
 
 function releaseCamera(stream: MediaStream) {
-  if (!shared || shared.stream !== stream) return void stream.getTracks().forEach((t) => t.stop());
-  shared.users = Math.max(0, shared.users - 1);
-  if (shared.users > 0) return;
-  if (document.hidden) return stopShared();
-  shared.timer = setTimeout(stopShared, LINGER_MS);
+  const entry = shared;
+  if (!entry || entry.stream !== stream) return void stream.getTracks().forEach((t) => t.stop());
+  entry.users = Math.max(0, entry.users - 1);
+  if (entry.users > 0) return;
+  if (document.hidden) return stopShared(entry);
+  clearTimeout(entry.timer);
+  // der Timer gilt nur diesem Strom und nur, wenn ihn bis dahin niemand wieder übernommen hat
+  entry.timer = setTimeout(() => entry.users === 0 && stopShared(entry), LINGER_MS);
 }
+
+/** Nur für Tests: Kamera-Verwaltung direkt ansprechen. */
+export const _camera = { acquire: acquireCamera, release: releaseCamera, LINGER_MS };
 
 function toScannerError(e: unknown): ScannerError {
   const name = (e as { name?: string })?.name;
@@ -116,19 +143,26 @@ function toScannerError(e: unknown): ScannerError {
   return new ScannerError('failed', e instanceof Error ? e.message : String(e));
 }
 
-/**
- * Startet die Rückkamera im Video-Element und meldet jeden erkannten QR-Inhalt.
- * Ein Code wird nur einmal gemeldet, solange er im Bild bleibt (erst nach 2,5 s ohne ihn wieder).
- * `signal`: Abbruch während des Starts – die Kamera wird dann sofort wieder freigegeben.
- */
-export async function startScanner(
-  video: HTMLVideoElement,
-  onCode: (text: string, hit: ScanHit) => void,
-  signal?: AbortSignal,
-  formats: ScanFormat[] = QR_ONLY,
+/** Welcher Scanner ein Video-Element gerade „besitzt“ – mehrere Starts nacheinander stören sich nicht. */
+const owners = new WeakMap<HTMLVideoElement, symbol>();
+
+export interface ScannerOptions {
+  signal?: AbortSignal;
+  formats?: ScanFormat[];
   /** jede Sichtung (auch bekannte Codes) – für die Markierung im Bild */
-  onSight?: (hit: ScanHit) => void,
-): Promise<ScannerHandle> {
+  onSight?: (hit: ScanHit) => void;
+  /** nur Codes, die hier true liefern, werden gemeldet (z. B. nur Packungs-Barcodes) */
+  accept?: (text: string) => boolean;
+  /** Kamera wurde vom System beendet (andere App, Anruf) */
+  onEnded?: () => void;
+}
+
+/**
+ * Startet die Rückkamera im Video-Element und meldet jeden erkannten Code.
+ * Ein Code wird nur einmal gemeldet, solange er im Bild bleibt (erst nach 2,5 s ohne ihn wieder).
+ */
+export async function startScanner(video: HTMLVideoElement, onCode: (text: string, hit: ScanHit) => void, opts: ScannerOptions = {}): Promise<ScannerHandle> {
+  const { signal, formats = QR_ONLY, onSight, accept, onEnded } = opts;
   if (!window.isSecureContext) throw new ScannerError('insecure');
   if (!navigator.mediaDevices?.getUserMedia) throw new ScannerError('nocamera');
 
@@ -139,9 +173,19 @@ export async function startScanner(
     throw toScannerError(e);
   }
 
+  const me = Symbol('scanner');
+  let released = false;
+  let torch = false;
+  const track = stream.getVideoTracks()[0];
   const release = () => {
-    // nur das eigene Bild entfernen – ein inzwischen gestarteter Scanner nutzt dasselbe Video-Element
-    if (video.srcObject === stream) video.srcObject = null;
+    if (released) return;
+    released = true;
+    // Taschenlampe aus, bevor der Strom (warm) weiterlebt
+    if (torch) void track?.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => undefined);
+    if (owners.get(video) === me) {
+      owners.delete(video);
+      video.srcObject = null;
+    }
     releaseCamera(stream);
   };
   if (signal?.aborted) {
@@ -149,6 +193,7 @@ export async function startScanner(
     throw new ScannerError('failed', 'abgebrochen');
   }
 
+  owners.set(video, me);
   video.srcObject = stream;
   video.muted = true;
   video.playsInline = true;
@@ -165,8 +210,9 @@ export async function startScanner(
     release();
     throw new ScannerError('failed', 'abgebrochen');
   }
-  const track = stream.getVideoTracks()[0];
   const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean };
+  const ended = () => onEnded?.();
+  track?.addEventListener('ended', ended);
 
   let stopped = false;
   let last = { text: '', at: 0 };
@@ -183,41 +229,40 @@ export async function startScanner(
     if (video.readyState >= 2 && !document.hidden && (Date.now() >= pauseUntil || (tickCount++ & 3) === 0)) {
       try {
         const found = await detector.detect(video);
-        const first = found[0];
+        // erster passender Code (z. B. EAN neben einem QR auf der Packung)
+        const first = found.find((f) => !accept || accept(f.rawValue));
         const text = first?.rawValue;
         const now = Date.now();
-        if (text) {
-          onSight?.({ text, format: first?.format ?? null, points: first?.cornerPoints ?? [], videoWidth: video.videoWidth, videoHeight: video.videoHeight });
+        if (first && text) {
+          const hit: ScanHit = { text, format: first.format ?? null, points: first.cornerPoints ?? [], videoWidth: video.videoWidth, videoHeight: video.videoHeight };
+          onSight?.(hit);
           const isNew = text !== last.text || now - last.at > 2500;
           // jede Sichtung verlängert die Sperre – ein Code im Bild wird nicht alle 2,5 s erneut gemeldet
           last = { text, at: now };
           if (isNew) {
             pauseUntil = now + AFTER_HIT_MS;
-            onCode(text, {
-              text,
-              format: first?.format ?? null,
-              points: first?.cornerPoints ?? [],
-              videoWidth: video.videoWidth,
-              videoHeight: video.videoHeight,
-            });
+            onCode(text, hit);
           }
         }
       } catch {
         /* einzelnes Bild nicht lesbar – weiter */
       }
     }
-    timer = setTimeout(() => void tick(), INTERVAL_MS);
+    if (!stopped) timer = setTimeout(() => void tick(), INTERVAL_MS);
   };
   void tick();
 
   return {
     hasTorch: !!caps.torch,
     async setTorch(on: boolean) {
+      torch = on;
       await track?.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] }).catch(() => undefined);
     },
     stop() {
+      if (stopped) return;
       stopped = true;
       clearTimeout(timer);
+      track?.removeEventListener('ended', ended);
       release();
     },
   };

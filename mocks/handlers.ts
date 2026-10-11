@@ -122,7 +122,8 @@ export const handlers = [
         { gtin: '00191314034277', brand: 'Hatchbox', material: 'PLA', filament: 'PLA Matte', color: 'Terracotta', color_hex: 'A46A62', weight: 1000, spool_weight: 244, refill: false, article_number: null },
       ],
     };
-    return HttpResponse.json(hits[String(params.code)] ?? []);
+    const code = String(params.code).replace(/^0+(?=\d{12})/, '');
+    return HttpResponse.json(hits[code] ?? []);
   }),
   // Leerspulen-Vorschläge aus der Filament-Datenbank (server/catalog.js)
   http.get('*/catalog/spools', () =>
@@ -159,5 +160,6 @@ export const handlers = [
     const mat = q.get('material');
     return HttpResponse.json(filamentDb.filter((f) => (!m || f.manufacturer === m) && (!mat || f.material === mat)));
   }),
+  http.get(api('/auth/status'), () => HttpResponse.json({ auth_enabled: true })),
   http.get(api('/updates/version'), () => HttpResponse.json({ version: '1.2.5.7', repo: 'maziggy/bambuddy' })),
 ];
