@@ -2,21 +2,35 @@
  * Scan-Inhalte, die die App versteht. Reihenfolge der Erkennung ist fest,
  * Module beanspruchen Treffer über `scan` im Manifest.
  *
- *  bm:s:<id>                         eigenes Etikett (stabil, ohne Serveradresse), Version 1
+ *  bm:s:<id>                         eigenes Spulen-Etikett (stabil, ohne Serveradresse), Version 1
+ *  bm:t:<druckerId>:<amsId>:<slot>   Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule)
  *  <beliebig>/inventory?spool=<id>   Etikett aus Bambuddy selbst
  *  bambuddy://config?v=1&url=…&key=… Einrichtungs-QR aus Bambuddy (API-Schlüssel)
  */
 
 export type ScanResult =
   | { kind: 'spool'; spoolId: number; source: 'buddy-shelf' | 'bambuddy-label' }
+  | { kind: 'slot'; printerId: number; amsId: number; trayId: number }
   | { kind: 'config'; url: string; apiKey: string; version: number }
   | { kind: 'unknown'; raw: string };
 
 export const SPOOL_CODE_PREFIX = 'bm:s:';
+export const SLOT_CODE_PREFIX = 'bm:t:';
+
+/** Externe Spulenhalterung in Bambuddy: ams_id 255, tray_id 0/1. */
+export const EXTERNAL_AMS_ID = 255;
 
 export function encodeSpoolCode(spoolId: number): string {
   if (!Number.isInteger(spoolId) || spoolId <= 0) throw new Error(`Ungültige Spulen-ID: ${spoolId}`);
   return `${SPOOL_CODE_PREFIX}${spoolId}`;
+}
+
+export function encodeSlotCode(printerId: number, amsId: number, trayId: number): string {
+  const ok = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max;
+  if (!ok(printerId, 1, Number.MAX_SAFE_INTEGER) || !ok(amsId, 0, 255) || !ok(trayId, 0, 3)) {
+    throw new Error(`Ungültiger Slot: ${printerId}/${amsId}/${trayId}`);
+  }
+  return `${SLOT_CODE_PREFIX}${printerId}:${amsId}:${trayId}`;
 }
 
 function positiveInt(v: string | null | undefined): number | null {
@@ -31,6 +45,15 @@ export function parseScan(raw: string): ScanResult {
   if (text.toLowerCase().startsWith(SPOOL_CODE_PREFIX)) {
     const id = positiveInt(text.slice(SPOOL_CODE_PREFIX.length));
     if (id) return { kind: 'spool', spoolId: id, source: 'buddy-shelf' };
+    return { kind: 'unknown', raw: text };
+  }
+
+  if (text.toLowerCase().startsWith(SLOT_CODE_PREFIX)) {
+    const m = /^(\d+):(\d{1,3}):(\d)$/.exec(text.slice(SLOT_CODE_PREFIX.length));
+    if (m) {
+      const [printerId, amsId, trayId] = [Number(m[1]), Number(m[2]), Number(m[3])];
+      if (printerId > 0 && amsId <= 255 && trayId <= 3) return { kind: 'slot', printerId, amsId, trayId };
+    }
     return { kind: 'unknown', raw: text };
   }
 

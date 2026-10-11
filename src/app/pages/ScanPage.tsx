@@ -17,6 +17,7 @@ export function ScanPage() {
     const out = dispatchScan(code);
     if ('route' in out) navigate(out.route);
     else if ('configured' in out) setMessage(t('settings.saved'));
+    else if ('notYet' in out) setMessage(t('scan.slotSoon'));
     else setMessage(t('scan.unknown'));
   };
 

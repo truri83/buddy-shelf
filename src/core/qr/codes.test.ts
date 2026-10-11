@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeSpoolCode, parseScan } from './codes';
+import { encodeSlotCode, encodeSpoolCode, parseScan } from './codes';
 
 describe('parseScan', () => {
   it('liest eigene Etiketten', () => {
@@ -29,5 +29,18 @@ describe('parseScan', () => {
   it('kodiert Spulen-IDs', () => {
     expect(encodeSpoolCode(4)).toBe('bm:s:4');
     expect(() => encodeSpoolCode(0)).toThrow();
+  });
+
+  it('liest Slot-Etiketten am AMS', () => {
+    expect(parseScan('bm:t:1:0:2')).toEqual({ kind: 'slot', printerId: 1, amsId: 0, trayId: 2 });
+    expect(parseScan('bm:t:1:255:0')).toEqual({ kind: 'slot', printerId: 1, amsId: 255, trayId: 0 });
+    expect(parseScan('bm:t:1:0:4').kind).toBe('unknown');
+    expect(parseScan('bm:t:0:0:1').kind).toBe('unknown');
+    expect(parseScan('bm:t:1:256:0').kind).toBe('unknown');
+  });
+
+  it('kodiert Slots', () => {
+    expect(encodeSlotCode(1, 1, 3)).toBe('bm:t:1:1:3');
+    expect(() => encodeSlotCode(1, 0, 4)).toThrow();
   });
 });

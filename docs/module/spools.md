@@ -100,3 +100,24 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 | Rechte | INVENTORY_CREATE / UPDATE |
 | Akzeptanz | 3 gleiche Spulen in einem Schritt angelegt, danach Mehrfachdruck möglich |
 | Offen | Welche Pflichtfelder verlangt Bambuddy minimal (material)? |
+
+## SP-08 Spulenwechsel per Doppelscan (Slot → Spule → fertig)
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | bereit (QR-Format `bm:t:` erkannt, Ablauf offen) |
+| Ziel | Spulenwechsel am AMS in zwei Scans erledigen, ohne Menüs. |
+| Ablauf | 1. Slot-Etikett am AMS scannen → Sheet „AMS 1 · Slot 3“ zeigt die Spule, die dort gerade zugewiesen ist. 2. Kamera bleibt offen: neue Spule scannen. 3. Zuweisung wird gespeichert, kurze Bestätigung (Haptik + Hinweis) – **fertig**. Die alte Spule bekommt ihren letzten Lagerort zurück (rückgängig machen per Hinweis-Knopf). Reihenfolge Spule → Slot funktioniert genauso. |
+| Seite | Scan-Vorlage mit Treffer-Karte oben (Slot), darunter Kamerabild für den zweiten Scan; Aktions-Sheet nur bei Rückfragen |
+| Daten | `GET /inventory/assignments`, `POST /inventory/assignments` `{ spool_id, printer_id, ams_id, tray_id }`; alte Spule: `PATCH /inventory/spools/{id}` `{ location_id }`. Bambuddy stellt den AMS-Slot danach selbst per MQTT ein (Profil, Farbe, Material; bei leerem Slot sobald die Spule eingelegt ist). |
+| QR-Format | Slot: `bm:t:<druckerId>:<amsId>:<slot>` (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule). Spule: `bm:s:<id>`. Parser + Tests in `src/core/qr/codes.ts`. |
+| Plattform | `scanner` (SP-02); Haptik optional (`haptics`) |
+| Zustände | Slot unbekannt (Drucker gelöscht) → Hinweis „Slot-Etikett neu drucken“; Spule archiviert → Rückfrage; offline → nichts speichern, Hinweis |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Vom Öffnen des Scanners bis zur gespeicherten Zuweisung höchstens 2 Scans und 0–1 Tipp; Karte der neuen Spule zeigt danach das AMS-Badge; alte Spule zeigt wieder ihren Lagerort |
+| Offen | Verhalten von Bambuddy bei belegtem Slot (ersetzt POST die alte Zuweisung?); Lagerort der alten Spule: letzter Ort oder Rückfrage? |
+
+### Slot-Etiketten drucken (Teil von SP-08)
+Unter **Mehr → Drucker & AMS**: alle Slots aller Drucker auflisten (aus `GET /printers/` + Status) und je Slot ein kleines Etikett drucken
+(QR `bm:t:…` + Text „X2D · AMS 1 · 3“). Druck über SP-06 (Niimbot-Profil), Ersatz: PNG/PDF zum Ausdrucken. Wird ein Drucker in Bambuddy neu
+angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden.

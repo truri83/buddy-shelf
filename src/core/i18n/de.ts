@@ -34,6 +34,7 @@ export const de = {
   'scan.manualHint': 'z. B. bm:s:4 oder den Inhalt eines Bambuddy-Etiketts',
   'scan.open': 'Öffnen',
   'scan.unknown': 'Diesen Code kennt die App nicht.',
+  'scan.slotSoon': 'AMS-Slot erkannt – der Wechsel per Doppelscan folgt (SP-08).',
   'scan.cameraSoon': 'Kamera-Scanner folgt (Steckbrief SP-02).',
   'overview.title': 'Übersicht',
   'overview.attention': 'Aufmerksamkeit nötig',

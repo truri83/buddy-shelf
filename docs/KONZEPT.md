@@ -52,7 +52,7 @@ Folgerungen:
 | nativ | Capacitor-Hülle iOS/Android: Bluetooth-Druck vom iPhone, NFC, Push, Widgets |
 
 ## Kernabläufe (höchstens drei Tipps nach dem Scan)
-- **A – Spule ins AMS:** Scannen → Karte → „Ins AMS“ → Slot wählen → bestätigen. Vorherige Spule im Slot bekommt ihren Lagerort zurück.
+- **A – Spulenwechsel am AMS (Hauptablauf):** Slot-Etikett am AMS scannen → neue Spule scannen → fertig. Bambuddy stellt den Slot selbst ein; die alte Spule bekommt ihren Lagerort zurück (SP-08). Alternativ ohne Slot-Etikett: Spule scannen → „Ins AMS“ → Slot wählen (SP-03).
 - **B – Zurück ins Regal:** Scannen → „Verschieben“ → Lagerort (zuletzt genutzter oben) → optional Trockenbox.
 - **C – Neue Spule:** Plus → Spule hinzufügen → aus Katalog oder duplizieren → Speichern → Etikett-Vorschau → Drucken.
 - **D – Wiegen:** Scannen → „Wiegen“ → Bruttogewicht → App zieht Leergewicht ab → speichert.
