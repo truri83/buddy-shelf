@@ -1,0 +1,102 @@
+# Modul spools – Funktionssteckbriefe
+
+Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabelle.
+
+## SP-01 Spulenliste
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt (Grundgerüst) – Feinschliff offen |
+| Ziel | Alle aktiven Spulen auf einen Blick, durchsuchbar und gruppierbar. |
+| Ablauf | Tab „Spulen“ → Liste; Suche oben; Gruppierung Alle / Material / Lagerort / Hersteller (wird gemerkt) |
+| Seite | Liste: Suchleiste, Segment, `SpoolCard` (ColorRing, MaterialBadge, Badge, FillBar) |
+| Daten | `GET /inventory/spools`, `/inventory/locations`, `/inventory/assignments` |
+| Plattform | – |
+| Zustände | lädt: Spinner · leer: „Noch nichts da“ · Fehler/offline: Hinweis + „Erneut versuchen“ |
+| Rechte | INVENTORY_READ |
+| Akzeptanz | Spule #4 zeigt „PLA BASIC“, „AMS 2-2“, 454 g · 45 %; Suche „pla black“ findet #4; archivierte Spulen fehlen |
+| Offen | Sortierung (wenigste zuerst wie Spooly?); Ziehen zum Aktualisieren; Desktop: Liste + Detail nebeneinander |
+
+## SP-02 QR-Code scannen
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf (manuelle Eingabe vorhanden) |
+| Ziel | Etikett scannen und sofort die Spule offen haben. |
+| Ablauf | Tab „Scannen“ → Kamera startet → Treffer → Spulendetail |
+| Seite | Scan: Kamerabild, Zielrahmen, Treffer als Karte; Fallback Code-Eingabe |
+| Daten | Parser `core/qr/codes.ts`; Scan-Verteiler `app/scan.ts` → `manifest.scan` |
+| Plattform | `scanner`; Web: Kamera + JS-Bibliothek (Kandidaten: `zxing-wasm`, `qr-scanner`; Safari hat keinen BarcodeDetector) – Adapter in `core/platform/scanner/`; nativ später ML Kit/Vision |
+| Zustände | keine Kamera-Berechtigung → Hinweis + Code-Eingabe; unbekannter Code → Hinweis |
+| Rechte | INVENTORY_READ |
+| Akzeptanz | `bm:s:4`, Bambuddy-Etikett `…/inventory?spool=4` und Einrichtungs-QR werden erkannt; iPhone Safari (HTTPS) und Chrome Desktop |
+| Offen | Bibliothekswahl nach kurzem Test auf dem iPhone; Taschenlampe |
+
+## SP-03 Spule ins AMS legen
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf |
+| Ziel | Nach dem Scan die Spule mit max. 3 Tipps einem AMS-Slot zuweisen. |
+| Ablauf | Detail → „Ins AMS“ → Sheet: Drucker (falls mehrere) → AMS → Slot (belegte Slots zeigen aktuelle Spule) → Bestätigen |
+| Seite | Aktions-Sheet |
+| Daten | `GET /printers/` (Drucker/AMS-Aufbau), `GET/POST /inventory/assignments` |
+| Plattform | – |
+| Zustände | Fehler beim Speichern → Sheet bleibt offen, Hinweis |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | nach Bestätigen zeigt die Karte das neue AMS-Badge; vorherige Spule im Slot erhält ihren Lagerort zurück |
+| Offen | Bambuddy-Verhalten bei belegtem Slot; AMS-Aufbau des X2D aus `/printers/{id}/status` lesen |
+
+## SP-04 Lagerort setzen (Verschieben)
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf |
+| Ziel | Spule zurück ins Regal / in eine Drybox buchen. |
+| Ablauf | Detail → „Verschieben“ → Sheet mit Lagerorten (zuletzt genutzter oben) → Tipp = gespeichert |
+| Seite | Aktions-Sheet |
+| Daten | `GET /inventory/locations`, `PATCH /inventory/spools/{id}` `{ location_id }` |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Ort erscheint sofort in Karte und Detail; offline → Fehlerhinweis, nichts geht verloren |
+| Offen | Lagerorte anlegen in der App oder nur in Bambuddy? |
+
+## SP-05 Wiegen
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf |
+| Ziel | Restgewicht per Küchenwaage korrigieren. |
+| Ablauf | Detail → „Wiegen“ → Bruttogewicht eingeben (Zifferntastatur) → Vorschau Rest → Speichern |
+| Seite | Aktions-Sheet mit Zahlenfeld und Kennzahl |
+| Daten | `PATCH /inventory/spools/{id}` – Berechnung `weightUsedFromScale` (`core/api/types.ts`, getestet) |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | 691 g brutto bei 237 g Leerspule → 454 g Rest |
+| Offen | PATCH `weight_used` vs. Waagen-Endpunkt (siehe BAMBUDDY-API.md) |
+
+## SP-06 Etikett gestalten und drucken
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf |
+| Ziel | Etikett für eine Spule direkt auf dem Niimbot B1 Pro drucken. |
+| Ablauf | Detail → „Etikett“ → Vorschau mit gespeichertem Layout → „Drucken“ (erste Kopplung: Gerät wählen) |
+| Seite | Detail-Sheet: Etikett-Vorschau, Layout-Optionen (Felder an/aus, Schriftgröße, Zweitfarbe Rot), Drucken |
+| Daten | Spule; Layout pro Gerät in `storage`; QR `encodeSpoolCode(id)` |
+| Plattform | `printer.bluetooth` / `printer.usb` (Chrome/Edge), sonst `printer.service` (Phase 2) bzw. PNG-Download als Ersatz |
+| Technik | `core/printing`: Layout in mm → Canvas in Profil-Auflösung (B1 Pro 567 px = 48 mm @ 300 dpi) → `@mmote/niimbluelib` (`NiimbotBluetoothClient` / `NiimbotSerialClient`), Zweifarbdruck schwarz/rot |
+| Rechte | INVENTORY_READ |
+| Akzeptanz | Etikett 50×30 mm mit QR `bm:s:<id>`, #ID, Material, Farbe, Hersteller; Druck vom Windows-PC per Bluetooth und per USB; QR mit iPhone-Kamera lesbar |
+| Offen | Etikettengrößen der vorhandenen Rollen; Layout-Vorlagen |
+
+## SP-07 Spule anlegen / duplizieren
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | entwurf |
+| Ziel | Neue Spule mit wenigen Eingaben anlegen und gleich etikettieren. |
+| Ablauf | Plus → „Spule hinzufügen“ → aus Katalog/Farbkatalog wählen oder bestehende duplizieren → Anzahl → Speichern → Etikett (SP-06) |
+| Seite | Formular |
+| Daten | `GET /inventory/catalog`, `/inventory/colors/*`, `POST /inventory/spools` bzw. `/spools/bulk` |
+| Rechte | INVENTORY_CREATE / UPDATE |
+| Akzeptanz | 3 gleiche Spulen in einem Schritt angelegt, danach Mehrfachdruck möglich |
+| Offen | Welche Pflichtfelder verlangt Bambuddy minimal (material)? |

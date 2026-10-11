@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>buddy-shelf</Name>
+  <Repository>ghcr.io/truri83/buddy-shelf:latest</Repository>
+  <Registry>https://github.com/truri83/buddy-shelf/pkgs/container/buddy-shelf</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Overview>Handy-App für Bambuddy: Spulen scannen, zuweisen und etikettieren. Leitet /api an Bambuddy weiter.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/truri83/buddy-shelf/main/public/icon.svg</Icon>
+  <Config Name="Web UI" Target="8080" Default="8090" Mode="tcp" Type="Port" Display="always" Required="true">8090</Config>
+  <Config Name="BAMBUDDY_URL" Target="BAMBUDDY_URL" Default="http://192.168.1.10:8000" Type="Variable" Display="always" Required="true" Description="Adresse der Bambuddy-Instanz"/>
+  <Config Name="NIIMBLUE_URL" Target="NIIMBLUE_URL" Default="" Type="Variable" Display="advanced" Required="false" Description="Optional: niimblue-node REST-Dienst für Etikettendruck vom iPhone"/>
+  <Config Name="TZ" Target="TZ" Default="Europe/Berlin" Type="Variable" Display="advanced" Required="false"/>
+</Container>

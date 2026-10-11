@@ -1,0 +1,1 @@
+export { spoolsModule } from './manifest';

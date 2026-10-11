@@ -1,0 +1,137 @@
+/*
+ * Design-Tokens – einzige Quelle für Farben, Schrift, Abstände, Radien (Regel 9, UI-Regel 1).
+ * Dunkel ist Referenz; Hell folgt dem System. Ionic-Variablen werden hier auf die Tokens gemappt.
+ */
+:root {
+  /* Flächen & Text */
+  --bs-bg: #f4f5f7;
+  --bs-surface: #ffffff;
+  --bs-surface-2: #eceef1;
+  --bs-border: #dde1e6;
+  --bs-text: #14161a;
+  --bs-text-2: #5b6370;
+
+  /* Akzent & Status */
+  --bs-accent: #e8650a;
+  --bs-accent-contrast: #ffffff;
+  --bs-good: #1f9d57;
+  --bs-warn: #b7791f;
+  --bs-critical: #d4353b;
+
+  /* Materialfamilien (Badge-Farben, in beiden Modi lesbar) */
+  --bs-mat-pla: #1f9d57;
+  --bs-mat-petg: #2f6fdb;
+  --bs-mat-asa: #c2620f;
+  --bs-mat-abs: #b45309;
+  --bs-mat-tpu: #8b3fd1;
+  --bs-mat-pa: #0f8a8a;
+  --bs-mat-other: #6b7280;
+
+  /* Schrift: Systemschrift, 5 Stufen */
+  --bs-font: system-ui, -apple-system, 'SF Pro Text', Roboto, 'Segoe UI', sans-serif;
+  --bs-font-num: var(--bs-font);
+  --bs-fs-largetitle: 28px;
+  --bs-fs-title: 17px;
+  --bs-fs-body: 15px;
+  --bs-fs-caption: 13px;
+  --bs-fs-number: 15px;
+
+  /* 4-Punkt-Raster */
+  --bs-s1: 4px;
+  --bs-s2: 8px;
+  --bs-s3: 12px;
+  --bs-s4: 16px;
+  --bs-s5: 24px;
+  --bs-s6: 32px;
+
+  /* Radien */
+  --bs-r-sm: 6px;
+  --bs-r-md: 12px;
+  --bs-r-lg: 20px;
+
+  /* Tippfläche */
+  --bs-touch: 44px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bs-bg: #0f1114;
+    --bs-surface: #181b20;
+    --bs-surface-2: #22262d;
+    --bs-border: #2c313a;
+    --bs-text: #eef0f3;
+    --bs-text-2: #9aa3b0;
+    --bs-accent: #ff7a1a;
+    --bs-accent-contrast: #14161a;
+    --bs-good: #3ccf7f;
+    --bs-warn: #f2b84b;
+    --bs-critical: #ff5c61;
+    --bs-mat-pla: #3ccf7f;
+    --bs-mat-petg: #6aa1ff;
+    --bs-mat-asa: #ff9a4d;
+    --bs-mat-abs: #f0a35a;
+    --bs-mat-tpu: #c08bff;
+    --bs-mat-pa: #4fd1c5;
+    --bs-mat-other: #9aa3b0;
+    color-scheme: dark;
+  }
+}
+
+/* Ionic auf Tokens mappen */
+:root {
+  --ion-font-family: var(--bs-font);
+  --ion-background-color: var(--bs-bg);
+  --ion-text-color: var(--bs-text);
+  --ion-item-background: var(--bs-surface);
+  --ion-card-background: var(--bs-surface);
+  --ion-toolbar-background: var(--bs-bg);
+  --ion-tab-bar-background: var(--bs-surface);
+  --ion-border-color: var(--bs-border);
+  --ion-color-primary: var(--bs-accent);
+  --ion-color-primary-contrast: var(--bs-accent-contrast);
+  --ion-color-primary-shade: var(--bs-accent);
+  --ion-color-primary-tint: var(--bs-accent);
+  --ion-color-success: var(--bs-good);
+  --ion-color-warning: var(--bs-warn);
+  --ion-color-danger: var(--bs-critical);
+  --ion-color-medium: var(--bs-text-2);
+}
+
+body {
+  background: var(--bs-bg);
+  color: var(--bs-text);
+  font-family: var(--bs-font);
+}
+
+.bs-num {
+  font-family: var(--bs-font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ionic-Flächen konsequent aus Tokens (ersetzt Ionics eigene Dark-Palette) */
+ion-content {
+  --background: var(--bs-bg);
+}
+ion-list.list-inset,
+ion-item {
+  --background: var(--bs-surface);
+}
+ion-list:not(.list-inset) {
+  background: var(--bs-surface);
+}
+ion-item-divider {
+  --background: var(--bs-bg);
+  --color: var(--bs-text-2);
+}
+ion-toolbar {
+  --background: var(--bs-bg);
+  --color: var(--bs-text);
+}
+ion-searchbar {
+  --background: var(--bs-surface-2);
+  --color: var(--bs-text);
+}
+ion-segment {
+  --background: var(--bs-surface-2);
+}

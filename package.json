@@ -1,0 +1,57 @@
+{
+  "name": "buddy-shelf",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Plattformneutrale Handy-App für Bambuddy – Spulen scannen, zuweisen und auf Niimbot-Etikettendruckern etikettieren.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:mock": "vite --mode mock",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "server": "node server/index.js",
+    "api:types": "openapi-typescript \"${BAMBUDDY_URL:-http://localhost:8000}/openapi.json\" -o src/core/api/bambuddy.gen.ts"
+  },
+  "dependencies": {
+    "@fastify/http-proxy": "^11.6.4",
+    "@fastify/static": "^10.1.6",
+    "@ionic/react": "^9.0.7",
+    "@ionic/react-router": "^9.0.7",
+    "@tanstack/react-query": "^5.104.1",
+    "fastify": "^5.12.5",
+    "ionicons": "^8.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^6.30.6",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "msw": "^2.13.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^8.0.16",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}
