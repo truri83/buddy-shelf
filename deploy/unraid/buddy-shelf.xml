@@ -9,7 +9,7 @@
   <ExtraParams>--restart=unless-stopped</ExtraParams>
   <Overview>Handy-App für Bambuddy: Spulen scannen, zuweisen und etikettieren. Leitet /api an Bambuddy weiter.</Overview>
   <Category>Tools:</Category>
-  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <WebUI>https://tower.tail2ef903.ts.net:8444/</WebUI>
   <Icon>https://raw.githubusercontent.com/truri83/buddy-shelf/main/public/icon.svg</Icon>
   <Config Name="Web UI" Target="8080" Default="8096" Mode="tcp" Type="Port" Display="always" Required="true">8096</Config>
   <Config Name="BAMBUDDY_URL" Target="BAMBUDDY_URL" Default="http://192.168.178.50:8008" Type="Variable" Display="always" Required="true" Description="Adresse der Bambuddy-Instanz">http://192.168.178.50:8008</Config>

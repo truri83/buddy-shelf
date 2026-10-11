@@ -135,3 +135,8 @@ ion-searchbar {
 ion-segment {
   --background: var(--bs-surface-2);
 }
+ion-segment-button {
+  /* Ionics Standardfarbe ist im Dunkelmodus auf --bs-surface-2 kaum lesbar */
+  --color: var(--bs-text-2);
+  --color-checked: var(--bs-accent);
+}

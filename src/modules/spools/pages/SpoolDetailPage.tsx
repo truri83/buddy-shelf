@@ -6,6 +6,7 @@ import { fillRatio, remainingGrams } from '@/core/api';
 import { t } from '@/core/i18n';
 import { encodeSpoolCode } from '@/core/qr/codes';
 import { ColorRing, FillBar, MaterialBadge, StateView } from '@/core/ui';
+import { LabelSheet } from '../components/LabelSheet';
 import { useLocations, useSpool } from '../hooks/useSpools';
 import { isLow, locationName } from '../logic';
 
@@ -16,6 +17,7 @@ export function SpoolDetailPage() {
   const spool = useSpool(spoolId);
   const locations = useLocations();
   const [toast, setToast] = useState(false);
+  const [labelOpen, setLabelOpen] = useState(false);
 
   const s = spool.data;
   const name = s ? (s.color_name ?? s.subtype ?? s.material) : '';
@@ -64,7 +66,7 @@ export function SpoolDetailPage() {
                   key={key}
                   fill="outline"
                   expand="block"
-                  onClick={() => setToast(true)}
+                  onClick={() => (key === 'spools.action.label' ? setLabelOpen(true) : setToast(true))}
                   style={{ minHeight: 'var(--bs-touch)', '--padding-start': '4px', '--padding-end': '4px' } as CSSProperties}
                 >
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
@@ -97,6 +99,7 @@ export function SpoolDetailPage() {
                 </IonLabel>
               </IonItem>
             </IonList>
+            <LabelSheet spools={[s]} isOpen={labelOpen} onDismiss={() => setLabelOpen(false)} />
             <IonToast isOpen={toast} message={t('spools.action.soon')} duration={2200} onDidDismiss={() => setToast(false)} />
           </>
         )}

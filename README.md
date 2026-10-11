@@ -26,8 +26,8 @@ docker build -t buddy-shelf .
 docker run -p 8080:8080 -e BAMBUDDY_URL=http://<bambuddy>:8000 buddy-shelf
 ```
 
-Unraid-Vorlage: `deploy/unraid/buddy-shelf.xml`. HTTPS (für Kamera und Bluetooth nötig) z. B. über
-`tailscale serve`.
+Unraid-Vorlage: `deploy/unraid/buddy-shelf.xml`. HTTPS (für Kamera und Bluetooth nötig) über
+`tailscale serve --bg --https=8444 http://127.0.0.1:8096`. Updates: `scripts/deploy.sh` (siehe CLAUDE.md).
 
 ## Doku
 - [Konzept](docs/KONZEPT.md) · [Architektur & Regeln](docs/ARCHITEKTUR.md) · [Design-System](docs/DESIGN-SYSTEM.md)

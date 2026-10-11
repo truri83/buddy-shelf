@@ -77,16 +77,16 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf |
-| Ziel | Etikett für eine Spule direkt auf dem Niimbot B1 Pro drucken. |
-| Ablauf | Detail → „Etikett“ → Vorschau mit gespeichertem Layout → „Drucken“ (erste Kopplung: Gerät wählen) |
-| Seite | Detail-Sheet: Etikett-Vorschau, Layout-Optionen (Felder an/aus, Schriftgröße, Zweitfarbe Rot), Drucken |
-| Daten | Spule; Layout pro Gerät in `storage`; QR `encodeSpoolCode(id)` |
-| Plattform | `printer.bluetooth` / `printer.usb` (Chrome/Edge), sonst `printer.service` (Phase 2) bzw. PNG-Download als Ersatz |
-| Technik | `core/printing`: Layout in mm → Canvas in Profil-Auflösung (B1 Pro 567 px = 48 mm @ 300 dpi) → `@mmote/niimbluelib` (`NiimbotBluetoothClient` / `NiimbotSerialClient`), Zweifarbdruck schwarz/rot |
+| Status | umgesetzt (Stufe 1: feste Vorlagen) – Druck am Gerät noch von Hand zu prüfen |
+| Ziel | Etikett für eine Spule direkt auf dem Niimbot B1 Pro drucken; Stapeldruck vorbereitet. |
+| Ablauf | Detail → „Etikett“ → Sheet: Vorschau, Vorlage, Anzahl → „Drucker per Bluetooth/USB“ (einmal koppeln) → „Drucken“; Ersatz „Als PNG speichern“ |
+| Seite | `modules/spools/components/LabelSheet.tsx` (Detail-Sheet, Aktionen in der Daumenzone) |
+| Vorlagen | Format = NiimBlue-Export (`ExportedLabelTemplate`: Fabric-JSON + Etikett in Druckpixeln), Platzhalter `{id} {code} {material} {color} {brand} {weight} {dt}`. Eingebaut (`core/printing/templates.ts`, 567×354 px = 48×30 mm @300 dpi): „Standard“, „Nummer rot“, „AMS-Slot“ (für SP-08). Gewählte Vorlage wird gemerkt. |
+| Technik | `core/printing`: `template.ts` (Platzhalter, Import-Prüfung), `postprocess.ts` (Schwelle Weiß/Schwarz/Rot), `engine/` (nachgeladen, ~130 KB gz): Fabric 7 + QR-/Textbox-Objekte aus NiimBlue, `renderLabel` → Canvas, `printer.ts` → niimbluelib (`D110M_V4` beim B1 Pro, Rot = `DoubleColor`). `useLabelPrinter()` hält Verbindung und Status. |
+| Plattform | `printer.bluetooth` / `printer.usb` (Chrome/Edge); sonst Hinweis + PNG |
 | Rechte | INVENTORY_READ |
-| Akzeptanz | Etikett 50×30 mm mit QR `bm:s:<id>`, #ID, Material, Farbe, Hersteller; Druck vom Windows-PC per Bluetooth und per USB; QR mit iPhone-Kamera lesbar |
-| Offen | Etikettengrößen der vorhandenen Rollen; Layout-Vorlagen |
+| Geprüft | QR aller Vorlagen per Decoder gelesen (`bm:s:1234`, `bm:t:1:0:2`); Druckbild nur exakte Farben; niimbluelib kodiert ein- und zweifarbig; Sheet hell/dunkel/Desktop; Produktions-Build lädt den Druckteil |
+| Offen | Druck am B1 Pro per Bluetooth und USB von Hand prüfen; Dichte/Etikettentyp einstellbar? Eigene Vorlagen von niim.blue importieren (Stufe 2/3, `parseTemplate` vorhanden); Mehrfachauswahl in der Liste (Ablauf E); iPhone-Druck über Druckdienst (Phase 2) |
 
 ## SP-07 Spule anlegen / duplizieren
 

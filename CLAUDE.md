@@ -43,7 +43,9 @@ Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschre
 - `npm run build && npm run server` – Produktionsbuild + Server (Proxy /api → Bambuddy)
 
 ## Deploy (Unraid, Ablauf wie SeestarManager)
-- Prod: `http://100.101.172.117:8096` (Container `buddy-shelf`, Vorlage `deploy/unraid/buddy-shelf.xml`).
+- Prod: `https://tower.tail2ef903.ts.net:8444` (HTTPS per `tailscale serve --https=8444` → `127.0.0.1:8096`),
+  intern `http://100.101.172.117:8096`. Container `buddy-shelf`, Vorlage `deploy/unraid/buddy-shelf.xml`.
+- Bambuddy-Schlüssel liegt im Container (`BAMBUDDY_API_KEY`); Geräte brauchen keinen eigenen.
 - Push auf `main` → CI baut `ghcr.io/truri83/buddy-shelf:latest` + `:<sha>` (mit `BUILD_SHA`).
 - Dann `scripts/deploy.sh`: wartet auf CI, ruft `POST /api/admin/self-recreate` (Bearer-Token), pollt
   `/healthz` bis `sha` = HEAD. Code: `server/admin.js` (übernommen aus Seestar `admin-api.ts`).
