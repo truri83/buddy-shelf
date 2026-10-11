@@ -114,7 +114,7 @@ export function OverviewPage() {
                       <ColorRing rgba={s?.rgba ?? null} fill={s ? fillRatio(s) : 0} size={32} label={s?.color_name ?? `#${a.spool_id}`} />
                     </div>
                     <IonLabel>
-                      #{a.spool_id} {s ? (s.color_name ?? s.material) : ''}
+                      #{a.spool_id} {s ? (s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')) : ''}
                       <p>{assignmentLabel(a)}</p>
                     </IonLabel>
                     {s && (
@@ -140,7 +140,7 @@ export function OverviewPage() {
                     <ColorRing rgba={s.rgba} fill={fillRatio(s)} size={32} label={s.color_name ?? s.material} />
                   </div>
                   <IonLabel>
-                    #{s.id} {s.color_name ?? s.material}
+                    #{s.id} {s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')}
                     <p>{[s.material, s.subtype].filter(Boolean).join(' ')}{s.brand ? ` · ${s.brand}` : ''}</p>
                   </IonLabel>
                   <div slot="end">

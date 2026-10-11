@@ -43,6 +43,53 @@ export function getQrDetector(): Promise<Detector> {
   return detectorPromise;
 }
 
+/*
+ * Kamera kurz „warm“ halten: iOS-Homescreen-Apps fragen bei jedem getUserMedia erneut nach der Erlaubnis.
+ * Wird der Strom innerhalb von 60 s wieder gebraucht (Tab-Wechsel, nächster Scan), nutzen wir ihn weiter –
+ * so kommt die Abfrage höchstens einmal je Sitzung. Im Hintergrund wird sofort freigegeben (Datenschutz, Akku).
+ */
+const LINGER_MS = 60_000;
+let shared: { stream: MediaStream; users: number; timer?: ReturnType<typeof setTimeout> } | null = null;
+
+const live = (s: MediaStream) => s.getVideoTracks().some((t) => t.readyState === 'live');
+
+function stopShared() {
+  if (!shared) return;
+  clearTimeout(shared.timer);
+  shared.stream.getTracks().forEach((t) => t.stop());
+  shared = null;
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && shared && shared.users === 0) stopShared();
+  });
+}
+
+async function acquireCamera(): Promise<MediaStream> {
+  if (shared && live(shared.stream)) {
+    clearTimeout(shared.timer);
+    shared.users += 1;
+    return shared.stream;
+  }
+  stopShared();
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: false,
+    // 640×480 reicht für QR auf Etiketten-Distanz und spart Rechenzeit/Akku gegenüber HD
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 } },
+  });
+  shared = { stream, users: 1 };
+  return stream;
+}
+
+function releaseCamera(stream: MediaStream) {
+  if (!shared || shared.stream !== stream) return void stream.getTracks().forEach((t) => t.stop());
+  shared.users = Math.max(0, shared.users - 1);
+  if (shared.users > 0) return;
+  if (document.hidden) return stopShared();
+  shared.timer = setTimeout(stopShared, LINGER_MS);
+}
+
 function toScannerError(e: unknown): ScannerError {
   const name = (e as { name?: string })?.name;
   if (name === 'NotAllowedError' || name === 'SecurityError') return new ScannerError('denied');
@@ -61,19 +108,15 @@ export async function startScanner(video: HTMLVideoElement, onCode: (text: strin
 
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      // 640×480 reicht für QR auf Etiketten-Distanz und spart Rechenzeit/Akku gegenüber HD
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 } },
-    });
+    stream = await acquireCamera();
   } catch (e) {
     throw toScannerError(e);
   }
 
   const release = () => {
-    stream.getTracks().forEach((t) => t.stop());
     // nur das eigene Bild entfernen – ein inzwischen gestarteter Scanner nutzt dasselbe Video-Element
     if (video.srcObject === stream) video.srcObject = null;
+    releaseCamera(stream);
   };
   if (signal?.aborted) {
     release();

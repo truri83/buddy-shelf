@@ -1,17 +1,38 @@
-import { IonButton, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonListHeader, IonNote, IonPage, IonTitle, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import {
+  IonAccordion,
+  IonAccordionGroup,
+  IonButton,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonListHeader,
+  IonNote,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  useIonViewWillEnter,
+} from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
+import { alertCircle, checkmarkCircle, cloudOfflineOutline } from 'ionicons/icons';
 import { useState } from 'react';
-import { configureApi, getApiConfig, isTestedVersion, useBambuddyVersion } from '@/core/api';
+import { ApiError, configureApi, getApiConfig, isTestedVersion, useBambuddyVersion, useMe } from '@/core/api';
 import { t } from '@/core/i18n';
 import { can, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
 
 const CAPS: Capability[] = ['scanner', 'printer.bluetooth', 'printer.usb', 'printer.service', 'nfc', 'push', 'share', 'haptics'];
 
+/** Kleine Zweitzeile im Stil der iOS-Einstellungen. */
+const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
+
+/** „Mehr“: Aktionen der Module, Verbindungsstatus, Erweitert (Adresse/Schlüssel), Über, Diagnose. */
 export function SettingsPage() {
-  const current = getApiConfig();
-  const [url, setUrl] = useState(current.baseUrl);
-  const [key, setKey] = useState(current.apiKey ?? '');
+  const [url, setUrl] = useState(() => getApiConfig().baseUrl);
+  const [key, setKey] = useState(() => getApiConfig().apiKey ?? '');
   const [saved, setSaved] = useState(false);
   useIonViewWillEnter(() => {
     const c = getApiConfig();
@@ -21,6 +42,7 @@ export function SettingsPage() {
   });
   const qc = useQueryClient();
   const version = useBambuddyVersion();
+  const me = useMe();
   const actions = modules.flatMap((m) => m.quickActions ?? []);
 
   const save = () => {
@@ -31,6 +53,18 @@ export function SettingsPage() {
     void qc.invalidateQueries();
   };
 
+  // Verbindungsstatus: angemeldet / Schlüssel fehlt / nicht erreichbar
+  const authFailed = me.error instanceof ApiError && (me.error.status === 401 || me.error.status === 403);
+  const status = me.data
+    ? { icon: checkmarkCircle, color: 'var(--bs-good)', title: t('settings.connected', { user: me.data.username }) }
+    : authFailed
+      ? { icon: alertCircle, color: 'var(--bs-warn)', title: t('settings.authMissing') }
+      : me.isError
+        ? { icon: cloudOfflineOutline, color: 'var(--bs-critical)', title: t('state.offline') }
+        : null;
+  const v = version.data?.version;
+  const ownKey = !!getApiConfig().apiKey;
+
   return (
     <IonPage>
       <IonHeader>
@@ -39,73 +73,85 @@ export function SettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <IonList inset>
-          <IonListHeader>{t('settings.server')}</IonListHeader>
-          <IonItem>
-            <IonInput
-              label={t('settings.url')}
-              labelPlacement="stacked"
-              placeholder={t('settings.urlHint')}
-              value={url}
-              onIonInput={(e) => setUrl(String(e.detail.value ?? ''))}
-            />
-          </IonItem>
-          <IonItem>
-            <IonInput
-              label={t('settings.apiKey')}
-              labelPlacement="stacked"
-              type="password"
-              placeholder={t('settings.apiKeyHint')}
-              value={key}
-              onIonInput={(e) => setKey(String(e.detail.value ?? ''))}
-            />
-          </IonItem>
-          <IonItem lines="none">
-            <IonNote>
-              {t('settings.urlHint')} · {t('settings.scanConfig')}
-            </IonNote>
-          </IonItem>
-        </IonList>
-        <div className="ion-padding-horizontal">
-          <IonButton expand="block" onClick={save}>
-            {saved ? t('settings.saved') : t('settings.save')}
-          </IonButton>
-        </div>
         {actions.length > 0 && (
           <IonList inset>
-            <IonListHeader>{t('settings.actions')}</IonListHeader>
             {actions.map((a) => (
               <IonItem key={a.id} routerLink={a.href} detail>
-                <IonIcon icon={a.icon} slot="start" aria-hidden />
+                <IonIcon icon={a.icon} slot="start" color="primary" aria-hidden />
                 <IonLabel>{t(a.label)}</IonLabel>
               </IonItem>
             ))}
           </IonList>
         )}
-        {/* Regel 14: Bambuddy-Version prüfen – unbekannt = Hinweis, kein Fehler */}
-        {version.data && (
-          <IonList inset>
-            <IonListHeader>{t('settings.bambuddy')}</IonListHeader>
-            <IonItem lines="none">
-              <IonNote color={isTestedVersion(version.data.version) ? undefined : 'warning'}>
-                {isTestedVersion(version.data.version)
-                  ? t('settings.version', { v: version.data.version })
-                  : t('settings.versionUntested', { v: version.data.version })}
-              </IonNote>
-            </IonItem>
-          </IonList>
-        )}
+
         <IonList inset>
-          <IonListHeader>{t('settings.capabilities')}</IonListHeader>
-          {CAPS.map((c) => (
-            <IonItem key={c}>
-              <IonLabel className="bs-num">{c}</IonLabel>
-              <IonLabel slot="end" color={can(c) ? 'success' : 'medium'}>
-                {can(c) ? t('common.yes') : t('common.no')}
-              </IonLabel>
-            </IonItem>
-          ))}
+          <IonListHeader>{t('settings.connection')}</IonListHeader>
+          <IonItem lines="none">
+            {status && <IonIcon icon={status.icon} slot="start" style={{ color: status.color }} aria-hidden />}
+            <IonLabel>
+              {status?.title ?? t('state.loading')}
+              <div style={sub}>
+                {v ? (isTestedVersion(v) ? t('settings.version', { v }) : t('settings.versionUntested', { v })) : 'Bambuddy'}
+                {' · '}
+                {ownKey ? t('settings.ownKey') : t('settings.serverKey')}
+              </div>
+            </IonLabel>
+          </IonItem>
         </IonList>
+
+        <IonAccordionGroup expand="inset">
+          <IonAccordion value="advanced">
+            <IonItem slot="header">
+              <IonLabel>{t('settings.advanced')}</IonLabel>
+            </IonItem>
+            <div slot="content">
+              <IonItem>
+                <IonInput label={t('settings.url')} labelPlacement="stacked" placeholder="–" value={url} onIonInput={(e) => setUrl(String(e.detail.value ?? ''))} />
+              </IonItem>
+              <IonItem>
+                <IonInput
+                  label={t('settings.apiKey')}
+                  labelPlacement="stacked"
+                  type="password"
+                  placeholder="–"
+                  value={key}
+                  onIonInput={(e) => setKey(String(e.detail.value ?? ''))}
+                />
+              </IonItem>
+              <IonItem lines="none">
+                <IonLabel>
+                  <div style={sub}>{t('settings.advancedHint')}</div>
+                </IonLabel>
+              </IonItem>
+              <div style={{ padding: '0 var(--bs-s4) var(--bs-s4)', background: 'var(--bs-surface)' }}>
+                <IonButton expand="block" onClick={save}>
+                  {saved ? t('settings.saved') : t('settings.save')}
+                </IonButton>
+              </div>
+            </div>
+          </IonAccordion>
+
+          <IonAccordion value="diagnose">
+            <IonItem slot="header">
+              <IonLabel>{t('settings.capabilities')}</IonLabel>
+            </IonItem>
+            <div slot="content">
+              {CAPS.map((c) => (
+                <IonItem key={c}>
+                  <IonLabel>{t(`cap.${c}`)}</IonLabel>
+                  <IonNote slot="end" color={can(c) ? 'success' : 'medium'}>
+                    {can(c) ? t('common.yes') : t('common.no')}
+                  </IonNote>
+                </IonItem>
+              ))}
+            </div>
+          </IonAccordion>
+        </IonAccordionGroup>
+
+        <p style={{ textAlign: 'center', color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', padding: 'var(--bs-s4)' }}>
+          {t('app.name')} {__APP_VERSION__}
+          {__BUILD_SHA__ ? ` · ${__BUILD_SHA__.slice(0, 7)}` : ''}
+        </p>
       </IonContent>
     </IonPage>
   );

@@ -27,7 +27,8 @@ export function SpoolDetailPage() {
   const ams = assignment ? assignmentLabel(assignment) : null;
 
   const s = spool.data;
-  const name = s ? (s.color_name ?? s.subtype ?? s.material) : '';
+  // ohne Farbnamen: „ASA Basic“ statt nur „Basic“
+  const name = s ? (s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')) : '';
 
   return (
     <IonPage>

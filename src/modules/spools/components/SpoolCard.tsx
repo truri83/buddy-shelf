@@ -14,7 +14,7 @@ interface Props {
 export function SpoolCard({ spool, location, ams }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
-  const name = spool.color_name ?? spool.subtype ?? spool.material;
+  const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   return (
     <IonItem routerLink={`/spools/${spool.id}`} detail={false} lines="full">
       <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center', width: '100%', padding: 'var(--bs-s3) 0' }}>

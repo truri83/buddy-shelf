@@ -4,7 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+ARG BUILD_SHA=
+RUN BUILD_SHA=${BUILD_SHA} npm run build
 
 # Laufzeit: nur Server + gebaute App
 FROM node:22-alpine

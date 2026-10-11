@@ -151,6 +151,19 @@ ion-segment-button {
 }
 ion-list-header {
   --color: var(--bs-text-2);
+  min-height: 0;
+  padding-top: var(--bs-s3);
+  font-size: var(--bs-fs-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+ion-list-header ion-label {
+  margin: var(--bs-s1) 0;
+}
+/* Aufklappbare Gruppen wie eine Inset-Liste */
+ion-accordion-group.accordion-group-expand-inset > ion-accordion {
+  --ion-item-background: var(--bs-surface);
 }
 /* iOS: gewähltes Segment ist eine Fläche – Akzent mit Kontrastschrift statt Grau mit Akzentschrift */
 :root.ios ion-segment-button {
