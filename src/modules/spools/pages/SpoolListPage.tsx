@@ -1,4 +1,23 @@
-import { IonContent, IonHeader, IonItemDivider, IonLabel, IonList, IonPage, IonSearchbar, IonSegment, IonSegmentButton, IonTitle, IonToolbar } from '@ionic/react';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItemDivider,
+  IonLabel,
+  IonList,
+  IonPage,
+  IonRefresher,
+  IonRefresherContent,
+  IonSearchbar,
+  IonSegment,
+  IonSegmentButton,
+  IonTitle,
+  IonToolbar,
+  type RefresherEventDetail,
+} from '@ionic/react';
+import { swapVerticalOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { ApiError } from '@/core/api';
 import { t } from '@/core/i18n';
@@ -6,7 +25,7 @@ import { storage } from '@/core/platform';
 import { StateView } from '@/core/ui';
 import { SpoolCard } from '../components/SpoolCard';
 import { useAssignments, useLocations, useSpools } from '../hooks/useSpools';
-import { amsLabel, groupSpools, locationName, matchesSearch, type GroupBy } from '../logic';
+import { amsLabel, groupSpools, locationName, matchesSearch, sortSpools, type GroupBy, type SortBy } from '../logic';
 
 /** Vorlage „Liste“: Kopf mit Suche, Filter-Chips, gruppierte Karten, Leer-Zustand. */
 export function SpoolListPage() {
@@ -15,56 +34,72 @@ export function SpoolListPage() {
   const assignments = useAssignments();
   const [query, setQuery] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
+  const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
 
   const groups = useMemo(() => {
-    const list = (spools.data ?? []).filter((s) => matchesSearch(s, query));
+    const list = sortSpools(
+      (spools.data ?? []).filter((s) => matchesSearch(s, query)),
+      sortBy,
+    );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy]);
+  }, [spools.data, locations.data, query, groupBy, sortBy]);
+
+  const toggleSort = () => {
+    const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';
+    setSortBy(next);
+    storage.set('spools.sortBy', next);
+  };
+
+  const refresh = async (e: CustomEvent<RefresherEventDetail>) => {
+    await Promise.all([spools.refetch(), locations.refetch(), assignments.refetch()]);
+    e.detail.complete();
+  };
 
   const amsBySpool = useMemo(() => new Map((assignments.data ?? []).map((a) => [a.spool_id, amsLabel(a)])), [assignments.data]);
   const count = groups.reduce((n, g) => n + g.spools.length, 0);
 
   return (
     <IonPage>
-      <IonHeader translucent>
+      {/* Suche und Gruppierung im festen Kopf: collapse="condense" zeigt Ionic nur im iOS-Stil an */}
+      <IonHeader>
         <IonToolbar>
           <IonTitle>{t('spools.title')}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
+              <IonIcon slot="start" icon={swapVerticalOutline} />
+              {t(`spools.sort.${sortBy}`)}
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+        <IonToolbar>
+          <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder={t('spools.search')} />
+        </IonToolbar>
+        <IonToolbar>
+          <IonSegment
+            value={groupBy}
+            scrollable
+            onIonChange={(e) => {
+              const v = e.detail.value as GroupBy;
+              setGroupBy(v);
+              storage.set('spools.groupBy', v);
+            }}
+          >
+            {(['none', 'material', 'location', 'brand'] as const).map((g) => (
+              <IonSegmentButton key={g} value={g}>
+                <IonLabel>{t(`spools.group.${g}`)}</IonLabel>
+              </IonSegmentButton>
+            ))}
+          </IonSegment>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen>
-        <IonHeader collapse="condense">
-          <IonToolbar>
-            <IonTitle size="large">{t('spools.title')}</IonTitle>
-          </IonToolbar>
-          <IonToolbar>
-            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder={t('spools.search')} />
-          </IonToolbar>
-          <IonToolbar>
-            <IonSegment
-              value={groupBy}
-              scrollable
-              onIonChange={(e) => {
-                const v = e.detail.value as GroupBy;
-                setGroupBy(v);
-                storage.set('spools.groupBy', v);
-              }}
-            >
-              {(['none', 'material', 'location', 'brand'] as const).map((g) => (
-                <IonSegmentButton key={g} value={g}>
-                  <IonLabel>{t(`spools.group.${g}`)}</IonLabel>
-                </IonSegmentButton>
-              ))}
-            </IonSegment>
-          </IonToolbar>
-        </IonHeader>
-
+      <IonContent>
+        <IonRefresher slot="fixed" onIonRefresh={(e) => void refresh(e)}>
+          <IonRefresherContent />
+        </IonRefresher>
         {spools.isPending ? (
           <StateView state="loading" />
         ) : spools.isError ? (
-          <StateView
-            state={spools.error instanceof ApiError ? 'error' : 'offline'}
-            onRetry={() => void spools.refetch()}
-          />
+          <StateView state={spools.error instanceof ApiError ? 'error' : 'offline'} onRetry={() => void spools.refetch()} />
         ) : count === 0 ? (
           <StateView state="empty" />
         ) : (

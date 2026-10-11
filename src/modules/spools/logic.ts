@@ -35,6 +35,14 @@ export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[],
   return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'de')).map(([key, list]) => ({ key, title: key, spools: list }));
 }
 
+export type SortBy = 'id' | 'remaining';
+
+/** Sortierung innerhalb der Gruppen: nach Nummer oder wenigster Rest zuerst (wie Spooly). */
+export function sortSpools(list: Spool[], by: SortBy): Spool[] {
+  const rest = (s: Spool) => s.label_weight - s.weight_used;
+  return [...list].sort((a, b) => (by === 'remaining' ? rest(a) - rest(b) || a.id - b.id : a.id - b.id));
+}
+
 export function matchesSearch(s: Spool, q: string): boolean {
   if (!q) return true;
   const hay = [s.id, s.material, s.subtype, s.color_name, s.brand, s.material_number].join(' ').toLowerCase();

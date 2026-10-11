@@ -6,7 +6,7 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | umgesetzt (Grundgerüst) – Feinschliff offen |
+| Status | umgesetzt – Sortierung (Nr. / wenigster Rest, gemerkt) und Ziehen zum Aktualisieren ergänzt |
 | Ziel | Alle aktiven Spulen auf einen Blick, durchsuchbar und gruppierbar. |
 | Ablauf | Tab „Spulen“ → Liste; Suche oben; Gruppierung Alle / Material / Lagerort / Hersteller (wird gemerkt) |
 | Seite | Liste: Suchleiste, Segment, `SpoolCard` (ColorRing, MaterialBadge, Badge, FillBar) |
@@ -15,13 +15,13 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 | Zustände | lädt: Spinner · leer: „Noch nichts da“ · Fehler/offline: Hinweis + „Erneut versuchen“ |
 | Rechte | INVENTORY_READ |
 | Akzeptanz | Spule #4 zeigt „PLA BASIC“, „AMS 2-2“, 454 g · 45 %; Suche „pla black“ findet #4; archivierte Spulen fehlen |
-| Offen | Sortierung (wenigste zuerst wie Spooly?); Ziehen zum Aktualisieren; Desktop: Liste + Detail nebeneinander |
+| Offen | Desktop: Liste + Detail nebeneinander |
 
 ## SP-02 QR-Code scannen
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | entwurf (manuelle Eingabe vorhanden) |
+| Status | umgesetzt – Kamera am Gerät (iPhone Safari, Chrome) von Hand prüfen |
 | Ziel | Etikett scannen und sofort die Spule offen haben. |
 | Ablauf | Tab „Scannen“ → Kamera startet → Treffer → Spulendetail |
 | Seite | Scan: Kamerabild, Zielrahmen, Treffer als Karte; Fallback Code-Eingabe |
@@ -30,7 +30,9 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 | Zustände | keine Kamera-Berechtigung → Hinweis + Code-Eingabe; unbekannter Code → Hinweis |
 | Rechte | INVENTORY_READ |
 | Akzeptanz | `bm:s:4`, Bambuddy-Etikett `…/inventory?spool=4` und Einrichtungs-QR werden erkannt; iPhone Safari (HTTPS) und Chrome Desktop |
-| Offen | Bibliothekswahl nach kurzem Test auf dem iPhone; Taschenlampe |
+| Technik | `core/platform/scanner.ts`: getUserMedia (Rückkamera) + `BarcodeDetector`; wo er fehlt (Safari, Chrome/Windows) Ponyfill `barcode-detector` (zxing-wasm, .wasm selbst ausgeliefert – kein CDN, offline). Kamera nur bei sichtbarem Scan-Tab; Licht-Knopf, wenn die Kamera Taschenlampe kann; Haptik bei Treffer |
+| Geprüft | zxing-wasm liest gerenderte Etiketten auch verkleinert/unscharf; lädt in ~30 ms |
+| Offen | – |
 
 ## SP-03 Spule ins AMS legen
 
