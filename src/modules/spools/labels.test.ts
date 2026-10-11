@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Spool } from '@/core/api';
-import { fillVariables, SPOOL_TEMPLATE } from '@/core/printing';
+import { fillVariables, SPOOL_TEMPLATE, SPOOL_TEMPLATES } from '@/core/printing';
 import { spoolLabelVariables } from './labels';
 
 const spool = {
@@ -13,6 +13,15 @@ describe('Spulen-Etikett', () => {
     expect(vars).toMatchObject({ id: '4', code: 'bm:s:4', material: 'PLA Basic', color: 'Black', brand: 'Bambu Lab', weight: '1000 g' });
     for (const o of SPOOL_TEMPLATE.canvas.objects) {
       expect(fillVariables(String(o.text), vars)).not.toMatch(/{\w+}/);
+    }
+  });
+  it('jede Spulen-Vorlage hat nur bekannte Platzhalter und einen QR mit bm:s:<id>', () => {
+    const vars = spoolLabelVariables({ ...spool, core_weight: 237, material_number: null });
+    expect(vars).toMatchObject({ core: '237 g', article: '–' });
+    for (const tpl of SPOOL_TEMPLATES) {
+      for (const o of tpl.canvas.objects) expect(fillVariables(String(o.text), vars), tpl.id).not.toMatch(/{\w+}/);
+      const qr = tpl.canvas.objects.find((o) => o.type === 'QRCode');
+      expect(fillVariables(String(qr?.text), vars), tpl.id).toBe('bm:s:4');
     }
   });
   it('QR enthält bm:s:<id>', () => {

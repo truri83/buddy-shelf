@@ -26,20 +26,28 @@ const qr = (text: string) => ({
   qrVersion: 0,
 });
 
-const text = (t: string, top: number, fontSize: number, opts: { bold?: boolean; fill?: string } = {}) => ({
+interface TextOpts {
+  bold?: boolean;
+  fill?: string;
+  left?: number;
+  width?: number;
+  align?: 'left' | 'center';
+}
+
+const text = (t: string, top: number, fontSize: number, opts: TextOpts = {}) => ({
   type: 'Textbox',
   version: '7.4.0',
   originX: 'left',
   originY: 'top',
-  left: TEXT_X,
+  left: opts.left ?? TEXT_X,
   top,
-  width: W - TEXT_X - 12,
+  width: opts.width ?? W - (opts.left ?? TEXT_X) - 12,
   text: t,
   fontSize,
   fontFamily: FONT,
   fontWeight: opts.bold ? 'bold' : 'normal',
   fill: opts.fill ?? '#000000',
-  textAlign: 'left',
+  textAlign: opts.align ?? 'left',
   lineHeight: 1,
   // NiimBlue: Schrift schrumpft, bis der Text in die Breite passt
   fontAutoSize: true,
@@ -78,5 +86,34 @@ export const SLOT_TEMPLATE: LabelTemplate = {
   },
 };
 
-export const SPOOL_TEMPLATES = [SPOOL_TEMPLATE, SPOOL_TEMPLATE_RED];
+/**
+ * Nach Vorbild Bambu-Etikett (bambu-labelgen.socuul.dev): links Material groß, Farbe, kleine
+ * Datentabelle, Hersteller als Schriftzug unten; rechts QR mit Spulennummer statt Farbkreis.
+ */
+const ROW = { label: { left: 16, width: 150 }, value: { left: 170, width: 170 } };
+const row = (label: string, value: string, top: number) => [
+  text(label, top, 26, ROW.label),
+  text(value, top, 26, { ...ROW.value, bold: true }),
+];
+export const SPOOL_TEMPLATE_BAMBU: LabelTemplate = {
+  id: 'spool-bambu',
+  title: 'Bambu-Stil',
+  label: { printDirection: 'top', size: { width: W, height: H } },
+  canvas: {
+    version: '7.4.0',
+    objects: [
+      text('{material}', 10, 56, { bold: true, left: 16, width: 330 }),
+      text('{color}', 76, 32, { left: 16, width: 330 }),
+      ...row('Netto', '{weight}', 128),
+      ...row('Leerspule', '{core}', 162),
+      ...row('Art.-Nr.', '{article}', 196),
+      text('{brand}', 262, 64, { bold: true, left: 16, width: 330 }),
+      // 21 Module × 9 px = 189 px in 205-px-Box (Ruhezone ≥ 1 Modul, ~0,8 mm je Modul)
+      { ...qr('bm:s:{id}'), left: 350, top: 12, width: 205, height: 205 },
+      text('#{id}', 236, 72, { bold: true, left: 350, width: 205, align: 'center' }),
+    ],
+  },
+};
+
+export const SPOOL_TEMPLATES = [SPOOL_TEMPLATE, SPOOL_TEMPLATE_RED, SPOOL_TEMPLATE_BAMBU];
 export const BUILTIN_TEMPLATES = [...SPOOL_TEMPLATES, SLOT_TEMPLATE];
