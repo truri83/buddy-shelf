@@ -156,6 +156,9 @@ export interface AmsTray {
   tray_sub_brands: string | null;
   remain: number | null;
   state: number | null;
+  /** RFID der Bambu-Spule (leer/Nullen = kein Chip) */
+  tag_uid?: string | null;
+  tray_uuid?: string | null;
 }
 
 export interface AmsUnit {

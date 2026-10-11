@@ -35,8 +35,8 @@ export const assignments: SpoolAssignment[] = [
 
 export const printers: Printer[] = [{ id: 1, name: 'X2D', model: 'X2D', is_active: true }];
 
-const tray = (id: number, type: string | null, sub: string | null, color: string | null, remain: number | null) => ({
-  id, tray_type: type, tray_sub_brands: sub, tray_color: color, remain, state: type ? 11 : 9,
+const tray = (id: number, type: string | null, sub: string | null, color: string | null, remain: number | null, tag: string | null = null) => ({
+  id, tray_type: type, tray_sub_brands: sub, tray_color: color, remain, state: type ? 11 : 9, tag_uid: tag, tray_uuid: tag ? `${tag}0000000000000000` : null,
 });
 
 /** X2D mit zwei AMS (je 4 Slots) und zwei externen Halterungen (254/255). */
@@ -47,7 +47,7 @@ export const printerStatus: Record<number, PrinterStatus> = {
     connected: true,
     ams: [
       { id: 0, is_ams_ht: false, tray: [tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80), tray(1, null, null, null, null), tray(2, 'ASA', 'ASA', 'FFFFFFFF', 100), tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65)] },
-      { id: 1, is_ams_ht: false, tray: [tray(0, null, null, null, null), tray(1, 'PLA', 'PLA Basic', '000000FF', 45), tray(2, null, null, null, null), tray(3, null, null, null, null)] },
+      { id: 1, is_ams_ht: false, tray: [tray(0, 'PLA', 'PLA Matte', '7C4B3AFF', 100, 'A1B2C3D4E5F60708'), tray(1, 'PLA', 'PLA Basic', '000000FF', 45), tray(2, null, null, null, null), tray(3, null, null, null, null)] },
     ],
     vt_tray: [tray(254, null, null, null, null), tray(255, null, null, null, null)],
   },

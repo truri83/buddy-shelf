@@ -67,6 +67,21 @@ function useRefresh() {
   };
 }
 
+/** SP-12: Lagerort für mehrere Spulen auf einmal. */
+export function useBulkMove() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ ids, locationId }: { ids: number[]; locationId: number | null }) => bambuddy.spools.bulkUpdate(ids, { location_id: locationId }),
+    onSuccess: () => refresh(),
+  });
+}
+
+/** SP-12: mehrere Spulen archivieren. */
+export function useBulkArchive() {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: (ids: number[]) => bambuddy.spools.bulkArchive(ids), onSuccess: () => refresh() });
+}
+
 /** SP-04: Lagerort setzen (null = ohne Lagerort). */
 export function useMoveSpool() {
   const refresh = useRefresh();
@@ -109,6 +124,20 @@ export function useAssignSpool() {
     },
     onSuccess: (_d, v) => {
       refresh(v.spoolId);
+      void qc.invalidateQueries({ queryKey: spoolKeys.printers });
+    },
+  });
+}
+
+/** SP-13: Bambu-Spule aus dem RFID im Slot anlegen (Bambuddy weist sie gleich zu). */
+export function useAdoptFromSlot() {
+  const refresh = useRefresh();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slot: Pick<Slot, 'printerId' | 'amsId' | 'trayId'>) =>
+      bambuddy.spools.fromSlot({ printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId }),
+    onSuccess: () => {
+      refresh();
       void qc.invalidateQueries({ queryKey: spoolKeys.printers });
     },
   });

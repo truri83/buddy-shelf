@@ -147,7 +147,7 @@ export function SpoolDetailPage() {
               </IonItem>
             </IonList>
             <AmsSheet spool={s} isOpen={sheet === 'ams'} onDismiss={close} />
-            <MoveSheet spool={s} isOpen={sheet === 'move'} onDismiss={close} />
+            <MoveSheet spools={[s]} isOpen={sheet === 'move'} onDismiss={close} />
             <WeighSheet spool={s} isOpen={sheet === 'weigh'} onDismiss={close} />
             <LabelSheet spools={[s]} isOpen={sheet === 'label'} onDismiss={close} />
           </>

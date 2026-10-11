@@ -12,6 +12,10 @@ export interface Slot {
   /** Was der Drucker im Slot meldet (RRGGBBAA, Material) */
   trayColor: string | null;
   trayType: string | null;
+  /** z. B. „PLA Basic“ (vom Drucker gemeldet) */
+  traySubBrand: string | null;
+  tagUid: string | null;
+  trayUuid: string | null;
   assignment: SpoolAssignment | null;
 }
 
@@ -35,6 +39,9 @@ export function buildSlots(printers: Printer[], statuses: Record<number, Printer
           label: slotLabel(unit.id, tray.id, unit.is_ams_ht),
           trayColor: tray.tray_color,
           trayType: tray.tray_type,
+          traySubBrand: tray.tray_sub_brands,
+          tagUid: tray.tag_uid ?? null,
+          trayUuid: tray.tray_uuid ?? null,
           assignment: find(p.id, unit.id, tray.id),
         });
       }
@@ -50,11 +57,29 @@ export function buildSlots(printers: Printer[], statuses: Record<number, Printer
         label: slotLabel(EXTERNAL_AMS_ID, trayId),
         trayColor: vt.tray_color,
         trayType: vt.tray_type,
+        traySubBrand: vt.tray_sub_brands,
+        tagUid: vt.tag_uid ?? null,
+        trayUuid: vt.tray_uuid ?? null,
         assignment: find(p.id, EXTERNAL_AMS_ID, trayId),
       });
     }
   }
   return out;
+}
+
+/** Gültiger Chip: vorhanden und nicht nur Nullen (wie Bambuddys is_valid_tag). */
+export const validTag = (v: string | null | undefined) => !!v && /[1-9a-f]/i.test(v);
+
+/**
+ * SP-13: Slot mit einer Bambu-Spule, die Bambuddy noch nicht kennt – Chip vorhanden,
+ * keine Spule mit diesem Chip im Bestand, Slot ohne Zuweisung. Nur die kann `from-slot` anlegen.
+ */
+export function isNewRfid(slot: Slot, spools: Pick<Spool, 'tag_uid' | 'tray_uuid'>[]): boolean {
+  if (slot.assignment || !slot.trayType) return false;
+  const tag = validTag(slot.tagUid) ? slot.tagUid!.toUpperCase() : null;
+  const uuid = validTag(slot.trayUuid) ? slot.trayUuid!.toUpperCase() : null;
+  if (!tag && !uuid) return false;
+  return !spools.some((s) => (tag && s.tag_uid?.toUpperCase() === tag) || (uuid && s.tray_uuid?.toUpperCase() === uuid));
 }
 
 /** Zuweisungen, die vor dem Einlegen in einen neuen Slot weg müssen (eine Spule liegt nur an einem Ort). */

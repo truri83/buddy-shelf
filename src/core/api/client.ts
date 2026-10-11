@@ -113,6 +113,13 @@ export const bambuddy = {
      * weight_used = label_weight − (brutto − core_weight) und setzt last_scale_weight/last_weighed_at.
      */
     archive: (id: number) => request<Spool>('POST', `/inventory/spools/${id}/archive`),
+    /** Spule aus dem RFID-Chip im AMS-Slot anlegen und dem Slot zuweisen (ohne Chip: 400) */
+    fromSlot: (s: { printer_id: number; ams_id: number; tray_id: number }) => request<Spool>('POST', '/inventory/spools/from-slot', s),
+    /** Gleiche Änderung für viele Spulen; unbekannte IDs kommen in not_found zurück */
+    bulkUpdate: (ids: number[], update: SpoolUpdate) =>
+      request<{ updated: number; not_found: number[] }>('POST', '/inventory/spools/bulk-update', { ids, update }),
+    bulkArchive: (ids: number[]) =>
+      request<{ archived: number; already_archived: number[]; not_found: number[] }>('POST', '/inventory/spools/bulk-archive', { ids }),
     weigh: (spoolId: number, grossGrams: number) =>
       request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
   },

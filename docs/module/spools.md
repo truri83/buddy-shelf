@@ -179,7 +179,7 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | in Arbeit |
+| Status | umgesetzt |
 | Ziel | Mehrere Spulen auf einmal etikettieren, verschieben oder archivieren (z. B. Neu-Etikettieren beim Umzug). |
 | Ablauf | Liste → „Auswählen“ → Karten antippen (Haken) / „Alle“ → Aktionsleiste unten: Etiketten · Verschieben · Archivieren (mit Bestätigung) → fertig, Auswahl endet |
 | Daten | Etiketten: Stapeldruck (SP-06); Verschieben: `POST /inventory/spools/bulk-update` `{ ids, update: { location_id } }`; Archivieren: `POST /inventory/spools/bulk-archive` `{ ids }` (Antwort mit `not_found`) |
@@ -190,9 +190,16 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | in Arbeit – mit X2D in Bambuddy zu prüfen |
+| Status | umgesetzt – mit X2D in Bambuddy zu prüfen (Bambuddy hat noch keinen Drucker) |
 | Ziel | Neue Bambu-Spule ins AMS legen → App erkennt sie (RFID) → ein Tipp: anlegen, dem Slot zuweisen, Etikett drucken. |
 | Ablauf | Spulenliste zeigt Hinweis „n neue Bambu-Spulen im AMS“ → AMS-Slots → Slot mit „Neu erkannt“ → „Übernehmen“ → Etikett-Sheet |
 | Daten | `GET /printers/{id}/status` (`ams[].tray[].tag_uid/tray_uuid/tray_type/tray_sub_brands/tray_color`), neu = Chip vorhanden, keine Spule mit diesem `tag_uid`/`tray_uuid`, Slot ohne Zuweisung; `POST /inventory/spools/from-slot` `{ printer_id, ams_id, tray_id }` (legt an + weist zu; ohne Chip 400) |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Mock: Slot mit unbekanntem Chip zeigt „Neu erkannt“, Übernehmen legt Spule an, Slot zeigt sie, Etikett-Sheet öffnet |
+
+## SP-14 Umzug von Spooly (Ablauf G)
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | zurückgestellt (auf Wunsch ans Ende) – wartet auf eine Beispiel-Exportdatei aus Spooly |
+| Ziel | Spooly-CSV einmalig in Bambuddy übernehmen (Nummern behalten), danach alles neu etikettieren (SP-12). |

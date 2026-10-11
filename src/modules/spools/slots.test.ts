@@ -39,3 +39,17 @@ describe('Slots', () => {
     expect(slotLabel(255, 0)).toBe('Extern L');
   });
 });
+
+describe('Neue Bambu-Spule im AMS (RFID)', async () => {
+  const { isNewRfid } = await import('./slots');
+  const slot = { printerId: 1, printerName: 'X2D', amsId: 0, trayId: 0, label: 'AMS 1 · 1', trayColor: '00AE42FF', trayType: 'PLA', traySubBrand: 'PLA Basic', tagUid: 'A1B2C3D4E5F60708', trayUuid: '0'.repeat(32), assignment: null };
+  it('Chip ohne Bestand und ohne Zuweisung = neu', () => {
+    expect(isNewRfid(slot, [])).toBe(true);
+  });
+  it('bekannt, zugewiesen, ohne Chip oder leer = nicht neu', () => {
+    expect(isNewRfid(slot, [{ tag_uid: 'a1b2c3d4e5f60708', tray_uuid: null }])).toBe(false);
+    expect(isNewRfid({ ...slot, assignment: { id: 1, spool_id: 4, printer_id: 1, printer_name: 'X2D', ams_id: 0, tray_id: 0, ams_label: null, configured: true, pending_config: false } }, [])).toBe(false);
+    expect(isNewRfid({ ...slot, tagUid: '0000000000000000' }, [])).toBe(false);
+    expect(isNewRfid({ ...slot, trayType: null }, [])).toBe(false);
+  });
+});

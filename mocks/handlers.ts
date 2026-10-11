@@ -142,6 +142,46 @@ export const handlers = [
   http.get(api('/auth/me'), () =>
     HttpResponse.json({ username: 'mock', permissions: ['inventory:read', 'inventory:update', 'inventory:view_assignments', 'printers:read'] }),
   ),
+  http.post(api('/inventory/spools/bulk-update'), async ({ request }) => {
+    const { ids, update } = (await request.json()) as { ids: number[]; update: object };
+    const hit = spools.filter((s) => ids.includes(s.id));
+    hit.forEach((s) => Object.assign(s, update, { updated_at: new Date().toISOString() }));
+    return HttpResponse.json({ updated: hit.length, not_found: ids.filter((id) => !hit.some((s) => s.id === id)) });
+  }),
+  http.post(api('/inventory/spools/bulk-archive'), async ({ request }) => {
+    const { ids } = (await request.json()) as { ids: number[] };
+    const hit = spools.filter((s) => ids.includes(s.id) && !s.archived_at);
+    hit.forEach((s) => (s.archived_at = new Date().toISOString()));
+    return HttpResponse.json({ archived: hit.length, already_archived: [], not_found: ids.filter((id) => !spools.some((s) => s.id === id)) });
+  }),
+  // Bambuddy: Spule aus dem RFID im Slot anlegen + zuweisen
+  http.post(api('/inventory/spools/from-slot'), async ({ request }) => {
+    const r = (await request.json()) as { printer_id: number; ams_id: number; tray_id: number };
+    const unit = printerStatus[r.printer_id]?.ams.find((a) => a.id === r.ams_id);
+    const t = unit?.tray.find((x) => x.id === r.tray_id);
+    if (!t?.tray_type) return HttpResponse.json({ detail: 'Slot is empty or has no readable tray data' }, { status: 400 });
+    if (!t.tag_uid) return HttpResponse.json({ detail: 'Slot has no RFID tag' }, { status: 400 });
+    const stamp = new Date().toISOString();
+    const s = {
+      ...spools[0]!,
+      id: Math.max(...spools.map((x) => x.id)) + 1,
+      material: t.tray_type,
+      subtype: t.tray_sub_brands?.replace(t.tray_type, '').trim() || null,
+      color_name: null,
+      rgba: t.tray_color,
+      brand: 'Bambu Lab',
+      weight_used: 0,
+      tag_uid: t.tag_uid,
+      tray_uuid: t.tray_uuid ?? null,
+      location_id: null,
+      archived_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+    };
+    spools.push(s);
+    assignments.push({ id: Math.max(0, ...assignments.map((x) => x.id)) + 1, spool_id: s.id, printer_id: r.printer_id, printer_name: 'X2D', ams_id: r.ams_id, tray_id: r.tray_id, ams_label: null, configured: true, pending_config: false });
+    return HttpResponse.json(s);
+  }),
   http.post(api('/inventory/spools/:id/archive'), ({ params }) => {
     const s = spools.find((x) => x.id === Number(params.id));
     if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });

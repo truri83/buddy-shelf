@@ -4,6 +4,7 @@ import {
   IonContent,
   IonHeader,
   IonIcon,
+  IonItem,
   IonItemDivider,
   IonLabel,
   IonList,
@@ -15,16 +16,30 @@ import {
   IonSegmentButton,
   IonTitle,
   IonToolbar,
+  IonFooter,
+  useIonAlert,
+  useIonToast,
   type RefresherEventDetail,
 } from '@ionic/react';
-import { add, scaleOutline, swapVerticalOutline } from 'ionicons/icons';
+import {
+  add,
+  archiveOutline,
+  checkmarkCircleOutline,
+  locationOutline,
+  pricetagOutline,
+  scaleOutline,
+  swapVerticalOutline,
+} from 'ionicons/icons';
 import { useMemo, useState } from 'react';
-import { ApiError } from '@/core/api';
+import { ApiError, useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { storage } from '@/core/platform';
 import { StateView } from '@/core/ui';
+import { LabelSheet } from '../components/LabelSheet';
+import { MoveSheet } from '../components/MoveSheet';
 import { SpoolCard } from '../components/SpoolCard';
-import { useAssignments, useLocations, useSpools } from '../hooks/useSpools';
+import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
+import { isNewRfid } from '../slots';
 import { amsLabel, groupSpools, locationName, matchesSearch, sortSpools, type GroupBy, type SortBy } from '../logic';
 
 /** Vorlage „Liste“: Kopf mit Suche, Filter-Chips, gruppierte Karten, Leer-Zustand. */
@@ -32,9 +47,19 @@ export function SpoolListPage() {
   const spools = useSpools();
   const locations = useLocations();
   const assignments = useAssignments();
+  const { slots } = useSlots();
+  const newRfid = slots.filter((x) => isNewRfid(x, spools.data ?? [])).length;
   const [query, setQuery] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
+  // SP-12 Mehrfachauswahl
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(() => new Set());
+  const [sheet, setSheet] = useState<'labels' | 'move' | null>(null);
+  const canEdit = useAllowed('inventory:update');
+  const archive = useBulkArchive();
+  const [alert] = useIonAlert();
+  const [toast] = useIonToast();
 
   const groups = useMemo(() => {
     const list = sortSpools(
@@ -55,6 +80,49 @@ export function SpoolListPage() {
     e.detail.complete();
   };
 
+  const visible = useMemo(() => groups.flatMap((g) => g.spools), [groups]);
+  const chosen = useMemo(() => visible.filter((x) => selected.has(x.id)), [visible, selected]);
+  const toggle = (id: number) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const endSelect = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+  const archiveChosen = () =>
+    void alert({
+      header: t('select.archive'),
+      message: t('select.archiveQ', { n: chosen.length }),
+      buttons: [
+        { text: t('common.cancel'), role: 'cancel' },
+        {
+          text: t('select.archive'),
+          role: 'destructive',
+          handler: () => {
+            archive
+              .mutateAsync(chosen.map((x) => x.id))
+              .then((r) => {
+                void toast({ message: t('select.archived', { n: r.archived }), duration: 2000, position: 'top' });
+                endSelect();
+              })
+              .catch(
+                (e: unknown) =>
+                  void toast({
+                    message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+                    duration: 3000,
+                    position: 'top',
+                    color: 'danger',
+                  }),
+              );
+          },
+        },
+      ],
+    });
+
   const amsBySpool = useMemo(() => new Map((assignments.data ?? []).map((a) => [a.spool_id, amsLabel(a)])), [assignments.data]);
   const count = groups.reduce((n, g) => n + g.spools.length, 0);
 
@@ -62,21 +130,38 @@ export function SpoolListPage() {
     <IonPage>
       {/* Suche und Gruppierung im festen Kopf: collapse="condense" zeigt Ionic nur im iOS-Stil an */}
       <IonHeader>
-        <IonToolbar>
-          <IonTitle>{t('spools.title')}</IonTitle>
-          <IonButtons slot="end">
-            <IonButton onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
-              <IonIcon slot="start" icon={swapVerticalOutline} />
-              {t(`spools.sort.${sortBy}`)}
-            </IonButton>
-            <IonButton routerLink="/spools/weigh" aria-label={t('weighs.action')}>
-              <IonIcon slot="icon-only" icon={scaleOutline} />
-            </IonButton>
-            <IonButton routerLink="/spools/new" aria-label={t('spools.action.add')}>
-              <IonIcon slot="icon-only" icon={add} />
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
+        {selecting ? (
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonButton onClick={endSelect}>{t('common.cancel')}</IonButton>
+            </IonButtons>
+            <IonTitle>{t('select.count', { n: chosen.length })}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setSelected(chosen.length === visible.length ? new Set() : new Set(visible.map((x) => x.id)))}>
+                {chosen.length === visible.length ? t('select.none') : t('select.all')}
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        ) : (
+          <IonToolbar>
+            <IonTitle>{t('spools.title')}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
+                <IonIcon slot="start" icon={swapVerticalOutline} />
+                {t(`spools.sort.${sortBy}`)}
+              </IonButton>
+              <IonButton onClick={() => setSelecting(true)} aria-label={t('select.start')}>
+                <IonIcon slot="icon-only" icon={checkmarkCircleOutline} />
+              </IonButton>
+              <IonButton routerLink="/spools/weigh" aria-label={t('weighs.action')}>
+                <IonIcon slot="icon-only" icon={scaleOutline} />
+              </IonButton>
+              <IonButton routerLink="/spools/new" aria-label={t('spools.action.add')}>
+                <IonIcon slot="icon-only" icon={add} />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        )}
         <IonToolbar>
           <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder={t('spools.search')} />
         </IonToolbar>
@@ -110,6 +195,11 @@ export function SpoolListPage() {
           <StateView state="empty" />
         ) : (
           <IonList>
+            {newRfid > 0 && !selecting && (
+              <IonItem routerLink="/spools/slots" detail color="primary">
+                <IonLabel>{t('rfid.banner', { n: newRfid })}</IonLabel>
+              </IonItem>
+            )}
             {groups.map((g) => (
               <div key={g.key}>
                 {g.title && (
@@ -120,13 +210,49 @@ export function SpoolListPage() {
                   </IonItemDivider>
                 )}
                 {g.spools.map((s) => (
-                  <SpoolCard key={s.id} spool={s} location={locationName(s, locations.data ?? [])} ams={amsBySpool.get(s.id) ?? null} />
+                  <SpoolCard
+                    key={s.id}
+                    spool={s}
+                    location={locationName(s, locations.data ?? [])}
+                    ams={amsBySpool.get(s.id) ?? null}
+                    selecting={selecting}
+                    selected={selected.has(s.id)}
+                    onToggle={() => toggle(s.id)}
+                  />
                 ))}
               </div>
             ))}
           </IonList>
         )}
       </IonContent>
+      {selecting && (
+        <IonFooter>
+          <IonToolbar>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--bs-s2)', padding: '0 var(--bs-s3)' }}>
+              <IonButton expand="block" fill="outline" disabled={!chosen.length} onClick={() => setSheet('labels')}>
+                <IonIcon slot="start" icon={pricetagOutline} />
+                {t('select.labels')}
+              </IonButton>
+              <IonButton expand="block" fill="outline" disabled={!chosen.length || !canEdit} onClick={() => setSheet('move')}>
+                <IonIcon slot="start" icon={locationOutline} />
+                {t('select.move')}
+              </IonButton>
+              <IonButton
+                expand="block"
+                fill="outline"
+                color="danger"
+                disabled={!chosen.length || !canEdit || archive.isPending}
+                onClick={archiveChosen}
+              >
+                <IonIcon slot="start" icon={archiveOutline} />
+                {t('select.archive')}
+              </IonButton>
+            </div>
+          </IonToolbar>
+        </IonFooter>
+      )}
+      <LabelSheet spools={chosen} isOpen={sheet === 'labels'} onDismiss={() => setSheet(null)} />
+      <MoveSheet spools={chosen} isOpen={sheet === 'move'} onDismiss={() => setSheet(null)} onDone={endSelect} />
     </IonPage>
   );
 }

@@ -1,16 +1,52 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonItem, IonItemDivider, IonLabel, IonList, IonNote, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import {
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonItem,
+  IonItemDivider,
+  IonLabel,
+  IonList,
+  IonNote,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  useIonToast,
+} from '@ionic/react';
 import { useMemo, useState } from 'react';
+import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { LabelPrintSheet, SLOT_TEMPLATE } from '@/core/printing';
-import { rgbaToCss, StateView } from '@/core/ui';
-import { useSlots, useSpools } from '../hooks/useSpools';
-import { slotLabelVariables, spoolTitle } from '../slots';
+import { Badge, rgbaToCss, StateView } from '@/core/ui';
+import { LabelSheet } from '../components/LabelSheet';
+import { useAdoptFromSlot, useSlots, useSpools } from '../hooks/useSpools';
+import { isNewRfid, slotLabelVariables, spoolTitle, type Slot } from '../slots';
 
 /** SP-08: alle Slots mit Belegung; Slot-Etiketten (QR bm:t:…) für alle Slots in einem Druck. */
 export function SlotsPage() {
   const { slots, printers, isPending, isError, refetch } = useSlots();
   const spools = useSpools();
   const [printOpen, setPrintOpen] = useState(false);
+  const adopt = useAdoptFromSlot();
+  const [adopted, setAdopted] = useState<Spool | null>(null);
+  const [toast] = useIonToast();
+  const adoptSlot = (s: Slot) =>
+    adopt
+      .mutateAsync(s)
+      .then((spool) => {
+        void toast({ message: t('rfid.adopted', { id: spool.id, slot: s.label }), duration: 2500, position: 'top' });
+        setAdopted(spool); // gleich Etikett drucken
+      })
+      .catch(
+        (e: unknown) =>
+          void toast({
+            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+            duration: 3000,
+            position: 'top',
+            color: 'danger',
+          }),
+      );
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
   const records = useMemo(() => slots.map(slotLabelVariables), [slots]);
 
@@ -56,8 +92,33 @@ export function SlotsPage() {
                               border: '2px solid var(--bs-border)',
                             }}
                           />
-                          <IonLabel>{s.label}</IonLabel>
-                          <IonNote slot="end">{sp ? spoolTitle(sp) : t('ams.free')}</IonNote>
+                          <IonLabel>
+                            {s.label}
+                            {isNewRfid(s, spools.data ?? []) && (
+                              <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>
+                                {s.traySubBrand ?? s.trayType}
+                              </div>
+                            )}
+                          </IonLabel>
+                          {isNewRfid(s, spools.data ?? []) ? (
+                            <>
+                              <Badge tone="good">{t('rfid.new')}</Badge>
+                              <IonButton
+                                slot="end"
+                                size="small"
+                                disabled={adopt.isPending}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  void adoptSlot(s);
+                                }}
+                              >
+                                {t('rfid.adopt')}
+                              </IonButton>
+                            </>
+                          ) : (
+                            <IonNote slot="end">{sp ? spoolTitle(sp) : t('ams.free')}</IonNote>
+                          )}
                         </IonItem>
                       );
                     })}
@@ -69,6 +130,7 @@ export function SlotsPage() {
                 {t('slots.printAll')}
               </IonButton>
             </div>
+            <LabelSheet spools={adopted ? [adopted] : []} isOpen={!!adopted} onDismiss={() => setAdopted(null)} />
             <LabelPrintSheet
               templates={[SLOT_TEMPLATE]}
               records={records}

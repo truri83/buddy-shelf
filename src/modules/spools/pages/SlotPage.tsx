@@ -23,8 +23,9 @@ import { t } from '@/core/i18n';
 import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, MaterialBadge, ScannerView, StateView } from '@/core/ui';
-import { useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
-import { spoolTitle } from '../slots';
+import { LabelSheet } from '../components/LabelSheet';
+import { useAdoptFromSlot, useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
+import { isNewRfid, spoolTitle } from '../slots';
 
 /**
  * SP-08: Slot-Etikett gescannt → Seite zeigt, was im Slot liegt, Kamera bleibt offen →
@@ -41,6 +42,8 @@ export function SlotPage() {
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [manual, setManual] = useState('');
+  const adopt = useAdoptFromSlot();
+  const [adopted, setAdopted] = useState<import('@/core/api').Spool | null>(null);
   const busy = useRef(false);
   const navigate = useNavigate();
   const [toast] = useIonToast();
@@ -129,7 +132,9 @@ export function SlotPage() {
           text: t('ams.remove'),
           role: 'destructive',
           handler: () => {
-            unassign.mutateAsync(slot).catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })));
+            unassign
+              .mutateAsync(slot)
+              .catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })));
           },
         },
       ],
@@ -182,14 +187,36 @@ export function SlotPage() {
                       <span className="bs-num">{remainingGrams(occupant)} g</span>
                     </div>
                   </div>
-                  <button type="button" onClick={confirmEmpty} aria-label={t('ams.remove')} style={{ all: 'unset', cursor: 'pointer', color: 'var(--bs-text-2)', padding: 'var(--bs-s2)' }}>
+                  <button
+                    type="button"
+                    onClick={confirmEmpty}
+                    aria-label={t('ams.remove')}
+                    style={{ all: 'unset', cursor: 'pointer', color: 'var(--bs-text-2)', padding: 'var(--bs-s2)' }}
+                  >
                     ✕
                   </button>
                 </>
+              ) : isNewRfid(slot, spools.data ?? []) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)', width: '100%' }}>
+                  <IonNote style={{ flex: 1 }}>{t('rfid.slotHint', { what: slot.traySubBrand ?? slot.trayType ?? '' })}</IonNote>
+                  <IonButton
+                    size="small"
+                    disabled={adopt.isPending || !canEdit}
+                    onClick={() =>
+                      void adopt
+                        .mutateAsync(slot)
+                        .then((s) => setAdopted(s))
+                        .catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })))
+                    }
+                  >
+                    {t('rfid.adopt')}
+                  </IonButton>
+                </div>
               ) : (
                 <IonNote>{t('slot.empty')}</IonNote>
               )}
             </section>
+            <LabelSheet spools={adopted ? [adopted] : []} isOpen={!!adopted} onDismiss={() => setAdopted(null)} />
             <ScannerView active={active} onCode={onCode} hint={t('slot.scanSpool')} />
             {message && (
               <p role="alert" style={{ textAlign: 'center', color: 'var(--bs-critical)' }}>

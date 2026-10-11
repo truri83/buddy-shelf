@@ -1,4 +1,4 @@
-import { IonItem } from '@ionic/react';
+import { IonCheckbox, IonItem } from '@ionic/react';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
@@ -8,15 +8,27 @@ interface Props {
   spool: Spool;
   location: string | null;
   ams: string | null;
+  /** Auswahlmodus: Tippen wählt statt zu öffnen */
+  selecting?: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
 }
 
 /** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken, Gramm. */
-export function SpoolCard({ spool, location, ams }: Props) {
+export function SpoolCard({ spool, location, ams, selecting, selected, onToggle }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   return (
-    <IonItem routerLink={`/spools/${spool.id}`} detail={false} lines="full">
+    <IonItem
+      routerLink={selecting ? undefined : `/spools/${spool.id}`}
+      button={selecting}
+      onClick={selecting ? onToggle : undefined}
+      detail={false}
+      lines="full"
+      aria-pressed={selecting ? selected : undefined}
+    >
+      {selecting && <IonCheckbox slot="start" checked={selected} aria-label={`#${spool.id}`} style={{ pointerEvents: 'none' }} />}
       <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center', width: '100%', padding: 'var(--bs-s3) 0' }}>
         <ColorRing rgba={spool.rgba} fill={fill} label={name} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--bs-s1)' }}>
