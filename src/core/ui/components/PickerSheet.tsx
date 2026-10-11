@@ -8,6 +8,8 @@ export interface PickerItem {
   sublabel?: string;
   /** #RRGGBB für ein Farbfeld */
   color?: string | null;
+  /** zusätzliche Suchbegriffe (z. B. Farbname in der anderen Sprache) */
+  keywords?: string;
 }
 
 interface Props {
@@ -27,7 +29,7 @@ export function PickerSheet({ isOpen, title, items, value, loading, allowCustom,
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const list = words.length ? items.filter((i) => words.every((w) => `${i.label} ${i.sublabel ?? ''}`.toLowerCase().includes(w))) : items;
+    const list = words.length ? items.filter((i) => words.every((w) => `${i.label} ${i.sublabel ?? ''} ${i.keywords ?? ''}`.toLowerCase().includes(w))) : items;
     return list.slice(0, 300);
   }, [items, query]);
   const custom = allowCustom && query.trim() && !items.some((i) => i.label.toLowerCase() === query.trim().toLowerCase()) ? query.trim() : null;

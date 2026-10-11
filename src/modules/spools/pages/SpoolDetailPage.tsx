@@ -3,7 +3,7 @@ import { copyOutline, createOutline, cubeOutline, locationOutline, pricetagOutli
 import { useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed } from '@/core/api';
-import { t } from '@/core/i18n';
+import { otherLanguageName, t } from '@/core/i18n';
 import { encodeSpoolCode } from '@/core/qr/codes';
 import { ColorRing, FillBar, MaterialBadge, StateView } from '@/core/ui';
 import { AmsSheet } from '../components/AmsSheet';
@@ -115,7 +115,14 @@ export function SpoolDetailPage() {
                 </IonItem>
               )}
               <IonItem>
-                <IonLabel color="medium">{t('new.colorHex')}</IonLabel>
+                <IonLabel color="medium">{t('spools.detail.colorName')}</IonLabel>
+                <IonLabel slot="end" style={{ textAlign: 'right' }}>
+                  {s.color_name ?? '–'}
+                  {otherLanguageName(s.color_name) && <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{otherLanguageName(s.color_name)}</div>}
+                </IonLabel>
+              </IonItem>
+              <IonItem>
+                <IonLabel color="medium">{t('new.hex')}</IonLabel>
                 <IonLabel slot="end" className="bs-num">
                   {s.rgba ? `#${s.rgba.slice(0, 6)}` : '–'}
                 </IonLabel>

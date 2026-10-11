@@ -45,3 +45,15 @@ describe('Spulen-Logik', () => {
     expect(matchesSearch(base, 'petg')).toBe(false);
   });
 });
+
+describe('Farben in der Liste', () => {
+  it('Suche „schwarz“ findet „Black“, „grey“ findet „Grau“, „grün“ findet per Hex', () => {
+    expect(matchesSearch({ ...base, color_name: 'Black', rgba: '000000FF' }, 'schwarz')).toBe(true);
+    expect(matchesSearch({ ...base, color_name: 'Grau', rgba: '8A8D91FF' }, 'grey')).toBe(true);
+    expect(matchesSearch({ ...base, color_name: 'Forest', rgba: '00AE42FF' }, 'grün')).toBe(true);
+  });
+  it('gruppiert nach Farbfamilie', () => {
+    const g = groupSpools([{ ...base, id: 1, rgba: '000000FF' }, { ...base, id: 2, rgba: '00AE42FF' }], 'color', [], '');
+    expect(g.map((x) => x.title)).toEqual(['Grün', 'Schwarz']);
+  });
+});

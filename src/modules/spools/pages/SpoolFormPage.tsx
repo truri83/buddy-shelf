@@ -26,7 +26,7 @@ import { barcodeOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { FilamentEntry, GtinHit, Spool } from '@/core/api';
-import { t } from '@/core/i18n';
+import { colorSearchText, otherLanguageName, t } from '@/core/i18n';
 import { haptic, QR_AND_BARCODES, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ChoiceChip, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
@@ -179,6 +179,7 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
         label: f.name,
         sublabel: [f.weight ? `${f.weight} g` : null, f.spool_weight ? `${t('weigh.coreRow')} ${f.spool_weight} g` : null, f.finish].filter(Boolean).join(' · '),
         color: f.color_hex ? `#${f.color_hex}` : null,
+        keywords: colorSearchText(f.name, f.color_hex ? `${f.color_hex}FF` : null),
       })),
     [filaments.data],
   );
@@ -272,7 +273,13 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
             </div>
           )}
           <IonItem>
-            <IonInput label={t('new.color')} labelPlacement="stacked" value={draft.colorName} onIonInput={(e) => set('colorName', String(e.detail.value ?? ''))} />
+            <IonInput
+              label={t('new.color')}
+              labelPlacement="stacked"
+              value={draft.colorName}
+              helperText={otherLanguageName(draft.colorName) ? t('new.colorOther', { name: otherLanguageName(draft.colorName)! }) : undefined}
+              onIonInput={(e) => set('colorName', String(e.detail.value ?? ''))}
+            />
           </IonItem>
           <IonItem>
             <span aria-hidden slot="start" style={{ width: 28, height: 28, borderRadius: '50%', background: rgbaToCss(draft.rgba), border: '2px solid var(--bs-border)' }} />

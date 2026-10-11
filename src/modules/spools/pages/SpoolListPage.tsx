@@ -90,7 +90,7 @@ export function SpoolListPage() {
               storage.set('spools.groupBy', v);
             }}
           >
-            {(['none', 'material', 'location', 'brand'] as const).map((g) => (
+            {(['none', 'material', 'color', 'location', 'brand'] as const).map((g) => (
               <IonSegmentButton key={g} value={g}>
                 <IonLabel>{t(`spools.group.${g}`)}</IonLabel>
               </IonSegmentButton>
