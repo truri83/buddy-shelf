@@ -84,8 +84,20 @@ import {
 
 const REFILL_KEY = 'spools.refillCoreWeight';
 
-/** SP-07/07b: Anlegen (`/spools/new`, Duplizieren `?from=<id>`) und Bearbeiten (`/spools/:id/edit`). */
+/**
+ * SP-07/07b: Anlegen (`/spools/new`, Duplizieren `?from=<id>`) und Bearbeiten (`/spools/:id/edit`).
+ * Genau eine IonPage für alle Zustände (Laden → Formular): Ionic blendet beim Seitenwechsel dieses Element ein.
+ * Würde es ausgetauscht, bliebe die neue Seite unsichtbar – leerer Bildschirm nach dem Packungs-Scan.
+ */
 export function SpoolFormPage() {
+  return (
+    <IonPage>
+      <SpoolFormBody />
+    </IonPage>
+  );
+}
+
+function SpoolFormBody() {
   const params = useParams();
   const editId = Number(params.id ?? 0);
   const search = new URLSearchParams(useLocation().search);
@@ -103,7 +115,7 @@ export function SpoolFormPage() {
   }, [gtin, barcode.isPending]);
   if (gtin && barcode.isPending && !gaveUp) {
     return (
-      <IonPage>
+      <>
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
@@ -115,12 +127,12 @@ export function SpoolFormPage() {
         <IonContent>
           <StateView state="loading" />
         </IonContent>
-      </IonPage>
+      </>
     );
   }
   if (sourceId > 0 && !source.data) {
     return (
-      <IonPage>
+      <>
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
@@ -132,7 +144,7 @@ export function SpoolFormPage() {
         <IonContent>
           {source.isError ? <StateView state="error" onRetry={() => void source.refetch()} /> : <StateView state="loading" />}
         </IonContent>
-      </IonPage>
+      </>
     );
   }
   return (
@@ -276,7 +288,7 @@ function SpoolForm({
   const today = todayIso();
 
   return (
-    <IonPage>
+    <>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
@@ -824,6 +836,6 @@ function SpoolForm({
         </IonContent>
       </IonModal>
       <LabelSheet spools={created ?? []} isOpen={!!created} onDismiss={done} />
-    </IonPage>
+    </>
   );
 }

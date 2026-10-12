@@ -97,3 +97,4 @@ Regeln:
 - Werte, die man anpassen will, per Oberfläche pflegbar (Server `/prefs/<bereich>`), Datei nur als Startwerte.
 - Tab-Leiste: Scan-Knopf immer in der Mitte, alle Tabs gleich breit; fehlt auf einer Seite ein Tab, füllt eine unsichtbare Lücke neben dem Knopf auf (`App.tsx`).
 - Jeder Text in `de.ts` wird benutzt – `src/core/i18n/keys.test.ts` schlägt sonst an.
+- Eine Seite = genau ein `IonPage`; Laden/Fehler/Inhalt wechseln nur darin. Ein ausgetauschtes `IonPage` bleibt nach dem Seitenwechsel unsichtbar (`src/core/ui/pages.test.ts`).
