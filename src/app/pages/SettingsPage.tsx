@@ -18,7 +18,7 @@ import {
   useIonViewWillEnter,
 } from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline, serverOutline } from 'ionicons/icons';
+import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline, serverOutline, volumeHighOutline } from 'ionicons/icons';
 import { useState } from 'react';
 import {
   ApiError,
@@ -30,7 +30,6 @@ import {
   useInventorySource,
   useMe,
 } from '@/core/api';
-import { getDehydratorMax, setDehydratorMax } from '@/core/filament';
 import { t } from '@/core/i18n';
 import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
@@ -46,7 +45,6 @@ export function SettingsPage() {
   const [key, setKey] = useState(() => getApiConfig().apiKey ?? '');
   const [saved, setSaved] = useState(false);
   const [sound, setSound] = useState(scanSoundEnabled);
-  const [dehydrator, setDehydrator] = useState(() => String(getDehydratorMax() ?? ''));
   useIonViewWillEnter(() => {
     const c = getApiConfig();
     setUrl(c.baseUrl);
@@ -114,7 +112,9 @@ export function SettingsPage() {
         ))}
 
         <IonList inset>
+          <IonListHeader>{t('settings.group.app')}</IonListHeader>
           <IonItem lines="none">
+            <IonIcon icon={volumeHighOutline} slot="start" color="primary" aria-hidden />
             <IonToggle
               checked={sound}
               onIonChange={(e) => {
@@ -125,21 +125,6 @@ export function SettingsPage() {
               {t('settings.scanSound')}
               <div style={sub}>{t('settings.scanSoundHint')}</div>
             </IonToggle>
-          </IonItem>
-          <IonItem lines="none">
-            <IonInput
-              label={t('settings.dehydratorMax')}
-              labelPlacement="stacked"
-              inputmode="numeric"
-              placeholder="–"
-              helperText={t('settings.dehydratorMaxHint')}
-              value={dehydrator}
-              onIonInput={(e) => {
-                const v = String(e.detail.value ?? '').replace(/[^0-9]/g, '');
-                setDehydrator(v);
-                setDehydratorMax(v ? Number(v) : null);
-              }}
-            />
           </IonItem>
         </IonList>
 

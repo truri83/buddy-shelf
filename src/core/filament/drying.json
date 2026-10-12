@@ -1,15 +1,5 @@
 {
-  "_quelle": "Dörrautomat/Filamenttrockner: übliche Spannen aus Herstellerangaben (u. a. Bambu Lab Wiki, Polymaker, Sunlu, Prusa). AMS: Standardwerte von Bambuddy für AMS 2 Pro (backend/app/services/print_scheduler.py, DEFAULT_DRYING_PRESETS). Werte hier ändern – kein Code nötig.",
-  "aliases": {
-    "NYLON": "PA",
-    "PA6": "PA",
-    "PA11": "PA",
-    "PA12": "PA",
-    "PAHT": "PA",
-    "PPA": "PA",
-    "TPE": "TPU",
-    "PET": "PETG"
-  },
+  "_quelle": "Startwerte. Gepflegt wird unter Mehr → Trocknung (gespeichert auf dem Server, gilt für alle Geräte). Dörrautomat/Filamenttrockner: übliche Spannen aus Herstellerangaben (u. a. Bambu Lab Wiki, Polymaker, Sunlu, Prusa). AMS: Standardwerte von Bambuddy für AMS 2 Pro (DEFAULT_DRYING_PRESETS). reminderDays: Tage bis zur nächsten Trocknung bei offener Lagerung; storageFactor verlängert das je Lagerungsart, null = keine Erinnerung.",
   "materials": {
     "PLA": {
       "temp": [
@@ -23,7 +13,8 @@
       "ams": {
         "temp": 45,
         "hours": 12
-      }
+      },
+      "reminderDays": 30
     },
     "PETG": {
       "temp": [
@@ -37,7 +28,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 21
     },
     "TPU": {
       "temp": [
@@ -51,7 +43,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 7
     },
     "ABS": {
       "temp": [
@@ -65,7 +58,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 30
     },
     "ASA": {
       "temp": [
@@ -79,7 +73,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 30
     },
     "PA": {
       "temp": [
@@ -93,7 +88,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 3
     },
     "PC": {
       "temp": [
@@ -107,7 +103,8 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 7
     },
     "PVA": {
       "temp": [
@@ -121,24 +118,15 @@
       "ams": {
         "temp": 65,
         "hours": 12
-      }
+      },
+      "reminderDays": 3
     }
-  },
-  "_erinnerung": "Tage bis zur nächsten Trocknung, wenn die Spule offen liegt (übliche Richtwerte nach Hygroskopie). storageFactor verlängert das je Lagerungsart; null = keine Erinnerung (OVP). Ohne Lagerungsart keine Erinnerung.",
-  "reminderDays": {
-    "PLA": 30,
-    "PETG": 21,
-    "TPU": 7,
-    "ABS": 30,
-    "ASA": 30,
-    "PA": 3,
-    "PC": 7,
-    "PVA": 3
   },
   "storageFactor": {
     "open": 1,
     "drybox": 4,
     "bag": 6,
     "sealed": null
-  }
+  },
+  "dehydratorMax": null
 }

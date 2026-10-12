@@ -321,3 +321,12 @@ ion-content.bs-medium {
     align-items: start;
   }
 }
+
+/* Wischbare Chip-Reihe (Filter): Chips behalten ihre Breite, die Reihe scrollt seitlich */
+.bs-chip-row > * {
+  flex: none;
+  white-space: nowrap;
+}
+.bs-chip-row::-webkit-scrollbar {
+  display: none;
+}

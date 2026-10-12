@@ -1,14 +1,44 @@
-import { storage } from '@/core/platform';
-import table from './drying.json';
+import defaults from './drying.json';
+import { materialFamily } from './material';
 
-const MAX_KEY = 'dry.dehydratorMax';
+/** Werte je Materialfamilie – gepflegt unter Mehr → Trocknung. */
+export interface DryingRow {
+  temp: [number, number];
+  hours: [number, number];
+  /** Bambuddys Standard für das AMS 2 Pro (nur Anzeige) */
+  ams: { temp: number; hours: number } | null;
+  /** Tage bis zur nächsten Trocknung, wenn die Spule offen liegt; null = keine Erinnerung */
+  reminderDays: number | null;
+}
 
-/** Höchsttemperatur des eigenen Dörrautomaten (°C), pro Gerät; null = unbekannt → kein Hinweis. */
-export const getDehydratorMax = () => storage.get<number | null>(MAX_KEY, null);
-export const setDehydratorMax = (v: number | null) => storage.set(MAX_KEY, v);
+export type StorageKind = 'sealed' | 'bag' | 'drybox' | 'open';
+
+export interface DryingConfig {
+  materials: Record<string, DryingRow>;
+  /** Faktor auf reminderDays je Lagerungsart; null = keine Erinnerung (z. B. OVP) */
+  storageFactor: Record<StorageKind, number | null>;
+  /** Höchsttemperatur des eigenen Dörrautomaten (°C); null = schafft alles → kein Hinweis */
+  dehydratorMax: number | null;
+}
+
+export const DEFAULT_DRYING: DryingConfig = {
+  materials: defaults.materials as unknown as Record<string, DryingRow>,
+  storageFactor: defaults.storageFactor as Record<StorageKind, number | null>,
+  dehydratorMax: defaults.dehydratorMax as number | null,
+};
+
+/** Gespeicherte Werte über die Startwerte legen (fehlende Familien/Felder bleiben Standard). */
+export function mergeDrying(saved: Partial<DryingConfig> | null | undefined): DryingConfig {
+  if (!saved) return DEFAULT_DRYING;
+  return {
+    materials: { ...DEFAULT_DRYING.materials, ...(saved.materials ?? {}) },
+    storageFactor: { ...DEFAULT_DRYING.storageFactor, ...(saved.storageFactor ?? {}) },
+    dehydratorMax: saved.dehydratorMax === undefined ? DEFAULT_DRYING.dehydratorMax : saved.dehydratorMax,
+  };
+}
 
 export interface DryingAdvice {
-  /** Schlüssel der Tabelle, z. B. PETG für „PETG-CF“ */
+  /** Materialfamilie, z. B. PLA für „PLA+“ */
   key: string;
   temp: [number, number];
   hours: [number, number];
@@ -17,37 +47,17 @@ export interface DryingAdvice {
   tooHotForDehydrator: boolean;
 }
 
-type Row = { temp: number[]; hours: number[]; ams?: { temp: number; hours: number } };
-const MATERIALS = table.materials as Record<string, Row>;
-const ALIASES = table.aliases as Record<string, string>;
-const REMINDER = table.reminderDays as Record<string, number>;
-const FACTOR = table.storageFactor as Record<string, number | null>;
-
-/** Tabellen-Schlüssel wie Bambuddy: erstes Wort, ohne Zusatz („PETG-CF“ → PETG), Aliasse. */
-function materialKey(material: string | null | undefined): string | null {
-  const raw = (material ?? '').trim().split(/\s+/)[0]!.toUpperCase();
-  for (const candidate of [raw, raw.split('-')[0]!]) {
-    const key = ALIASES[candidate] ?? candidate;
-    if (MATERIALS[key]) return key;
-  }
-  return null;
-}
-
-/**
- * Trocknungsempfehlung je Material (SP-15). Gleiche Auflösung wie Bambuddy (dryingPresets.ts):
- * erstes Wort, dann ohne Zusatz („PETG-CF“ → PETG), dann Aliasse. Unbekannt → null (nicht raten).
- */
-export function dryingAdvice(material: string | null | undefined, dehydratorMax: number | null = getDehydratorMax()): DryingAdvice | null {
-  const key = materialKey(material);
-  const row = key ? MATERIALS[key] : undefined;
+/** Trocknungsempfehlung der Materialfamilie (SP-15). Unbekannt → null (nicht raten). */
+export function dryingAdvice(material: string | null | undefined, cfg: DryingConfig = DEFAULT_DRYING): DryingAdvice | null {
+  const key = materialFamily(material);
+  const row = key ? cfg.materials[key] : undefined;
   if (!key || !row) return null;
-  const temp: [number, number] = [row.temp[0]!, row.temp[1]!];
   return {
     key,
-    temp,
-    hours: [row.hours[0]!, row.hours[1]!],
+    temp: row.temp,
+    hours: row.hours,
     ams: row.ams ?? null,
-    tooHotForDehydrator: dehydratorMax != null && temp[1] > dehydratorMax,
+    tooHotForDehydrator: cfg.dehydratorMax != null && row.temp[1] > cfg.dehydratorMax,
   };
 }
 
@@ -60,16 +70,17 @@ export interface DryingDue {
 }
 
 /**
- * Feuchtigkeits-Erinnerung (Vorbild Spooly): Abstand je Material × Faktor der Lagerungsart, gezählt ab
+ * Feuchtigkeits-Erinnerung (Vorbild Spooly): Abstand der Familie × Faktor der Lagerungsart, gezählt ab
  * „zuletzt getrocknet“ – sonst ab Anlage der Spule. OVP oder ohne Lagerungsart: keine Erinnerung.
  */
 export function dryingDue(
   s: { material: string; storage_type?: string | null; dried_at?: string | null; created_at: string },
+  cfg: DryingConfig = DEFAULT_DRYING,
   now = new Date(),
 ): DryingDue | null {
-  const key = materialKey(s.material);
-  const base = key ? REMINDER[key] : undefined;
-  const factor = s.storage_type ? FACTOR[s.storage_type] : null;
+  const key = materialFamily(s.material);
+  const base = key ? cfg.materials[key]?.reminderDays : null;
+  const factor = s.storage_type ? cfg.storageFactor[s.storage_type as StorageKind] : null;
   if (!base || factor == null) return null;
   const intervalDays = Math.round(base * factor);
   const since = daysSince(s.dried_at ?? s.created_at.slice(0, 10), now);

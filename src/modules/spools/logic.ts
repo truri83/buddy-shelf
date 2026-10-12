@@ -1,8 +1,8 @@
 import { fillRatio, slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
+import { materialFamily, materialVariant } from '@/core/filament';
 import { colorFamily, colorSearchText, foldGerman, t } from '@/core/i18n';
 
 export const DEFAULT_LOW_PCT = 20;
-
 
 export function isLow(s: Spool): boolean {
   return fillRatio(s) * 100 < (s.low_stock_threshold_pct ?? DEFAULT_LOW_PCT);
@@ -26,7 +26,6 @@ export function amsLabel(a: SpoolAssignment): string {
   return a.ams_label ?? slotLabel(a.ams_id, a.tray_id);
 }
 
-
 export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[], noLocationTitle: string): SpoolGroup[] {
   const active = spools.filter((s) => !s.archived_at);
   if (by === 'none') return [{ key: 'all', title: '', spools: active }];
@@ -34,7 +33,7 @@ export function groupSpools(spools: Spool[], by: GroupBy, locations: Location[],
   for (const s of active) {
     const key =
       by === 'material'
-        ? s.material.toUpperCase()
+        ? familyOf(s)
         : by === 'brand'
           ? (s.brand ?? '–')
           : by === 'color'
@@ -67,3 +66,9 @@ export function matchesSearch(s: Spool, q: string): boolean {
     .split(/\s+/)
     .every((w) => hay.includes(w.replace(/^#/, '')));
 }
+
+/** Materialfamilie fürs Filtern/Gruppieren: „PLA+“ → PLA; Unbekanntes bleibt wie geschrieben. */
+export const familyOf = (s: Pick<Spool, 'material'>) => materialFamily(s.material) ?? (s.material.trim().toUpperCase() || '–');
+
+/** Unterart: „+“, „2.0+“, „Basic“, „Matte“ … ('' = ohne Angabe). */
+export const variantOf = (s: Pick<Spool, 'material' | 'subtype'>) => materialVariant(s.material, s.subtype);

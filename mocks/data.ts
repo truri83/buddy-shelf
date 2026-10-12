@@ -49,7 +49,7 @@ export const spools: Spool[] = [
   spool(16, 'PETG', 'Basic', 'Gray', '9B9EA2FF', 'Bambu Lab', 688, { material_number: '30107' }),
   spool(17, 'ASA', null, 'Ivory', 'F2EBDAFF', 'Anycubic', 480),
   spool(21, 'PLA', 'Basic', 'Bambu Green', '00AE42FF', 'Bambu Lab', 425, { material_number: '10501' }),
-  spool(22, 'PLA', 'Basic', 'Rainbow 01', 'C2187AFF', 'Sunlu', 225),
+  spool(22, 'PLA+', null, 'Rainbow 01', 'C2187AFF', 'Sunlu', 225),
   spool(27, 'PLA', 'Matte', 'Charcoal', '3B3B3BFF', 'Bambu Lab', 152, { material_number: '11101' }),
   spool(35, 'PLA', 'Basic', 'Hot Pink', 'F5547CFF', 'Bambu Lab', 0, { material_number: '10204' }),
 ];

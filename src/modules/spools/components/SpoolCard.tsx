@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
-import { dryingDue, todayIso } from '@/core/filament';
+import { dryingDue, todayIso, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
 import { isLow } from '../logic';
 import { agoText } from './DryingCard';
@@ -28,7 +28,7 @@ interface Props {
 export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, onToggle, onOpen, active }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
-  const dry = dryingDue(spool);
+  const dry = dryingDue(spool, useDryingConfig());
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
   const [present] = useIonActionSheet();

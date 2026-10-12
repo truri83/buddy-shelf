@@ -32,20 +32,21 @@ import {
   sunnyOutline,
   swapVerticalOutline,
 } from 'ionicons/icons';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ApiError, useAllowed } from '@/core/api';
-import { dryingDue } from '@/core/filament';
+import { dryingDue, useDryingConfig } from '@/core/filament';
 import { t, tn } from '@/core/i18n';
 import { storage } from '@/core/platform';
-import { SPLIT_QUERY, StateView, useMediaQuery } from '@/core/ui';
+import { ChoiceChip, SPLIT_QUERY, StateView, useMediaQuery } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { MoveSheet } from '../components/MoveSheet';
+import { FamilyFilter } from '../components/FamilyFilter';
 import { SpoolCard } from '../components/SpoolCard';
 import { SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
 import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
 import { isNewRfid } from '../slots';
-import { amsLabel, groupSpools, locationName, matchesSearch, sortSpools, type GroupBy, type SortBy } from '../logic';
+import { amsLabel, familyOf, groupSpools, locationName, matchesSearch, sortSpools, variantOf, type GroupBy, type SortBy } from '../logic';
 
 /** Vorlage „Liste“: Kopf mit Suche, Filter-Chips, gruppierte Karten, Leer-Zustand. */
 export function SpoolListPage() {
@@ -61,9 +62,21 @@ export function SpoolListPage() {
   const filter = params.get('filter');
   const unlabeledOnly = filter === 'unlabeled';
   const dryOnly = filter === 'dry';
-  const setFilter = (f: 'unlabeled' | 'dry' | null) => setParams(f ? { filter: f } : {}, { replace: true });
+  const family = params.get('fam');
+  const variant = params.get('sub');
+  /** Adresse ändern, ohne die anderen Filter zu verlieren */
+  const updateParams = (patch: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(patch)) {
+      if (v == null) next.delete(k);
+      else next.set(k, v);
+    }
+    setParams(next, { replace: true });
+  };
+  const setFilter = (f: 'unlabeled' | 'dry' | null) => updateParams({ filter: f });
   const setUnlabeledOnly = (on: boolean) => setFilter(on ? 'unlabeled' : null);
-  const dueDry = (spools.data ?? []).filter((s) => dryingDue(s)?.due).length;
+  const dryCfg = useDryingConfig();
+  const dueDry = (spools.data ?? []).filter((s) => dryingDue(s, dryCfg)?.due).length;
   const unlabeled = (spools.data ?? []).filter((s) => s.label_printed_at === null).length;
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
@@ -83,12 +96,17 @@ export function SpoolListPage() {
   const groups = useMemo(() => {
     const list = sortSpools(
       (spools.data ?? []).filter(
-        (s) => matchesSearch(s, query) && (!unlabeledOnly || s.label_printed_at === null) && (!dryOnly || !!dryingDue(s)?.due),
+        (s) =>
+          matchesSearch(s, query) &&
+          (!unlabeledOnly || s.label_printed_at === null) &&
+          (!dryOnly || !!dryingDue(s, dryCfg)?.due) &&
+          (!family || familyOf(s) === family) &&
+          (variant == null || variantOf(s) === variant),
       ),
       sortBy,
     );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly]);
+  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, dryCfg, family, variant]);
 
   const toggleSort = () => {
     const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';
@@ -211,35 +229,6 @@ export function SpoolListPage() {
                 <span className="bs-num" style={{ whiteSpace: 'nowrap' }}>
                   {count === total ? tn('spools.count', total) : t('spools.countOf', { n: count, total })}
                 </span>
-                {(unlabeled > 0 || unlabeledOnly) && (
-                  <IonButton
-                    size="small"
-                    fill={unlabeledOnly ? 'solid' : 'outline'}
-                    onClick={() => setUnlabeledOnly(!unlabeledOnly)}
-                    aria-pressed={unlabeledOnly}
-                    style={
-                      { '--border-radius': '999px', margin: 0, whiteSpace: 'nowrap', fontSize: 'var(--bs-fs-caption)' } as CSSProperties
-                    }
-                  >
-                    <IonIcon slot="start" icon={pricetagOutline} />
-                    {t('labels.unlabeled', { n: unlabeled })}
-                  </IonButton>
-                )}
-                {(dueDry > 0 || dryOnly) && (
-                  <IonButton
-                    size="small"
-                    fill={dryOnly ? 'solid' : 'outline'}
-                    color="warning"
-                    onClick={() => setFilter(dryOnly ? null : 'dry')}
-                    aria-pressed={dryOnly}
-                    style={
-                      { '--border-radius': '999px', margin: 0, whiteSpace: 'nowrap', fontSize: 'var(--bs-fs-caption)' } as CSSProperties
-                    }
-                  >
-                    <IonIcon slot="start" icon={sunnyOutline} />
-                    {t('dry.filter', { n: dueDry })}
-                  </IonButton>
-                )}
                 <span style={{ flex: 1 }} />
                 <IonSelect
                   aria-label={t('spools.groupBy')}
@@ -275,6 +264,27 @@ export function SpoolListPage() {
                   {t(`spools.sort.${sortBy}`)}
                 </IonButton>
               </div>
+            )}
+            {!spools.isPending && !spools.isError && (
+              <FamilyFilter
+                spools={spools.data ?? []}
+                family={family}
+                variant={variant}
+                onChange={(f, v) => updateParams({ fam: f, sub: v })}
+              >
+                {(unlabeled > 0 || unlabeledOnly) && (
+                  <ChoiceChip selected={unlabeledOnly} onSelect={() => setUnlabeledOnly(!unlabeledOnly)}>
+                    <IonIcon icon={pricetagOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
+                    {t('labels.unlabeled', { n: unlabeled })}
+                  </ChoiceChip>
+                )}
+                {(dueDry > 0 || dryOnly) && (
+                  <ChoiceChip selected={dryOnly} onSelect={() => setFilter(dryOnly ? null : 'dry')}>
+                    <IonIcon icon={sunnyOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)', color: 'var(--bs-warn)' }} />
+                    {t('dry.filter', { n: dueDry })}
+                  </ChoiceChip>
+                )}
+              </FamilyFilter>
             )}
             {spools.isPending ? (
               <StateView state="loading" />

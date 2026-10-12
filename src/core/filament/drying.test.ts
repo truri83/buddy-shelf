@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-// Tests laufen in Node: Gerätespeicher leer
-vi.mock('@/core/platform', () => ({ storage: { get: (_k: string, fallback: unknown) => fallback, set: () => undefined } }));
-import { daysSince, dryingAdvice, dryingDue, todayIso } from './drying';
+import { DEFAULT_DRYING, daysSince, dryingAdvice, dryingDue, mergeDrying, todayIso } from './drying';
 
 describe('Trocknungsempfehlung', () => {
   it('findet Material, Zusatz und Aliasse wie Bambuddy', () => {
@@ -16,9 +14,10 @@ describe('Trocknungsempfehlung', () => {
     expect(dryingAdvice(null)).toBeNull();
   });
   it('warnt nur, wenn die eingestellte Höchsttemperatur nicht reicht', () => {
-    expect(dryingAdvice('ABS', 70)?.tooHotForDehydrator).toBe(true);
-    expect(dryingAdvice('PLA', 70)?.tooHotForDehydrator).toBe(false);
-    expect(dryingAdvice('ABS', null)?.tooHotForDehydrator).toBe(false);
+    const max70 = { ...DEFAULT_DRYING, dehydratorMax: 70 };
+    expect(dryingAdvice('ABS', max70)?.tooHotForDehydrator).toBe(true);
+    expect(dryingAdvice('PLA', max70)?.tooHotForDehydrator).toBe(false);
+    expect(dryingAdvice('ABS')?.tooHotForDehydrator).toBe(false);
   });
 });
 
@@ -38,19 +37,39 @@ describe('Trocknungs-Erinnerung', () => {
   const now = new Date(2026, 9, 12, 9, 0);
   const spool = { material: 'PETG', created_at: '2026-08-01T10:00:00Z' };
   it('offen: PETG nach 21 Tagen fällig, gezählt ab zuletzt getrocknet', () => {
-    expect(dryingDue({ ...spool, storage_type: 'open', dried_at: '2026-10-01' }, now)).toEqual({
+    expect(dryingDue({ ...spool, storage_type: 'open', dried_at: '2026-10-01' }, DEFAULT_DRYING, now)).toEqual({
       intervalDays: 21,
       dueInDays: 10,
       due: false,
     });
-    expect(dryingDue({ ...spool, storage_type: 'open', dried_at: '2026-09-01' }, now)?.due).toBe(true);
+    expect(dryingDue({ ...spool, storage_type: 'open', dried_at: '2026-09-01' }, DEFAULT_DRYING, now)?.due).toBe(true);
   });
   it('Trockenbox verlängert, ohne Datum zählt die Anlage', () => {
-    expect(dryingDue({ ...spool, storage_type: 'drybox' }, now)).toMatchObject({ intervalDays: 84, due: false });
+    expect(dryingDue({ ...spool, storage_type: 'drybox' }, DEFAULT_DRYING, now)).toMatchObject({ intervalDays: 84, due: false });
   });
   it('OVP, ohne Lagerungsart oder unbekanntes Material: keine Erinnerung', () => {
-    expect(dryingDue({ ...spool, storage_type: 'sealed' }, now)).toBeNull();
-    expect(dryingDue(spool, now)).toBeNull();
-    expect(dryingDue({ ...spool, material: 'PEEK', storage_type: 'open' }, now)).toBeNull();
+    expect(dryingDue({ ...spool, storage_type: 'sealed' }, DEFAULT_DRYING, now)).toBeNull();
+    expect(dryingDue(spool, DEFAULT_DRYING, now)).toBeNull();
+    expect(dryingDue({ ...spool, material: 'PEEK', storage_type: 'open' }, DEFAULT_DRYING, now)).toBeNull();
+  });
+});
+
+describe('Familie und eigene Werte', () => {
+  const now = new Date(2026, 9, 12, 9, 0);
+  it('PLA+ und PLA 2.0+ trocknen wie PLA', () => {
+    expect(dryingAdvice('PLA+')?.key).toBe('PLA');
+    expect(dryingAdvice('PLA 2.0+')?.temp).toEqual(DEFAULT_DRYING.materials.PLA!.temp);
+  });
+  it('eigene Werte überschreiben den Standard, Rest bleibt', () => {
+    const cfg = mergeDrying({
+      materials: { PETG: { temp: [65, 70], hours: [6, 8], ams: null, reminderDays: 14 } },
+      storageFactor: { drybox: 2 } as never,
+    });
+    expect(dryingAdvice('PETG', cfg)?.temp).toEqual([65, 70]);
+    expect(dryingAdvice('PLA', cfg)?.temp).toEqual(DEFAULT_DRYING.materials.PLA!.temp);
+    expect(
+      dryingDue({ material: 'PETG', storage_type: 'drybox', dried_at: '2026-10-01', created_at: '2026-01-01' }, cfg, now),
+    ).toMatchObject({ intervalDays: 28 });
+    expect(cfg.storageFactor.bag).toBe(DEFAULT_DRYING.storageFactor.bag);
   });
 });

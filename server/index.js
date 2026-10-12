@@ -11,6 +11,7 @@ import { registerAdmin } from './admin.js';
 import { registerCatalog } from './catalog.js';
 import { registerTemplates } from './templates.js';
 import { registerExtras } from './extras.js';
+import { registerPrefs } from './prefs.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
@@ -35,6 +36,9 @@ await registerCatalog(app);
 await registerTemplates(app);
 
 // Zusatzdaten je Spule (getrocknet, Etikett, Refill): in Spoolman, wenn Bambuddy darauf steht, sonst Datei
+// Gemeinsame Einstellungen (Trocknungswerte u. a.) im Datenordner
+await registerPrefs(app);
+
 await registerExtras(app, { bambuddyUrl: BAMBUDDY_URL, apiKey: BAMBUDDY_API_KEY, spoolmanUrl: process.env.SPOOLMAN_URL });
 
 /** Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt. */

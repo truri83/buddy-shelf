@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { addCircleOutline, gridOutline, locationOutline, pricetagOutline, scaleOutline, sunnyOutline } from 'ionicons/icons';
 import { Link } from 'react-router-dom';
 import { assignmentLabel, bambuddy, fillRatio, remainingGrams } from '@/core/api';
-import { dryingDue } from '@/core/filament';
+import { dryingDue, useDryingConfig } from '@/core/filament';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { Badge, ColorRing, StatTile, StateView } from '@/core/ui';
 
@@ -43,7 +43,8 @@ export function OverviewPage() {
   const totalKg = active.reduce((g, s) => g + remainingGrams(s), 0) / 1000;
   // undefined = Zusatzdaten unbekannt (nicht „ohne Etikett“)
   const unlabeled = active.filter((s) => s.label_printed_at === null).length;
-  const dueDry = active.filter((s) => dryingDue(s)?.due).length;
+  const dryCfg = useDryingConfig();
+  const dueDry = active.filter((s) => dryingDue(s, dryCfg)?.due).length;
   const byId = new Map(active.map((s) => [s.id, s]));
   const loaded = (assignments.data ?? [])
     .map((a) => ({ a, s: byId.get(a.spool_id) }))

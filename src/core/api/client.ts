@@ -71,6 +71,18 @@ async function labelsRequest<T>(method: string, path: string, body?: unknown): P
   return data as T;
 }
 
+/** Gemeinsame App-Einstellungen auf unserem Server (gelten für alle Geräte). */
+async function prefsRequest<T>(method: 'GET' | 'PUT', name: string, value?: unknown): Promise<T | null> {
+  const res = await fetch(`/prefs/${name}`, {
+    method,
+    headers: { Accept: 'application/json', ...(method === 'PUT' ? { 'Content-Type': 'application/json' } : {}) },
+    body: method === 'PUT' ? JSON.stringify({ value }) : undefined,
+  });
+  const data = (await res.json().catch(() => undefined)) as { value?: T | null } | undefined;
+  if (!res.ok) throw new ApiError(res.status, describeError(res.status, data) ?? `${method} /prefs/${name} → ${res.status}`, data);
+  return data?.value ?? null;
+}
+
 /** Bambuddy/FastAPI-Fehler lesbar machen: `{ detail: "…" }` oder Validierungsliste `{ detail: [{ msg, loc }] }`. */
 export function describeError(status: number, body: unknown): string | null {
   const d = (body as { detail?: unknown } | undefined)?.detail;
@@ -424,6 +436,11 @@ export const bambuddy = {
     list: () => labelsRequest<unknown[]>('GET', '/templates'),
     save: (tpl: { id: string } & Record<string, unknown>) => labelsRequest<unknown>('PUT', `/templates/${encodeURIComponent(tpl.id)}`, tpl),
     remove: (id: string) => labelsRequest<void>('DELETE', `/templates/${encodeURIComponent(id)}`),
+  },
+  /** App-Einstellungen für alle Geräte (z. B. Trocknungswerte); null = Standard */
+  prefs: {
+    get: <T>(name: 'drying' | 'display') => prefsRequest<T>('GET', name),
+    put: <T>(name: 'drying' | 'display', value: T | null) => prefsRequest<T>('PUT', name, value),
   },
   /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
   filamentDb: {

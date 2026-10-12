@@ -3,7 +3,7 @@ import { sunnyOutline } from 'ionicons/icons';
 import type { CSSProperties } from 'react';
 import type { Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
-import { daysSince, dryingAdvice, dryingDue, getDehydratorMax, todayIso } from '@/core/filament';
+import { daysSince, dryingAdvice, dryingDue, todayIso, useDryingConfig } from '@/core/filament';
 import { ChoiceChip } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
@@ -19,8 +19,9 @@ const range = ([a, b]: [number, number]) => (a === b ? `${a}` : `${a}–${b}`);
 
 /** SP-15: Empfehlung für den Dörrautomaten + „zuletzt getrocknet“. */
 export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: boolean; style: CSSProperties }) {
-  const advice = dryingAdvice(spool.material);
-  const due = dryingDue(spool);
+  const cfg = useDryingConfig();
+  const advice = dryingAdvice(spool.material, cfg);
+  const due = dryingDue(spool, cfg);
   const set = useSetExtras();
   const [alert] = useIonAlert();
   const [toast] = useIonToast();
@@ -63,7 +64,7 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
             )}
             {advice.tooHotForDehydrator && (
               <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-warn)' }}>
-                {t('dry.tooHot', { max: getDehydratorMax() ?? '' })}
+                {t('dry.tooHot', { max: cfg.dehydratorMax ?? '' })}
               </span>
             )}
           </>
