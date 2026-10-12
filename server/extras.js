@@ -142,6 +142,22 @@ export function spoolmanBackend(base) {
 // ---------- Auswahl: Spoolman genau dann, wenn Bambuddy auf Spoolman steht (sonst passen die IDs nicht)
 
 /**
+ * Bambuddy meldet Spoolman oft als „localhost:7912“ – das gilt nur in Bambuddys Container. Dann den Rechner
+ * nehmen, auf dem Bambuddy läuft (Spoolman läuft im Normalfall daneben).
+ */
+export function reachableFromHere(spoolmanUrl, bambuddyUrl) {
+  if (!spoolmanUrl) return spoolmanUrl;
+  try {
+    const sm = new URL(spoolmanUrl);
+    if (!['localhost', '127.0.0.1', '[::1]'].includes(sm.hostname.toLowerCase()) || !bambuddyUrl) return sm.toString().replace(/\/+$/, '');
+    sm.hostname = new URL(bambuddyUrl).hostname;
+    return sm.toString().replace(/\/+$/, '');
+  } catch {
+    return spoolmanUrl;
+  }
+}
+
+/**
  * @param {{ bambuddyUrl?: string, apiKey?: string, spoolmanUrl?: string, file?: string }} opts
  *   ohne bambuddyUrl (Vite-Dev) immer Datei.
  */
@@ -161,7 +177,7 @@ export function createBackendResolver(opts = {}) {
       if (cached.backend) return cached.backend;
       throw Object.assign(new Error('Bambuddy nicht erreichbar – Speicherort der Zusatzdaten unklar'), { status: 503 });
     }
-    const url = opts.spoolmanUrl || status.url;
+    const url = opts.spoolmanUrl || reachableFromHere(status.url, opts.bambuddyUrl);
     const backend = status.enabled && url ? spoolmanBackend(url) : file;
     // Gleiche Instanz behalten, damit „Felder angelegt“ gemerkt bleibt
     if (!(cached.backend?.kind === backend.kind && cached.url === url)) cached = { at: 0, backend, url };

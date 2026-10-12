@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanPatch, fileBackend, handleExtras, spoolmanBackend } from '../../../server/extras.js';
+import { cleanPatch, fileBackend, handleExtras, reachableFromHere, spoolmanBackend } from '../../../server/extras.js';
 
 describe('Zusatzdaten: Prüfung', () => {
   it('lässt nur bekannte Felder und Datumsformate zu', () => {
@@ -11,6 +11,16 @@ describe('Zusatzdaten: Prüfung', () => {
     expect(() => cleanPatch({ foo: 'x' })).toThrow(/Unbekanntes Feld/);
     expect(() => cleanPatch({ dried_at: 'gestern' })).toThrow(/Datum/);
     expect(() => cleanPatch({})).toThrow(/Keine Änderung/);
+  });
+});
+
+describe('Spoolman-Adresse', () => {
+  it('localhost aus Bambuddys Sicht wird zum Bambuddy-Rechner', () => {
+    expect(reachableFromHere('HTTP://localhost:7912', 'http://192.168.178.50:8008')).toBe('http://192.168.178.50:7912');
+    expect(reachableFromHere('http://127.0.0.1:7912/', 'http://192.168.178.50:8008')).toBe('http://192.168.178.50:7912');
+  });
+  it('echte Adressen bleiben', () => {
+    expect(reachableFromHere('http://spoolman.lan:7912', 'http://192.168.178.50:8008')).toBe('http://spoolman.lan:7912');
   });
 });
 

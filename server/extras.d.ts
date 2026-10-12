@@ -7,6 +7,7 @@ export interface ExtrasBackend {
   patch(ids: number[], patch: ExtrasPatch): Promise<number>;
 }
 export const FIELDS: Record<string, { name: string; field_type: string }>;
+export function reachableFromHere(spoolmanUrl: string | null, bambuddyUrl?: string): string | null;
 export function cleanPatch(body: unknown): ExtrasPatch;
 export function fileBackend(file?: string): ExtrasBackend;
 export function spoolmanBackend(base: string): ExtrasBackend;
