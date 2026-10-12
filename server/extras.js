@@ -15,6 +15,7 @@ export const FIELDS = {
   dried_at: { name: 'Getrocknet am', field_type: 'datetime' },
   label_printed_at: { name: 'Etikett gedruckt am', field_type: 'datetime' },
   category: { name: 'Kategorie (z. B. Refill)', field_type: 'text' },
+  storage_type: { name: 'Lagerungsart', field_type: 'text' },
 };
 const KEYS = [...Object.keys(FIELDS), 'article_number'];
 const DATE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/;
@@ -60,7 +61,7 @@ export function fileBackend(file = FILE) {
         for (const id of ids) {
           const cur = { ...all[id] };
           // Kategorie und Artikelnummer hat Bambuddy ohne Spoolman selbst
-          for (const k of ['dried_at', 'label_printed_at']) {
+          for (const k of ['dried_at', 'label_printed_at', 'storage_type']) {
             if (!(k in patch)) continue;
             if (patch[k] === null) delete cur[k];
             else cur[k] = patch[k];
@@ -89,7 +90,8 @@ export function spoolmanBackend(base) {
       signal: AbortSignal.timeout(TIMEOUT),
     });
     const data = await res.json().catch(() => undefined);
-    if (!res.ok) throw Object.assign(new Error(`Spoolman ${method} ${path}: ${data?.message ?? data?.detail ?? res.status}`), { status: 502 });
+    if (!res.ok)
+      throw Object.assign(new Error(`Spoolman ${method} ${path}: ${data?.message ?? data?.detail ?? res.status}`), { status: 502 });
     return data;
   };
   let fieldsReady = null;
@@ -233,7 +235,12 @@ export function extrasMiddleware() {
     for await (const chunk of req) raw += chunk;
     let r;
     try {
-      r = await handleExtras(resolve, req.method, new URL(req.url, 'http://x').pathname.replace(/^\/extras/, ''), raw ? JSON.parse(raw) : undefined);
+      r = await handleExtras(
+        resolve,
+        req.method,
+        new URL(req.url, 'http://x').pathname.replace(/^\/extras/, ''),
+        raw ? JSON.parse(raw) : undefined,
+      );
     } catch (e) {
       r = fail(e);
     }

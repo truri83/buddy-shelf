@@ -1,5 +1,19 @@
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonTitle, IonToolbar, useIonToast } from '@ionic/react';
-import { useState } from 'react';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonModal,
+  IonNote,
+  IonTitle,
+  IonToolbar,
+  useIonToast,
+} from '@ionic/react';
+import { useRef, useState } from 'react';
 import type { Location, Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
@@ -19,6 +33,7 @@ const LAST_KEY = 'spools.lastLocation';
 
 /** SP-04: Lagerort wählen – ein Tipp speichert. Zuletzt genutzter Ort oben. */
 export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
+  const modal = useRef<HTMLIonModalElement>(null);
   const locations = useLocations();
   const move = useMoveSpool();
   const bulk = useBulkMove();
@@ -66,20 +81,34 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
   const busy = move.isPending || bulk.isPending || create.isPending;
 
   return (
-    <IonModal isOpen={isOpen} onWillPresent={() => (setName(''), setError(null))} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
+    <IonModal
+      ref={modal}
+      isOpen={isOpen}
+      onWillPresent={() => (setName(''), setError(null))}
+      onDidDismiss={onDismiss}
+      initialBreakpoint={0.75}
+      breakpoints={[0, 0.75, 1]}
+    >
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('move.title')}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => void modal.current?.dismiss()}>{t('common.close')}</IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <IonNote style={{ display: 'block', padding: 'var(--bs-s3) var(--bs-s4) 0' }}>{single ? spoolTitle(single) : t('move.many', { n: spools.length })}</IonNote>
+        <IonNote style={{ display: 'block', padding: 'var(--bs-s3) var(--bs-s4) 0' }}>
+          {single ? spoolTitle(single) : t('move.many', { n: spools.length })}
+        </IonNote>
         <IonList inset>
           {ordered.map((loc, i) => (
             <IonItem key={loc.id} button detail={false} disabled={busy} onClick={() => void choose(loc)}>
               <IonLabel>{loc.name}</IonLabel>
               {single && loc.id === single.location_id && <IonNote slot="end">✓</IonNote>}
-              {i === 0 && loc.id === storage.get<number | null>(LAST_KEY, null) && loc.id !== single?.location_id && <IonNote slot="end">{t('move.last')}</IonNote>}
+              {i === 0 && loc.id === storage.get<number | null>(LAST_KEY, null) && loc.id !== single?.location_id && (
+                <IonNote slot="end">{t('move.last')}</IonNote>
+              )}
             </IonItem>
           ))}
           <IonItem button detail={false} disabled={busy} onClick={() => void choose(null)}>
@@ -87,7 +116,9 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
             {single && single.location_id == null && <IonNote slot="end">✓</IonNote>}
           </IonItem>
         </IonList>
-        {!locations.isPending && ordered.length === 0 && <IonNote style={{ display: 'block', padding: '0 var(--bs-s4)' }}>{t('move.empty')}</IonNote>}
+        {!locations.isPending && ordered.length === 0 && (
+          <IonNote style={{ display: 'block', padding: '0 var(--bs-s4)' }}>{t('move.empty')}</IonNote>
+        )}
         <IonList inset>
           <IonItem>
             <IonInput
@@ -95,7 +126,7 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
               labelPlacement="stacked"
               value={name}
               onIonInput={(e) => setName(String(e.detail.value ?? ''))}
-              onKeyDown={(e) => e.key === 'Enter' && void addAndChoose()}
+              onKeyDown={(e) => e.key === 'Enter' && !busy && void addAndChoose()}
             />
             <IonButton slot="end" fill="clear" disabled={busy || !name.trim()} onClick={() => void addAndChoose()}>
               {t('move.add')}

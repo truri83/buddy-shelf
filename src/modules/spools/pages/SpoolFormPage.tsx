@@ -1,4 +1,6 @@
 import {
+  IonAccordion,
+  IonAccordionGroup,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -18,19 +20,24 @@ import {
   IonSegmentButton,
   IonSelect,
   IonSelectOption,
+  IonTextarea,
   IonTitle,
+  IonToggle,
   IonToolbar,
   useIonToast,
 } from '@ionic/react';
-import { barcodeOutline } from 'ionicons/icons';
+import { barcodeOutline, cartOutline, checkmark, colorPaletteOutline, documentTextOutline, sunnyOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import type { FilamentEntry, GtinHit, Spool } from '@/core/api';
-import { colorSearchText, otherLanguageName, t } from '@/core/i18n';
+import { useAllowed, type FilamentEntry, type GtinHit, type Spool } from '@/core/api';
+import { colorSearchText, fmtDate, fmtNum, otherLanguageName, t, tn } from '@/core/i18n';
 import { BARCODES_ONLY, haptic, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
-import { ChoiceChip, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
+import { ChoiceChip, ColorRing, FillBar, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
+import { coreDisplayName } from '../cores';
+import { todayIso } from '@/core/filament';
+import { STORAGE_ICONS } from '../storage';
 import {
   useCatalog,
   useColors,
@@ -40,20 +47,24 @@ import {
   useDbMaterials,
   useGtin,
   useLocations,
+  useSetExtras,
   useSpool,
   useUpdateSpool,
 } from '../hooks/useSpools';
 import {
   applyFilament,
   applyGtin,
+  BASE_COLORS,
   COMMON_MATERIALS,
   draftFromSpool,
   draftToCreate,
+  draftExtras,
   draftToUpdate,
   emptyDraft,
   NET_WEIGHTS,
   parseHex,
   rgbaToHex,
+  STORAGE_TYPES,
   type SpoolDraft,
   type SpoolKind,
 } from '../newSpool';
@@ -80,6 +91,14 @@ export function SpoolFormPage() {
   if (gtin && barcode.isPending && !gaveUp) {
     return (
       <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/spools" text="" />
+            </IonButtons>
+            <IonTitle>{t('new.title')}</IonTitle>
+          </IonToolbar>
+        </IonHeader>
         <IonContent>
           <StateView state="loading" />
         </IonContent>
@@ -103,19 +122,33 @@ export function SpoolFormPage() {
       </IonPage>
     );
   }
-  return <SpoolForm key={`${editId}-${fromId}-${gtin}`} source={source.data} editing={editId > 0} gtin={gtin ? { code: gtin, hits: barcode.data ?? [], failed: barcode.isError || barcode.isPending } : undefined} />;
+  return (
+    <SpoolForm
+      key={`${editId}-${fromId}-${gtin}`}
+      source={source.data}
+      editing={editId > 0}
+      gtin={gtin ? { code: gtin, hits: barcode.data ?? [], failed: barcode.isError || barcode.isPending } : undefined}
+    />
+  );
 }
 
-function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean; gtin?: { code: string; hits: GtinHit[]; failed: boolean } }) {
+function SpoolForm({
+  source,
+  editing,
+  gtin,
+}: {
+  source?: Spool;
+  editing: boolean;
+  gtin?: { code: string; hits: GtinHit[]; failed: boolean };
+}) {
   const [draft, setDraft] = useState<SpoolDraft>(() => {
     const base = source ? draftFromSpool(source) : emptyDraft();
     return gtin ? applyGtin(base, gtin.hits) : base;
   });
   const [scanOpen, setScanOpen] = useState(false);
-  const [hexText, setHexText] = useState(() => rgbaToHex(draft.rgba));
+  const [hexText, setHexText] = useState(() => rgbaToHex(draft.rgba).replace('#', ''));
   const [picker, setPicker] = useState<'brand' | 'material' | 'filament' | null>(null);
   const [created, setCreated] = useState<Spool[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const locations = useLocations();
   const catalog = useCatalog();
   const manufacturers = useDbManufacturers(true);
@@ -124,16 +157,33 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
   const colors = useColors(draft.brand.trim(), draft.material.trim());
   const create = useCreateSpools();
   const update = useUpdateSpool();
+  const setExtras = useSetExtras();
+  const canEdit = useAllowed('inventory:update');
   const navigate = useNavigate();
   const [toast] = useIonToast();
 
   const set = <K extends keyof SpoolDraft>(k: K, v: SpoolDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const setRgba = (rgba: string | null) => {
     setDraft((d) => ({ ...d, rgba }));
-    setHexText(rgbaToHex(rgba));
+    setHexText(rgbaToHex(rgba).replace('#', ''));
   };
   const hexValid = hexText.trim() === '' || parseHex(hexText) !== null;
-  const valid = draft.material.trim().length > 0 && draft.labelWeight > 0 && draft.quantity >= 1 && hexValid;
+  // Grund, warum Speichern nicht geht – steht neben dem Knopf statt still gesperrt
+  const missing = !draft.material.trim()
+    ? t('new.missingMaterial')
+    : !(draft.labelWeight > 0)
+      ? t('new.missingWeight')
+      : !hexValid
+        ? t('new.hexInvalid')
+        : draft.remaining != null && !(draft.remaining >= 0 && draft.remaining <= draft.labelWeight)
+          ? t('new.remainingInvalid')
+          : null;
+  const valid = !missing && draft.quantity >= 1 && canEdit;
+
+  // Live-Vorschau oben (Vorbild Spooly)
+  const title = draft.colorName.trim() || [draft.material, draft.subtype].filter((x) => x.trim()).join(' ') || t('new.preview');
+  const rest = draft.remaining ?? draft.labelWeight;
+  const fill = draft.labelWeight > 0 ? Math.max(0, Math.min(1, rest / draft.labelWeight)) : 0;
 
   const setKind = (kind: SpoolKind) =>
     setDraft((d) => ({
@@ -146,28 +196,45 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
   const pickFilament = (f: FilamentEntry) => {
     const next = applyFilament(draft, f);
     setDraft(next);
-    setHexText(rgbaToHex(next.rgba));
+    setHexText(rgbaToHex(next.rgba).replace('#', ''));
   };
+
+  const pickBase = (name: string, hex: string) => {
+    setRgba(parseHex(hex));
+    // Farbname nur überschreiben, wenn er leer ist oder selbst eine Grundfarbe war
+    if (!draft.colorName.trim() || BASE_COLORS.some(([n]) => n === draft.colorName)) set('colorName', name);
+  };
+
+  const fail = (e: unknown) =>
+    void toast({
+      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+      duration: 3500,
+      position: 'top',
+      color: 'danger',
+    });
 
   const save = async () => {
     if (!valid) return;
-    setError(null);
     if (draft.kind === 'refill') storage.set(REFILL_KEY, draft.coreWeight);
     try {
       if (editing) {
         if (!source) return;
         await update.mutateAsync({ spoolId: source.id, patch: draftToUpdate(draft, source) });
+        const extras = draftExtras(draft, source);
+        if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: [source.id], patch: extras });
         haptic();
         void toast({ message: t('edit.saved', { id: source.id }), duration: 2000, position: 'top' });
         navigate(`/spools/${source.id}`, { replace: true });
         return;
       }
       const list = await create.mutateAsync({ spool: draftToCreate(draft), quantity: draft.quantity });
+      const extras = draftExtras(draft);
+      if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: list.map((s) => s.id), patch: extras }).catch(fail);
       haptic();
-      void toast({ message: t('new.created', { n: list.length }), duration: 2000, position: 'top' });
+      void toast({ message: tn('new.created', list.length), duration: 2000, position: 'top' });
       setCreated(list);
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      fail(e);
     }
   };
 
@@ -184,13 +251,18 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
       (filaments.data ?? []).map((f) => ({
         value: f.id,
         label: f.name,
-        sublabel: [f.weight ? `${f.weight} g` : null, f.spool_weight ? `${t('weigh.coreRow')} ${f.spool_weight} g` : null, f.finish].filter(Boolean).join(' · '),
+        sublabel: [f.weight ? `${f.weight} g` : null, f.spool_weight ? `${t('weigh.coreRow')} ${f.spool_weight} g` : null, f.finish]
+          .filter(Boolean)
+          .join(' · '),
         color: f.color_hex ? `#${f.color_hex}` : null,
         keywords: colorSearchText(f.name, f.color_hex ? `${f.color_hex}FF` : null),
       })),
     [filaments.data],
   );
-  const busy = create.isPending || update.isPending;
+  const busy = create.isPending || update.isPending || setExtras.isPending;
+  const makerColors = colors.data ?? [];
+  const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
+  const today = todayIso();
 
   return (
     <IonPage>
@@ -199,20 +271,47 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
           <IonButtons slot="start">
             <IonBackButton defaultHref={source ? `/spools/${source.id}` : '/spools'} text="" />
           </IonButtons>
-          <IonTitle>{editing && source ? t('edit.title', { id: source.id }) : source ? t('new.duplicateOf', { id: source.id }) : t('new.title')}</IonTitle>
+          <IonTitle>
+            {editing && source ? t('edit.title', { id: source.id }) : source ? t('new.duplicateOf', { id: source.id }) : t('new.title')}
+          </IonTitle>
+        </IonToolbar>
+        {/* Live-Vorschau: so sieht die Spule gleich in der Liste aus */}
+        <IonToolbar>
+          <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center', padding: 'var(--bs-s1) var(--bs-s4) var(--bs-s2)' }}>
+            <ColorRing rgba={draft.rgba} fill={fill} size={52} label={title} />
+            <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--bs-s1)' }}>
+              <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {title}
+                {draft.brand && <span style={{ ...sub, fontWeight: 400 }}> · {draft.brand}</span>}
+              </strong>
+              <FillBar fill={fill} rgba={draft.rgba} height={6} />
+              <span className="bs-num" style={sub}>
+                {fmtNum(rest)} / {fmtNum(draft.labelWeight)} g · {Math.round(fill * 100)} %
+                {!editing && draft.quantity > 1 && ` · ${draft.quantity}×`}
+              </span>
+            </div>
+          </div>
         </IonToolbar>
       </IonHeader>
       <IonContent>
+        {!canEdit && (
+          <IonNote color="warning" style={{ display: 'block', padding: 'var(--bs-s4) var(--bs-s5) 0' }}>
+            {t('common.noPermission')}
+          </IonNote>
+        )}
         {!editing && (
           <IonList inset>
             <IonItem button detail onClick={() => setScanOpen(true)}>
               <IonIcon icon={barcodeOutline} slot="start" color="primary" aria-hidden />
               <IonLabel>
                 {t('barcode.scan')}
-                <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                <div style={sub}>
                   {gtin
                     ? gtin.hits.length
-                      ? t('barcode.found', { code: gtin.code, what: [gtin.hits[0]!.brand, gtin.hits[0]!.filament, gtin.hits[0]!.color].join(' · ') })
+                      ? t('barcode.found', {
+                          code: gtin.code,
+                          what: [gtin.hits[0]!.brand, gtin.hits[0]!.filament, gtin.hits[0]!.color].filter(Boolean).join(' · '),
+                        })
                       : gtin.failed
                         ? t('barcode.unreachable', { code: gtin.code })
                         : t('barcode.unknown', { code: gtin.code })
@@ -222,11 +321,12 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
             </IonItem>
           </IonList>
         )}
-        {/* Hersteller + Material als Listen */}
+
+        {/* Filament: Hersteller, Material, Sorte */}
         <IonList inset>
           <IonItem button detail onClick={() => setPicker('brand')}>
             <IonLabel>
-              <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{t('new.brand')}</div>
+              <div style={sub}>{t('new.brand')}</div>
               {draft.brand || <span style={{ color: 'var(--bs-text-2)' }}>{t('new.pickBrand')}</span>}
             </IonLabel>
           </IonItem>
@@ -245,18 +345,23 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
             <ChoiceChip onSelect={() => setPicker('material')}>{t('new.pickMaterial')} …</ChoiceChip>
           </div>
           <IonItem>
-            <IonInput label={t('new.subtype')} labelPlacement="stacked" value={draft.subtype} onIonInput={(e) => set('subtype', String(e.detail.value ?? ''))} />
+            <IonInput
+              label={t('new.subtype')}
+              labelPlacement="stacked"
+              value={draft.subtype}
+              onIonInput={(e) => set('subtype', String(e.detail.value ?? ''))}
+            />
           </IonItem>
         </IonList>
 
-        {/* Farbe: Datenbank, Bambuddy-Katalog, Hex, Farbwähler */}
+        {/* Farbe: Herstellerfarben, Grundfarben, Farbwähler, Hex */}
         <IonList inset>
           <IonListHeader>{t('new.colorHex')}</IonListHeader>
           {draft.brand && draft.material && (
             <IonItem button detail disabled={!filaments.data?.length} onClick={() => setPicker('filament')}>
               <IonLabel>
                 {t('new.pickFilament')}
-                <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                <div style={sub}>
                   {filaments.isError
                     ? t('new.noDb')
                     : t('new.pickFilamentHint', { n: filaments.data?.length ?? 0, brand: draft.brand, material: draft.material })}
@@ -264,9 +369,12 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
               </IonLabel>
             </IonItem>
           )}
-          {(colors.data ?? []).length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }} aria-label={t('new.colorSuggest')}>
-              {(colors.data ?? []).slice(0, 24).map((c) => (
+          {makerColors.length > 0 && (
+            <div
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}
+              aria-label={t('new.colorSuggest')}
+            >
+              {makerColors.slice(0, 24).map((c) => (
                 <ChoiceChip
                   key={c.id}
                   selected={draft.colorName === c.color_name}
@@ -275,44 +383,109 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
                     setRgba(parseHex(c.hex_color));
                   }}
                 >
-                  <span aria-hidden style={{ width: 14, height: 14, borderRadius: '50%', background: c.hex_color, border: '1px solid var(--bs-border)', marginRight: 6 }} />
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: c.hex_color,
+                      border: '1px solid var(--bs-border)',
+                      marginRight: 'var(--bs-s1)',
+                    }}
+                  />
                   {c.color_name}
                 </ChoiceChip>
               ))}
             </div>
+          )}
+          <div
+            role="group"
+            aria-label={t('new.colorPalette')}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
+              gap: 'var(--bs-s2)',
+              padding: 'var(--bs-s2) var(--bs-s4)',
+            }}
+          >
+            {BASE_COLORS.map(([name, hex]) => {
+              const selected = draft.rgba?.slice(0, 6).toUpperCase() === hex;
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  aria-label={name}
+                  aria-pressed={selected}
+                  title={name}
+                  onClick={() => pickBase(name, hex)}
+                  className="bs-swatch"
+                  style={{
+                    background: `#${hex}`,
+                    outline: selected ? '2px solid var(--bs-accent)' : undefined,
+                    color: ['FFFFFF', 'F2C94C', 'D8C8A8', 'C0C0C0'].includes(hex) ? '#000000' : '#ffffff',
+                  }}
+                >
+                  {selected && <IonIcon icon={checkmark} aria-hidden />}
+                </button>
+              );
+            })}
+            {/* eigene Farbe: Systemauswahl des Browsers */}
+            <label className="bs-swatch bs-swatch-pick" title={t('new.colorPick')}>
+              <IonIcon icon={colorPaletteOutline} aria-hidden />
+              <input
+                type="color"
+                aria-label={t('new.colorPick')}
+                value={`#${(draft.rgba ?? '888888FF').slice(0, 6)}`}
+                onChange={(e) => setRgba(parseHex(e.target.value))}
+              />
+            </label>
+          </div>
+          {makerColors.length === 0 && (
+            <IonNote style={{ display: 'block', padding: '0 var(--bs-s4) var(--bs-s2)', ...sub }}>{t('new.colorHintBrand')}</IonNote>
           )}
           <IonItem>
             <IonInput
               label={t('new.color')}
               labelPlacement="stacked"
               value={draft.colorName}
-              helperText={otherLanguageName(draft.colorName) ? t('new.colorOther', { name: otherLanguageName(draft.colorName)! }) : undefined}
+              helperText={
+                otherLanguageName(draft.colorName) ? t('new.colorOther', { name: otherLanguageName(draft.colorName)! }) : undefined
+              }
               onIonInput={(e) => set('colorName', String(e.detail.value ?? ''))}
             />
           </IonItem>
           <IonItem>
-            <span aria-hidden slot="start" style={{ width: 28, height: 28, borderRadius: '50%', background: rgbaToCss(draft.rgba), border: '2px solid var(--bs-border)' }} />
+            <span
+              aria-hidden
+              slot="start"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: rgbaToCss(draft.rgba),
+                border: '2px solid var(--bs-border)',
+              }}
+            />
             <IonInput
-              label={t('new.hex')}
+              label={t('new.hexShort')}
               labelPlacement="stacked"
-              placeholder="#00AE42"
+              placeholder="00AE42"
               value={hexText}
               className="bs-num"
+              maxlength={9}
               onIonInput={(e) => {
-                const v = String(e.detail.value ?? '');
+                const v = String(e.detail.value ?? '').replace('#', '');
                 setHexText(v);
                 const rgba = parseHex(v);
                 if (rgba) set('rgba', rgba);
                 else if (!v.trim()) set('rgba', null);
               }}
-            />
-            <input
-              type="color"
-              aria-label={t('new.colorHex')}
-              value={`#${(draft.rgba ?? '888888FF').slice(0, 6)}`}
-              onChange={(e) => setRgba(parseHex(e.target.value))}
-              style={{ width: 44, height: 36, border: 'none', background: 'none' }}
-            />
+            >
+              <span slot="start" className="bs-num" style={{ color: 'var(--bs-text-2)' }}>
+                #
+              </span>
+            </IonInput>
           </IonItem>
           {!hexValid && (
             <IonNote color="danger" style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4)' }}>
@@ -321,7 +494,7 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
           )}
         </IonList>
 
-        {/* Netto-Filament + Spule */}
+        {/* Gewicht, Füllstand, Spulenart */}
         <IonList inset>
           <IonListHeader>{t('new.labelWeight')}</IonListHeader>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
@@ -332,8 +505,32 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
             ))}
           </div>
           <IonItem>
-            <GramInput label={t('new.labelWeight')} value={draft.labelWeight} onChange={(n) => set('labelWeight', n)} />
+            <GramInput label={t('new.labelWeightExact')} value={draft.labelWeight} onChange={(n) => set('labelWeight', n)} />
           </IonItem>
+          {!editing && (
+            <>
+              <IonListHeader>{t('new.fill')}</IonListHeader>
+              <div style={{ padding: 'var(--bs-s2) var(--bs-s3)' }}>
+                <IonSegment
+                  value={draft.remaining == null ? 'full' : 'started'}
+                  onIonChange={(e) => set('remaining', e.detail.value === 'full' ? null : Math.round(draft.labelWeight / 2))}
+                >
+                  <IonSegmentButton value="full">{t('new.full')}</IonSegmentButton>
+                  <IonSegmentButton value="started">{t('new.started')}</IonSegmentButton>
+                </IonSegment>
+              </div>
+              {draft.remaining != null && (
+                <IonItem>
+                  <GramInput
+                    label={t('new.remaining')}
+                    value={draft.remaining}
+                    max={draft.labelWeight}
+                    onChange={(n) => set('remaining', Math.round(n))}
+                  />
+                </IonItem>
+              )}
+            </>
+          )}
           <IonListHeader>{t('new.kind')}</IonListHeader>
           <div style={{ padding: 'var(--bs-s2) var(--bs-s3)' }}>
             <IonSegment value={draft.kind} onIonChange={(e) => setKind(e.detail.value as SpoolKind)}>
@@ -347,7 +544,12 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
           {draft.kind === 'refill' ? (
             <>
               <IonItem>
-                <GramInput label={t('new.refillCore')} value={draft.coreWeight} max={2000} onChange={(n) => set('coreWeight', Math.round(n))} />
+                <GramInput
+                  label={t('new.refillCore')}
+                  value={draft.coreWeight}
+                  max={2000}
+                  onChange={(n) => set('coreWeight', Math.round(n))}
+                />
               </IonItem>
               <IonNote style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4)' }}>{t('new.refillHint')}</IonNote>
             </>
@@ -367,15 +569,20 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
                 >
                   {(catalog.data ?? []).map((c) => (
                     <IonSelectOption key={c.id} value={c.id}>
-                      {c.name} · {c.weight} g
+                      {coreDisplayName(c.name)} · {c.weight} g
                     </IonSelectOption>
                   ))}
-                  <IonSelectOption value="custom">{t('new.coreWeightCustom')}</IonSelectOption>
+                  <IonSelectOption value="custom">{t('new.coreWeightOwn')}</IonSelectOption>
                 </IonSelect>
               </IonItem>
               {draft.coreCatalogId == null && (
                 <IonItem>
-                  <GramInput label={t('new.coreWeightCustom')} value={draft.coreWeight} max={2000} onChange={(n) => set('coreWeight', Math.round(n))} />
+                  <GramInput
+                    label={t('new.coreWeightCustom')}
+                    value={draft.coreWeight}
+                    max={2000}
+                    onChange={(n) => set('coreWeight', Math.round(n))}
+                  />
                 </IonItem>
               )}
             </>
@@ -398,34 +605,154 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
               </IonSelect>
             </IonItem>
           )}
-        </IonList>
-        {error && (
-          <IonNote color="danger" role="alert" style={{ display: 'block', padding: '0 var(--bs-s4) var(--bs-s4)' }}>
-            {error}
-          </IonNote>
-        )}
-      </IonContent>
-
-      {/* Daumenzone */}
-      <IonFooter>
-        <IonToolbar>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)', padding: '0 var(--bs-s3)' }}>
-            {!editing && (
-              <>
-                <IonLabel>{t('new.quantity')}</IonLabel>
-                <IonButton fill="outline" size="small" disabled={draft.quantity <= 1} onClick={() => set('quantity', draft.quantity - 1)} aria-label={t('common.less')}>
+          {!editing && (
+            <IonItem lines="none">
+              <IonLabel>{t('new.quantity')}</IonLabel>
+              <IonButtons slot="end" style={{ gap: 'var(--bs-s2)', alignItems: 'center' }}>
+                <IonButton
+                  fill="outline"
+                  disabled={draft.quantity <= 1}
+                  onClick={() => set('quantity', draft.quantity - 1)}
+                  aria-label={t('common.less')}
+                >
                   −
                 </IonButton>
                 <span className="bs-num" style={{ minWidth: 24, textAlign: 'center' }}>
                   {draft.quantity}
                 </span>
-                <IonButton fill="outline" size="small" disabled={draft.quantity >= 20} onClick={() => set('quantity', draft.quantity + 1)} aria-label={t('common.more')}>
+                <IonButton
+                  fill="outline"
+                  disabled={draft.quantity >= 20}
+                  onClick={() => set('quantity', draft.quantity + 1)}
+                  aria-label={t('common.more')}
+                >
                   +
                 </IonButton>
-              </>
+              </IonButtons>
+            </IonItem>
+          )}
+        </IonList>
+
+        {/* Optionales, eingeklappt (Vorbild Spooly) */}
+        <IonAccordionGroup expand="inset" multiple style={{ marginBottom: 'var(--bs-s4)' }}>
+          <IonAccordion value="buy">
+            <IonItem slot="header">
+              <IonIcon icon={cartOutline} slot="start" color="primary" aria-hidden />
+              <IonLabel>
+                {t('new.buy')}
+                <div style={sub}>
+                  {[draft.price ? `${draft.price} €` : null, draft.materialNumber || null].filter(Boolean).join(' · ') || t('new.buyHint')}
+                </div>
+              </IonLabel>
+            </IonItem>
+            <div slot="content">
+              <IonItem>
+                <IonInput
+                  label={t('new.price')}
+                  labelPlacement="stacked"
+                  inputmode="decimal"
+                  placeholder={t('new.pricePlaceholder')}
+                  value={draft.price}
+                  onIonInput={(e) => set('price', String(e.detail.value ?? ''))}
+                />
+              </IonItem>
+              <IonItem lines="none">
+                <IonInput
+                  label={t('spools.detail.articleNo')}
+                  labelPlacement="stacked"
+                  placeholder={t('new.articlePlaceholder')}
+                  value={draft.materialNumber}
+                  onIonInput={(e) => set('materialNumber', String(e.detail.value ?? ''))}
+                />
+              </IonItem>
+            </div>
+          </IonAccordion>
+          <IonAccordion value="moisture">
+            <IonItem slot="header">
+              <IonIcon icon={sunnyOutline} slot="start" color="primary" aria-hidden />
+              <IonLabel>
+                {t('new.moisture')}
+                <div style={sub}>
+                  {[
+                    draft.storageType ? t(`storage.${draft.storageType}`) : null,
+                    draft.driedAt ? t('new.driedOn', { date: fmtDate(draft.driedAt) }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || t('new.moistureHint')}
+                </div>
+              </IonLabel>
+            </IonItem>
+            <div slot="content">
+              <IonListHeader>{t('new.storageType')}</IonListHeader>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
+                {STORAGE_TYPES.map((k) => (
+                  <ChoiceChip
+                    key={k}
+                    selected={draft.storageType === k}
+                    onSelect={() => set('storageType', draft.storageType === k ? '' : k)}
+                  >
+                    <IonIcon icon={STORAGE_ICONS[k]} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
+                    {t(`storage.${k}`)}
+                  </ChoiceChip>
+                ))}
+              </div>
+              <IonItem>
+                <IonToggle checked={draft.driedAt === today} onIonChange={(e) => set('driedAt', e.detail.checked ? today : null)}>
+                  {t('new.justDried')}
+                </IonToggle>
+              </IonItem>
+              <IonItem>
+                <IonInput
+                  type="date"
+                  label={t('dry.last')}
+                  labelPlacement="stacked"
+                  max={today}
+                  value={draft.driedAt ?? ''}
+                  onIonInput={(e) => set('driedAt', String(e.detail.value ?? '') || null)}
+                />
+              </IonItem>
+              <IonNote style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4) var(--bs-s3)', ...sub }}>
+                {t('new.reminderHint')}
+              </IonNote>
+            </div>
+          </IonAccordion>
+          <IonAccordion value="notes">
+            <IonItem slot="header">
+              <IonIcon icon={documentTextOutline} slot="start" color="primary" aria-hidden />
+              <IonLabel>
+                {t('new.notes')}
+                <div style={{ ...sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {draft.note || t('new.notesHint')}
+                </div>
+              </IonLabel>
+            </IonItem>
+            <div slot="content">
+              <IonItem lines="none">
+                <IonTextarea
+                  aria-label={t('new.notes')}
+                  autoGrow
+                  rows={3}
+                  placeholder={t('new.notesPlaceholder')}
+                  value={draft.note}
+                  onIonInput={(e) => set('note', String(e.detail.value ?? ''))}
+                />
+              </IonItem>
+            </div>
+          </IonAccordion>
+        </IonAccordionGroup>
+      </IonContent>
+
+      {/* Daumenzone: Anzahl + Hinzufügen; Grund, falls gesperrt */}
+      <IonFooter>
+        <IonToolbar>
+          <div style={{ display: 'grid', gap: 'var(--bs-s2)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
+            {missing && (
+              <IonNote color="warning" style={{ fontSize: 'var(--bs-fs-caption)' }}>
+                {missing}
+              </IonNote>
             )}
-            <IonButton style={{ marginLeft: 'auto' }} disabled={!valid || busy} onClick={() => void save()}>
-              {editing ? t('common.save') : t('new.save', { n: draft.quantity })}
+            <IonButton expand="block" disabled={!valid || busy} onClick={() => void save()} style={{ margin: 0 }}>
+              {editing ? t('common.save') : tn('new.save', draft.quantity)}
             </IonButton>
           </div>
         </IonToolbar>
@@ -465,6 +792,9 @@ function SpoolForm({ source, editing, gtin }: { source?: Spool; editing: boolean
         <IonHeader>
           <IonToolbar>
             <IonTitle>{t('barcode.scan')}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setScanOpen(false)}>{t('common.close')}</IonButton>
+            </IonButtons>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">

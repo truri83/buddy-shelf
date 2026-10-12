@@ -1,10 +1,10 @@
 import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet, useIonToast } from '@ionic/react';
-import { ellipsisVertical, locationOutline, waterOutline } from 'ionicons/icons';
+import { ellipsisVertical, locationOutline, sunnyOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
-import { todayIso } from '../drying';
+import { dryingDue, todayIso } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
 import { isLow } from '../logic';
 import { agoText } from './DryingCard';
@@ -18,12 +18,17 @@ interface Props {
   selecting?: boolean;
   selected?: boolean;
   onToggle?: () => void;
+  /** Desktop: Karte wählt die Spule für die Detail-Kachel, statt die Seite zu wechseln */
+  onOpen?: () => void;
+  /** gerade in der Detail-Kachel */
+  active?: boolean;
 }
 
 /** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken in Filamentfarbe, ⋮-Menü. */
-export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, onToggle }: Props) {
+export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, onToggle, onOpen, active }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
+  const dry = dryingDue(spool);
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
   const [present] = useIonActionSheet();
@@ -35,7 +40,12 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
       .then(() => void toast({ message: t('dry.marked', { id: spool.id }), duration: 2000, position: 'top' }))
       .catch(
         (e: unknown) =>
-          void toast({ message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }), duration: 3000, position: 'top', color: 'danger' }),
+          void toast({
+            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+            duration: 3000,
+            position: 'top',
+            color: 'danger',
+          }),
       );
 
   // Aktionen öffnen die Detailseite mit dem passenden Blatt (?action=…)
@@ -46,9 +56,9 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
         ...(canEdit
           ? [
               { text: t('spools.action.weigh'), handler: () => navigate(`/spools/${spool.id}?action=weigh`) },
+              { text: t('dry.markToday'), handler: () => void markDried() },
               { text: t('spools.action.toAms'), handler: () => navigate(`/spools/${spool.id}?action=ams`) },
               { text: t('spools.action.move'), handler: () => navigate(`/spools/${spool.id}?action=move`) },
-              { text: t('dry.markToday'), handler: () => void markDried() },
             ]
           : []),
         { text: t('spools.action.label'), handler: () => navigate(`/spools/${spool.id}?action=label`) },
@@ -59,20 +69,35 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
 
   return (
     <IonCard
-      routerLink={selecting ? undefined : `/spools/${spool.id}`}
-      button={selecting}
-      onClick={selecting ? onToggle : undefined}
+      routerLink={selecting || onOpen ? undefined : `/spools/${spool.id}`}
+      button={selecting || !!onOpen}
+      onClick={selecting ? onToggle : onOpen}
       aria-pressed={selecting ? selected : undefined}
       className="bs-card"
-      style={{ margin: 'var(--bs-s2) var(--bs-s3)', borderRadius: 'var(--bs-r-md)', boxShadow: 'none', border: '1px solid var(--bs-border)' }}
+      style={{
+        margin: 'var(--bs-s2) var(--bs-s3)',
+        borderRadius: 'var(--bs-r-md)',
+        boxShadow: 'none',
+        border: active ? '2px solid var(--bs-accent)' : '1px solid var(--bs-border)',
+      }}
     >
       <div style={{ display: 'grid', gap: 'var(--bs-s2)', padding: 'var(--bs-s3)', color: 'var(--bs-text)' }}>
         <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center' }}>
           {selecting && <IonCheckbox checked={selected} aria-label={`#${spool.id}`} style={{ pointerEvents: 'none' }} />}
           <ColorRing rgba={spool.rgba} fill={fill} label={name} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-            <strong style={{ fontSize: 'var(--bs-fs-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</strong>
-            <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <strong style={{ fontSize: 'var(--bs-fs-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {name}
+            </strong>
+            <span
+              style={{
+                fontSize: 'var(--bs-fs-caption)',
+                color: 'var(--bs-text-2)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               <span className="bs-num" style={{ color: 'var(--bs-accent)' }}>
                 #{spool.id}
               </span>
@@ -101,17 +126,32 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
           {low && <Badge tone="warn">{t('spools.low')}</Badge>}
-          {spool.dried_at && (
-            <span
-              title={t('dry.last')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}
-            >
-              <IonIcon icon={waterOutline} aria-label={t('dry.last')} />
-              {agoText(spool.dried_at)}
-            </span>
+          {dry?.due ? (
+            <Badge tone="warn">
+              <IonIcon icon={sunnyOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
+              {t('dry.badge')}
+            </Badge>
+          ) : (
+            spool.dried_at && (
+              <span
+                title={t('dry.last')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--bs-s1)',
+                  fontSize: 'var(--bs-fs-caption)',
+                  color: 'var(--bs-text-2)',
+                }}
+              >
+                <IonIcon icon={sunnyOutline} aria-label={t('dry.last')} />
+                {agoText(spool.dried_at)}
+              </span>
+            )
           )}
           {location && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}
+            >
               <IonIcon icon={locationOutline} aria-hidden />
               {location}
             </span>

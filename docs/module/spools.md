@@ -110,7 +110,7 @@ Stufe 1. Reihenfolge = empfohlene Bau-Reihenfolge. Status siehe jeweilige Tabell
 | Status | umgesetzt – mit echtem Drucker noch zu prüfen |
 | Ziel | Spulenwechsel am AMS in zwei Scans erledigen, ohne Menüs. |
 | Ablauf | 1. Slot-Etikett am AMS scannen → Sheet „AMS 1 · Slot 3“ zeigt die Spule, die dort gerade zugewiesen ist. 2. Kamera bleibt offen: neue Spule scannen. 3. Zuweisung wird gespeichert, kurze Bestätigung (Haptik + Hinweis) – **fertig**. Die alte Spule bekommt ihren letzten Lagerort zurück (rückgängig machen per Hinweis-Knopf). Reihenfolge Spule → Slot funktioniert genauso. |
-| Seite | `pages/SlotPage.tsx` (`/spools/slot/:p/:a/:t`, vom Scan-Verteiler über `manifest.scan`): Treffer-Karte „Im Slot“, Kamera bleibt offen, Spule scannen → gespeichert + Hinweis mit „Rückgängig“; Ersatz Code/Nummer eingeben. `pages/SlotsPage.tsx` (`/spools/slots`, unter Mehr): alle Slots + „Alle Slot-Etiketten drucken“ |
+| Seite | `pages/SlotPage.tsx` (`/more/slots/:p/:a/:t`, vom Scan-Verteiler über `manifest.scan`): Treffer-Karte „Im Slot“, Kamera bleibt offen, Spule scannen → gespeichert + Hinweis mit „Rückgängig“; Ersatz Code/Nummer eingeben. `pages/SlotsPage.tsx` (`/more/slots`, unter Mehr): alle Slots + „Alle Slot-Etiketten drucken“ |
 | Daten | `GET /inventory/assignments`, `POST /inventory/assignments` `{ spool_id, printer_id, ams_id, tray_id }`; alte Spule: `PATCH /inventory/spools/{id}` `{ location_id }`. Bambuddy stellt den AMS-Slot danach selbst per MQTT ein (Profil, Farbe, Material; bei leerem Slot sobald die Spule eingelegt ist). |
 | QR-Format | Slot: `bm:t:<druckerId>:<amsId>:<slot>` (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule). Spule: `bm:s:<id>`. Parser + Tests in `src/core/qr/codes.ts`. |
 | Plattform | `scanner` (SP-02); Haptik optional (`haptics`) |
@@ -156,7 +156,7 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 | Status | umgesetzt |
 | Ziel | Gewichte stimmen: Leerspulen-Gewichte pflegen, beim Wiegen die richtige Leerspule sehen/ändern, Restgewicht wahlweise brutto (Waage mit Spule) oder netto (nur Filament) eintragen. |
 | Ablauf | Mehr → „Leerspulen“ → Liste nach Hersteller, Suche, Eintrag tippen = ändern, + = neu, Wischen/Löschen mit Bestätigung; Vorschläge aus der Filament-Datenbank (Hersteller mit bekanntem Leerspulen-Gewicht, das noch fehlt) mit einem Tipp übernehmen. Wiegen (SP-05/SP-09): Zeile „Leerspule: Name · g“ → Auswahl-Sheet → speichert `core_weight` an der Spule; Umschalter Brutto/Netto. |
-| Seite | `pages/CoreWeightsPage.tsx` (`/spools/cores`), Leerspulen-Zeile + Brutto/Netto im Wiegen-Sheet und in „Wiegen & Inventur“ |
+| Seite | `pages/CoreWeightsPage.tsx` (`/more/cores`), Leerspulen-Zeile + Brutto/Netto im Wiegen-Sheet und in „Wiegen & Inventur“ |
 | Daten | `GET/POST /inventory/catalog`, `PUT/DELETE /inventory/catalog/{id}` (`{ name, weight }`); Spule: `PATCH { core_weight, core_weight_catalog_id }`; Netto wird als Brutto = Netto + Leerspule an den Waagen-Endpunkt gegeben (eine Rechenregel für beide Wege) |
 | Vorbild | spooly.eu: Gesamt-/Restgewicht, Füllstand, QR-Wechsel – hier mit Bambuddy als Datenhaltung |
 | Rechte | INVENTORY_UPDATE |

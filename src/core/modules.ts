@@ -19,6 +19,8 @@ export interface QuickAction {
   icon: string;
   /** Ziel-Route */
   href: string;
+  /** Gruppe unter „Mehr“: täglich gebraucht (Standard) oder Einrichtung */
+  group?: 'daily' | 'setup';
 }
 
 export interface ModuleManifest {

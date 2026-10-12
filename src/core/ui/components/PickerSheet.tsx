@@ -1,5 +1,19 @@
-import { IonContent, IonHeader, IonItem, IonLabel, IonList, IonModal, IonNote, IonSearchbar, IonSpinner, IonTitle, IonToolbar } from '@ionic/react';
-import { useMemo, useState } from 'react';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonModal,
+  IonNote,
+  IonSearchbar,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
+} from '@ionic/react';
+import { useMemo, useRef, useState } from 'react';
 import { foldGerman, t } from '@/core/i18n';
 
 export interface PickerItem {
@@ -26,13 +40,17 @@ interface Props {
 
 /** Baustein „Auswahl-Sheet mit Suche“ (UI-Regel: Auswahl in Bottom-Sheets). */
 export function PickerSheet({ isOpen, title, items, value, loading, allowCustom, onSelect, onDismiss }: Props) {
+  const modal = useRef<HTMLIonModalElement>(null);
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const words = foldGerman(query).split(/\s+/).filter(Boolean);
-    const list = words.length ? items.filter((i) => words.every((w) => foldGerman(`${i.label} ${i.sublabel ?? ''} ${i.keywords ?? ''}`).includes(w))) : items;
+    const list = words.length
+      ? items.filter((i) => words.every((w) => foldGerman(`${i.label} ${i.sublabel ?? ''} ${i.keywords ?? ''}`).includes(w)))
+      : items;
     return list.slice(0, 300);
   }, [items, query]);
-  const custom = allowCustom && query.trim() && !items.some((i) => i.label.toLowerCase() === query.trim().toLowerCase()) ? query.trim() : null;
+  const custom =
+    allowCustom && query.trim() && !items.some((i) => i.label.toLowerCase() === query.trim().toLowerCase()) ? query.trim() : null;
 
   const pick = (v: string, item?: PickerItem) => {
     onSelect(v, item);
@@ -41,10 +59,19 @@ export function PickerSheet({ isOpen, title, items, value, loading, allowCustom,
   };
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={() => (setQuery(''), onDismiss())} initialBreakpoint={0.9} breakpoints={[0, 0.9, 1]}>
+    <IonModal
+      ref={modal}
+      isOpen={isOpen}
+      onDidDismiss={() => (setQuery(''), onDismiss())}
+      initialBreakpoint={0.9}
+      breakpoints={[0, 0.9, 1]}
+    >
       <IonHeader>
         <IonToolbar>
           <IonTitle>{title}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => void modal.current?.dismiss()}>{t('common.close')}</IonButton>
+          </IonButtons>
         </IonToolbar>
         <IonToolbar>
           <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder={t('picker.search')} />
@@ -68,7 +95,13 @@ export function PickerSheet({ isOpen, title, items, value, loading, allowCustom,
                   <span
                     aria-hidden
                     slot="start"
-                    style={{ width: 22, height: 22, borderRadius: '50%', background: i.color ?? 'transparent', border: '2px solid var(--bs-border)' }}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: i.color ?? 'transparent',
+                      border: '2px solid var(--bs-border)',
+                    }}
                   />
                 )}
                 <IonLabel>

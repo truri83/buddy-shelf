@@ -18,7 +18,7 @@ import {
 import { add, pricetagOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type Location } from '@/core/api';
-import { t } from '@/core/i18n';
+import { t, tn } from '@/core/i18n';
 import { LabelPrintSheet, useLabelTemplates, type LabelVariables } from '@/core/printing';
 import { encodeLocationCode } from '@/core/qr/codes';
 import { StateView } from '@/core/ui';
@@ -101,9 +101,7 @@ export function LocationsPage() {
                 <IonItem key={l.id} routerLink={`/spools/stow/${l.id}`} detail>
                   <IonLabel>
                     {l.name}
-                    <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>
-                      {t(l.spool_count === 1 ? 'spools.countOne' : 'spools.count', { n: l.spool_count })}
-                    </div>
+                    <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{tn('spools.count', l.spool_count)}</div>
                   </IonLabel>
                   <IonButton
                     slot="end"

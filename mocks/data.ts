@@ -2,12 +2,38 @@ import type { CatalogEntry, ColorEntry, Location, Printer, PrinterStatus, Spool,
 
 /** Beispieldaten im Bambuddy-Format für npm run dev:mock und Tests. */
 const now = '2026-10-11T12:00:00Z';
-const spool = (id: number, material: string, subtype: string | null, color: string, rgba: string, brand: string, used: number, extra: Partial<Spool> = {}): Spool => ({
-  id, material, subtype, color_name: color, rgba, brand,
-  label_weight: 1000, core_weight: brand === 'Bambu Lab' ? 237 : 180, weight_used: used,
-  note: null, tag_uid: null, tray_uuid: null, storage_location: null, location_id: 1,
-  material_number: null, low_stock_threshold_pct: null, last_scale_weight: null, last_weighed_at: null,
-  archived_at: null, created_at: now, updated_at: now, ...extra,
+const spool = (
+  id: number,
+  material: string,
+  subtype: string | null,
+  color: string,
+  rgba: string,
+  brand: string,
+  used: number,
+  extra: Partial<Spool> = {},
+): Spool => ({
+  id,
+  material,
+  subtype,
+  color_name: color,
+  rgba,
+  brand,
+  label_weight: 1000,
+  core_weight: brand === 'Bambu Lab' ? 237 : 180,
+  weight_used: used,
+  note: null,
+  tag_uid: null,
+  tray_uuid: null,
+  storage_location: null,
+  location_id: 1,
+  material_number: null,
+  low_stock_threshold_pct: null,
+  last_scale_weight: null,
+  last_weighed_at: null,
+  archived_at: null,
+  created_at: now,
+  updated_at: now,
+  ...extra,
 });
 
 export const locations: Location[] = [
@@ -29,14 +55,48 @@ export const spools: Spool[] = [
 ];
 
 export const assignments: SpoolAssignment[] = [
-  { id: 1, spool_id: 4, printer_id: 1, printer_name: 'X2D', ams_id: 1, tray_id: 1, ams_label: null, configured: true, pending_config: false },
-  { id: 2, spool_id: 10, printer_id: 1, printer_name: 'X2D', ams_id: 0, tray_id: 2, ams_label: null, configured: true, pending_config: false },
+  {
+    id: 1,
+    spool_id: 4,
+    printer_id: 1,
+    printer_name: 'X2D',
+    ams_id: 1,
+    tray_id: 1,
+    ams_label: null,
+    configured: true,
+    pending_config: false,
+  },
+  {
+    id: 2,
+    spool_id: 10,
+    printer_id: 1,
+    printer_name: 'X2D',
+    ams_id: 0,
+    tray_id: 2,
+    ams_label: null,
+    configured: true,
+    pending_config: false,
+  },
 ];
 
 export const printers: Printer[] = [{ id: 1, name: 'X2D', model: 'X2D', is_active: true }];
 
-const tray = (id: number, type: string | null, sub: string | null, color: string | null, remain: number | null, tag: string | null = null) => ({
-  id, tray_type: type, tray_sub_brands: sub, tray_color: color, remain, state: type ? 11 : 9, tag_uid: tag, tray_uuid: tag ? `${tag}0000000000000000` : null,
+const tray = (
+  id: number,
+  type: string | null,
+  sub: string | null,
+  color: string | null,
+  remain: number | null,
+  tag: string | null = null,
+) => ({
+  id,
+  tray_type: type,
+  tray_sub_brands: sub,
+  tray_color: color,
+  remain,
+  state: type ? 11 : 9,
+  tag_uid: tag,
+  tray_uuid: tag ? `${tag}0000000000000000` : null,
 });
 
 /** X2D mit zwei AMS (je 4 Slots) und zwei externen Halterungen (254/255). */
@@ -46,8 +106,26 @@ export const printerStatus: Record<number, PrinterStatus> = {
     name: 'X2D',
     connected: true,
     ams: [
-      { id: 0, is_ams_ht: false, tray: [tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80), tray(1, null, null, null, null), tray(2, 'ASA', 'ASA', 'FFFFFFFF', 100), tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65)] },
-      { id: 1, is_ams_ht: false, tray: [tray(0, 'PLA', 'PLA Matte', '7C4B3AFF', 100, 'A1B2C3D4E5F60708'), tray(1, 'PLA', 'PLA Basic', '000000FF', 45), tray(2, null, null, null, null), tray(3, null, null, null, null)] },
+      {
+        id: 0,
+        is_ams_ht: false,
+        tray: [
+          tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80),
+          tray(1, null, null, null, null),
+          tray(2, 'ASA', 'ASA', 'FFFFFFFF', 100),
+          tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65),
+        ],
+      },
+      {
+        id: 1,
+        is_ams_ht: false,
+        tray: [
+          tray(0, 'PLA', 'PLA Matte', '7C4B3AFF', 100, 'A1B2C3D4E5F60708'),
+          tray(1, 'PLA', 'PLA Basic', '000000FF', 45),
+          tray(2, null, null, null, null),
+          tray(3, null, null, null, null),
+        ],
+      },
     ],
     vt_tray: [tray(254, null, null, null, null), tray(255, null, null, null, null)],
   },
@@ -69,20 +147,108 @@ export const colors: ColorEntry[] = [
 
 /** Auszug im Format von server/catalog.js (SpoolmanDB) */
 export const filamentDb = [
-  { id: 'bl_pla_black', manufacturer: 'Bambu Lab', name: 'Basic Black', material: 'PLA', color_hex: '000000', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
-  { id: 'bl_pla_jade', manufacturer: 'Bambu Lab', name: 'Basic Jade White', material: 'PLA', color_hex: 'FFFFFF', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
-  { id: 'bl_pla_green', manufacturer: 'Bambu Lab', name: 'Basic Bambu Green', material: 'PLA', color_hex: '00AE42', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
-  { id: 'bl_pla_charcoal', manufacturer: 'Bambu Lab', name: 'Matte Charcoal', material: 'PLA', color_hex: '000000', weight: 1000, spool_weight: 250, spool_type: null, finish: 'matte', translucent: false },
-  { id: 'bl_petg_gray', manufacturer: 'Bambu Lab', name: 'HF Gray', material: 'PETG', color_hex: '8E9089', weight: 1000, spool_weight: 250, spool_type: null, finish: null, translucent: false },
-  { id: 'sunlu_petg_grey', manufacturer: 'Sunlu', name: 'Grey', material: 'PETG', color_hex: '8A8D91', weight: 1000, spool_weight: 160, spool_type: 'plastic', finish: null, translucent: false },
-  { id: 'sunlu_pla_red', manufacturer: 'Sunlu', name: 'Red', material: 'PLA', color_hex: 'C12E1F', weight: 1000, spool_weight: 120, spool_type: 'cardboard', finish: null, translucent: false },
-  { id: 'poly_pla_teal', manufacturer: 'Polymaker', name: 'PolyTerra Teal', material: 'PLA', color_hex: '00807F', weight: 1000, spool_weight: 140, spool_type: 'cardboard', finish: 'matte', translucent: false },
+  {
+    id: 'bl_pla_black',
+    manufacturer: 'Bambu Lab',
+    name: 'Basic Black',
+    material: 'PLA',
+    color_hex: '000000',
+    weight: 1000,
+    spool_weight: 250,
+    spool_type: null,
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'bl_pla_jade',
+    manufacturer: 'Bambu Lab',
+    name: 'Basic Jade White',
+    material: 'PLA',
+    color_hex: 'FFFFFF',
+    weight: 1000,
+    spool_weight: 250,
+    spool_type: null,
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'bl_pla_green',
+    manufacturer: 'Bambu Lab',
+    name: 'Basic Bambu Green',
+    material: 'PLA',
+    color_hex: '00AE42',
+    weight: 1000,
+    spool_weight: 250,
+    spool_type: null,
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'bl_pla_charcoal',
+    manufacturer: 'Bambu Lab',
+    name: 'Matte Charcoal',
+    material: 'PLA',
+    color_hex: '000000',
+    weight: 1000,
+    spool_weight: 250,
+    spool_type: null,
+    finish: 'matte',
+    translucent: false,
+  },
+  {
+    id: 'bl_petg_gray',
+    manufacturer: 'Bambu Lab',
+    name: 'HF Gray',
+    material: 'PETG',
+    color_hex: '8E9089',
+    weight: 1000,
+    spool_weight: 250,
+    spool_type: null,
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'sunlu_petg_grey',
+    manufacturer: 'Sunlu',
+    name: 'Grey',
+    material: 'PETG',
+    color_hex: '8A8D91',
+    weight: 1000,
+    spool_weight: 160,
+    spool_type: 'plastic',
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'sunlu_pla_red',
+    manufacturer: 'Sunlu',
+    name: 'Red',
+    material: 'PLA',
+    color_hex: 'C12E1F',
+    weight: 1000,
+    spool_weight: 120,
+    spool_type: 'cardboard',
+    finish: null,
+    translucent: false,
+  },
+  {
+    id: 'poly_pla_teal',
+    manufacturer: 'Polymaker',
+    name: 'PolyTerra Teal',
+    material: 'PLA',
+    color_hex: '00807F',
+    weight: 1000,
+    spool_weight: 140,
+    spool_type: 'cardboard',
+    finish: 'matte',
+    translucent: false,
+  },
 ];
 
 /** Zusatzdaten (server/extras.js) – im Mock im Speicher: einige Spulen schon etikettiert, eine getrocknet. */
-export const extras: Record<number, Partial<Record<'dried_at' | 'label_printed_at' | 'category', string>>> = {
-  2: { label_printed_at: '2026-09-20' },
-  4: { label_printed_at: '2026-09-20', dried_at: '2026-10-02' },
-  5: { label_printed_at: '2026-09-21' },
+export const extras: Record<number, Partial<Record<'dried_at' | 'label_printed_at' | 'category' | 'storage_type', string>>> = {
+  2: { label_printed_at: '2026-09-20', storage_type: 'drybox' },
+  4: { label_printed_at: '2026-09-20', dried_at: '2026-10-02', storage_type: 'open' },
+  5: { label_printed_at: '2026-09-21', dried_at: '2026-09-01', storage_type: 'open' },
   10: { label_printed_at: '2026-09-21' },
 };

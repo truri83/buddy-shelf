@@ -235,3 +235,89 @@ ion-tab-button.bs-tab-scan:active .bs-tab-fab {
     transform: none;
   }
 }
+
+/* Farbkacheln im Formular (Vorbild Spooly): Grundfarben + eigene Farbe */
+.bs-swatch {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: var(--bs-touch);
+  padding: 0;
+  border: 1px solid var(--bs-border);
+  border-radius: var(--bs-r-md);
+  outline-offset: 2px;
+  font-size: 20px;
+  cursor: pointer;
+}
+.bs-swatch-pick {
+  position: relative;
+  overflow: hidden;
+  background: var(--bs-surface-2);
+  color: var(--bs-text-2);
+}
+.bs-swatch-pick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Kleine Knöpfe optisch klein, Tippfläche trotzdem ≥ 44 px (Review: Barrierefreiheit) */
+ion-button[size='small'] {
+  min-height: var(--bs-touch);
+}
+
+/* ---------- Bildschirmgrößen: Handy · Tablet · Desktop ----------
+   Inhalt mittig mit Höchstbreite (--bs-page-max); .bs-wide = volle Breite (Spulenliste). */
+:root {
+  --bs-page-max: 880px;
+}
+ion-content.bs-medium {
+  --bs-page-max: 1200px;
+}
+@media (min-width: 768px) {
+  ion-content:not(.bs-wide)::part(scroll) {
+    padding-inline: max(0px, calc((100% - var(--bs-page-max)) / 2));
+  }
+  ion-header:not(.bs-wide) ion-toolbar,
+  ion-footer ion-toolbar {
+    --padding-start: max(var(--bs-s1), calc((100% - var(--bs-page-max)) / 2));
+    --padding-end: max(var(--bs-s1), calc((100% - var(--bs-page-max)) / 2));
+  }
+}
+
+/* Spulenkarten im Raster: Handy 1, Tablet 2, Desktop 3+ Spalten */
+.bs-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+
+/* Liste + Detail nebeneinander (SPLIT_QUERY, ab 1000 px) */
+.bs-split {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(440px, 1.1fr);
+  height: 100%;
+}
+.bs-split-list,
+.bs-split-detail {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bs-split-detail {
+  border-left: 1px solid var(--bs-border);
+  background: var(--bs-bg);
+}
+
+/* Detail: zwei Spalten, sobald der Platz (nicht der Bildschirm) reicht */
+.bs-detail {
+  container-type: inline-size;
+}
+@container (min-width: 760px) {
+  .bs-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}

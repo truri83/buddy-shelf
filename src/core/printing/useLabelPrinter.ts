@@ -90,7 +90,12 @@ async function savePng(template: LabelTemplate, records: LabelVariables[], name:
   }
 }
 
+/** Fehler vom letzten Versuch vergessen (beim erneuten Öffnen des Druckblatts). */
+function clearError() {
+  if (state.error || state.status === 'error') set({ error: null, status: 'idle' });
+}
+
 export function useLabelPrinter() {
   const s = useSyncExternalStore(subscribe, () => state);
-  return { ...s, connect, disconnect, preview, print, savePng };
+  return { ...s, connect, disconnect, preview, print, savePng, clearError };
 }

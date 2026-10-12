@@ -1,4 +1,5 @@
 import type { CatalogEntry, DbSpoolWeight, Spool } from '@/core/api';
+import { t } from '@/core/i18n';
 
 /** Bezeichnung im Stil des Bambuddy-Katalogs („Bambu Lab - Plastic“). */
 export function coreName(manufacturer: string, type: DbSpoolWeight['spool_type']): string {
@@ -69,4 +70,12 @@ export function matchCore(
   const ofBrand = brand ? same.filter((c) => norm(coreManufacturer(c.name)) === brand) : [];
   if (ofBrand.length === 1) return ofBrand[0];
   return same.length === 1 ? same[0] : undefined;
+}
+
+/** Anzeige: „Bambu Lab - Plastic“ → „Bambu Lab – Kunststoff“ (gespeichert bleibt Bambuddys Name). */
+export function coreDisplayName(name: string): string {
+  const [maker, ...rest] = name.split(' - ');
+  if (!rest.length) return name;
+  const kind = rest.join(' - ').replace(/\b(plastic|cardboard|metal)\b/gi, (w) => t(`cores.kind.${w.toLowerCase()}`));
+  return `${maker} – ${kind}`;
 }

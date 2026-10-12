@@ -76,7 +76,9 @@ export function describeError(status: number, body: unknown): string | null {
   const d = (body as { detail?: unknown } | undefined)?.detail;
   if (typeof d === 'string' && d.trim()) return d;
   if (Array.isArray(d)) {
-    const parts = d.map((x: { msg?: string; loc?: unknown[] }) => [x.loc?.slice(1).join('.'), x.msg].filter(Boolean).join(': ')).filter(Boolean);
+    const parts = d
+      .map((x: { msg?: string; loc?: unknown[] }) => [x.loc?.slice(1).join('.'), x.msg].filter(Boolean).join(': '))
+      .filter(Boolean);
     if (parts.length) return parts.join('; ');
   }
   if (status === 401) return t('error.401');
@@ -151,8 +153,8 @@ export function _resetInventorySource() {
 const inv = async () => ((await inventorySource()).spoolman ? '/spoolman/inventory' : '/inventory');
 
 /** Zusatzdaten je Spule (getrocknet, Etikett, bei Spoolman auch Refill/Artikelnummer) über unseren Server. */
-export type ExtrasPatch = Partial<Record<'dried_at' | 'label_printed_at' | 'category' | 'article_number', string | null>>;
-type ExtrasMap = Record<string, Partial<Record<'dried_at' | 'label_printed_at' | 'category', string>>>;
+export type ExtrasPatch = Partial<Record<'dried_at' | 'label_printed_at' | 'category' | 'article_number' | 'storage_type', string | null>>;
+type ExtrasMap = Record<string, Partial<Record<'dried_at' | 'label_printed_at' | 'category' | 'storage_type', string>>>;
 
 async function extrasRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/extras${path}`, {
@@ -180,6 +182,7 @@ function withExtras(s: Spool, extras: ExtrasMap | null, spoolman: boolean): Spoo
     ...s,
     dried_at: e.dried_at ?? null,
     label_printed_at: e.label_printed_at ?? null,
+    storage_type: e.storage_type ?? null,
     // Spoolman kennt keine Kategorie – dort liegt „Refill“ im Zusatzfeld
     ...(spoolman ? { category: e.category ?? null } : {}),
   };
@@ -242,7 +245,14 @@ async function adoptFromSlotManually(s: { printer_id: number; ams_id: number; tr
   const subtype = (sub.toUpperCase().startsWith(material.toUpperCase()) ? sub.slice(material.length) : sub).trim() || null;
   const remain = tray.remain != null && tray.remain >= 0 && tray.remain <= 100 ? tray.remain : 100;
   const created = await request<Spool[] | { created: Spool[] }>('POST', '/spoolman/inventory/spools/bulk', {
-    spool: { material, subtype, brand: 'Bambu Lab', rgba: tray.tray_color, label_weight: 1000, weight_used: Math.round(10 * (100 - remain)) },
+    spool: {
+      material,
+      subtype,
+      brand: 'Bambu Lab',
+      rgba: tray.tray_color,
+      label_weight: 1000,
+      weight_used: Math.round(10 * (100 - remain)),
+    },
     quantity: 1,
   });
   const spool = (Array.isArray(created) ? created : created.created)[0];
@@ -321,7 +331,10 @@ export const bambuddy = {
     /** Gleiche Änderung für viele Spulen; Fehlschläge je Spule kommen in not_found zurück */
     bulkUpdate: async (ids: number[], update: SpoolUpdate): Promise<{ updated: number; not_found: number[] }> => {
       if (!(await inventorySource()).spoolman) return request('POST', '/inventory/spools/bulk-update', { ids, update });
-      const r = await request<{ updated: number; errors: { id: number }[] }>('POST', '/spoolman/inventory/spools/bulk-update', { ids, update });
+      const r = await request<{ updated: number; errors: { id: number }[] }>('POST', '/spoolman/inventory/spools/bulk-update', {
+        ids,
+        update,
+      });
       return { updated: r.updated, not_found: r.errors.map((e) => e.id) };
     },
     bulkArchive: async (ids: number[]): Promise<{ archived: number; already_archived: number[]; not_found: number[] }> => {
@@ -332,8 +345,13 @@ export const bambuddy = {
     /** Waagenwert brutto; Bambuddy zieht die Leerspule ab (bei Spoolman nach dessen Tara-Regel) */
     weigh: async (spoolId: number, grossGrams: number) =>
       (await inventorySource()).spoolman
-        ? request<{ status: string; weight_used: number }>('PATCH', `/spoolman/inventory/spools/${spoolId}/weight`, { weight_grams: grossGrams })
-        : request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', { spool_id: spoolId, weight_grams: grossGrams }),
+        ? request<{ status: string; weight_used: number }>('PATCH', `/spoolman/inventory/spools/${spoolId}/weight`, {
+            weight_grams: grossGrams,
+          })
+        : request<{ status: string; weight_used: number }>('POST', '/spoolbuddy/scale/update-spool-weight', {
+            spool_id: spoolId,
+            weight_grams: grossGrams,
+          }),
   },
   locations: {
     list: () => request<Location[]>('GET', '/inventory/locations'),
@@ -342,7 +360,9 @@ export const bambuddy = {
   },
   assignments: {
     list: async (): Promise<SpoolAssignment[]> =>
-      (await inventorySource()).spoolman ? (await listSpoolmanSlots()).map(fromSpoolmanSlot) : request<SpoolAssignment[]>('GET', '/inventory/assignments'),
+      (await inventorySource()).spoolman
+        ? (await listSpoolmanSlots()).map(fromSpoolmanSlot)
+        : request<SpoolAssignment[]>('GET', '/inventory/assignments'),
     /**
      * Spule in einen Slot legen; eine Spule liegt nur an einem Ort, einen belegten Ziel-Slot ersetzt Bambuddy.
      * Bambuddy lokal: erst neuen Slot belegen, dann alte lösen (scheitert es, bleibt die Spule, wo sie war).
@@ -375,7 +395,8 @@ export const bambuddy = {
       return fromSpoolmanSlot({ ...body(a), printer_name: null, ams_label: null }, 0);
     },
     remove: async (printerId: number, amsId: number, trayId: number) => {
-      if (!(await inventorySource()).spoolman) return request<{ status: string }>('DELETE', `/inventory/assignments/${printerId}/${amsId}/${trayId}`);
+      if (!(await inventorySource()).spoolman)
+        return request<{ status: string }>('DELETE', `/inventory/assignments/${printerId}/${amsId}/${trayId}`);
       const hit = (await listSpoolmanSlots()).find((x) => x.printer_id === printerId && x.ams_id === amsId && x.tray_id === trayId);
       if (hit) await request('DELETE', `/spoolman/inventory/slot-assignments/${hit.spoolman_spool_id}`);
       return { status: 'ok' };

@@ -4,7 +4,7 @@ import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { storage } from '@/core/platform';
 import { PickerSheet, type PickerItem } from '@/core/ui';
-import { matchCore } from '../cores';
+import { coreDisplayName, matchCore } from '../cores';
 import { useCatalog, useUpdateSpool } from '../hooks/useSpools';
 
 /** SP-10: Leerspule der Spule anzeigen und mit einem Tipp wechseln (speichert core_weight an der Spule). */
@@ -15,7 +15,7 @@ export function CoreRow({ spool, onChanged }: { spool: Spool; onChanged?: (s: Sp
   const [toast] = useIonToast();
   const entry = matchCore(spool, catalog.data ?? []);
   const items: PickerItem[] = useMemo(
-    () => (catalog.data ?? []).map((c) => ({ value: String(c.id), label: c.name, sublabel: `${c.weight} g` })),
+    () => (catalog.data ?? []).map((c) => ({ value: String(c.id), label: coreDisplayName(c.name), sublabel: `${c.weight} g` })),
     [catalog.data],
   );
 
@@ -55,7 +55,7 @@ export function CoreRow({ spool, onChanged }: { spool: Spool; onChanged?: (s: Sp
       >
         <IonLabel>
           <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{t('weigh.coreRow')}</div>
-          {entry ? `${entry.name} · ${spool.core_weight} g` : t('weigh.coreUnknown', { g: spool.core_weight })}
+          {entry ? `${coreDisplayName(entry.name)} · ${spool.core_weight} g` : t('weigh.coreUnknown', { g: spool.core_weight })}
         </IonLabel>
       </IonItem>
       <PickerSheet

@@ -15,7 +15,7 @@ import {
   useIonToast,
 } from '@ionic/react';
 import { useMemo, useState } from 'react';
-import type { Spool } from '@/core/api';
+import { useAllowed, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
 import { Badge, rgbaToCss, StateView } from '@/core/ui';
@@ -29,6 +29,7 @@ export function SlotsPage() {
   const spools = useSpools();
   const [printOpen, setPrintOpen] = useState(false);
   const adopt = useAdoptFromSlot();
+  const canEdit = useAllowed('inventory:update');
   const [adopted, setAdopted] = useState<Spool | null>(null);
   const [toast] = useIonToast();
   const adoptSlot = (s: Slot) =>
@@ -81,7 +82,7 @@ export function SlotsPage() {
                     .map((s) => {
                       const sp = s.assignment ? byId.get(s.assignment.spool_id) : undefined;
                       return (
-                        <IonItem key={`${s.amsId}:${s.trayId}`} routerLink={`/spools/slot/${s.printerId}/${s.amsId}/${s.trayId}`} detail>
+                        <IonItem key={`${s.amsId}:${s.trayId}`} routerLink={`/more/slots/${s.printerId}/${s.amsId}/${s.trayId}`} detail>
                           <span
                             aria-hidden
                             style={{
@@ -107,7 +108,7 @@ export function SlotsPage() {
                               <IonButton
                                 slot="end"
                                 size="small"
-                                disabled={adopt.isPending}
+                                disabled={adopt.isPending || !canEdit}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -118,7 +119,9 @@ export function SlotsPage() {
                               </IonButton>
                             </>
                           ) : (
-                            <IonNote slot="end">{sp ? spoolTitle(sp) : t('ams.free')}</IonNote>
+                            <IonNote slot="end">
+                              {sp ? spoolTitle(sp) : s.trayType ? t('slots.unassigned', { type: s.trayType }) : t('ams.free')}
+                            </IonNote>
                           )}
                         </IonItem>
                       );
@@ -127,7 +130,7 @@ export function SlotsPage() {
               ))}
             </IonList>
             <div style={{ padding: '0 var(--bs-s4) var(--bs-s4)' }}>
-              <IonButton expand="block" disabled={records.length === 0} onClick={() => setPrintOpen(true)}>
+              <IonButton expand="block" fill="outline" disabled={records.length === 0} onClick={() => setPrintOpen(true)}>
                 {t('slots.printAll')}
               </IonButton>
             </div>

@@ -6,9 +6,9 @@ import {
   IonHeader,
   IonIcon,
   IonItem,
-  IonItemDivider,
   IonLabel,
   IonList,
+  IonListHeader,
   IonNote,
   IonPage,
   IonSearchbar,
@@ -20,10 +20,10 @@ import {
 import { add } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type CatalogEntry } from '@/core/api';
-import { t } from '@/core/i18n';
+import { fmtNum, t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { StateView } from '@/core/ui';
-import { coreSuggestions, groupCores } from '../cores';
+import { coreDisplayName, coreSuggestions, groupCores } from '../cores';
 import { useCatalog, useCatalogMutations, useDbSpoolWeights, useSpools } from '../hooks/useSpools';
 
 /** SP-10: Leerspulen-Gewichte pflegen (Bambuddy-Katalog) + Vorschläge aus der Filament-Datenbank. */
@@ -37,7 +37,12 @@ export function CoreWeightsPage() {
   const [alert] = useIonAlert();
   const [toast] = useIonToast();
   const fail = (e: unknown) =>
-    void toast({ message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }), duration: 3000, position: 'top', color: 'danger' });
+    void toast({
+      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+      duration: 3000,
+      position: 'top',
+      color: 'danger',
+    });
 
   const groups = useMemo(() => {
     const q = query.toLowerCase();
@@ -83,7 +88,9 @@ export function CoreWeightsPage() {
           handler: (v: { name: string; weight: string }) => {
             if (!valid(v.name, v.weight)) return false;
             const e = { name: v.name.trim(), weight: Math.round(Number(v.weight)) };
-            void (entry ? m.update.mutateAsync({ id: entry.id, ...e }) : m.add.mutateAsync(e)).then(() => haptic()).catch(fail);
+            void (entry ? m.update.mutateAsync({ id: entry.id, ...e }) : m.add.mutateAsync(e))
+              .then(() => (haptic(), void toast({ message: t('common.saved'), duration: 1500, position: 'top' })))
+              .catch(fail);
             return true;
           },
         },
@@ -117,46 +124,61 @@ export function CoreWeightsPage() {
           <StateView state="offline" onRetry={() => void catalog.refetch()} />
         ) : (
           <>
-            <IonList>
-              {groups.map((g) => (
-                <div key={g.maker}>
-                  <IonItemDivider sticky>
-                    <IonLabel>{g.maker}</IonLabel>
-                  </IonItemDivider>
-                  {g.entries.map((c) => (
-                    <IonItem key={c.id} button={canEdit} detail={false} onClick={() => canEdit && editor(c)}>
-                      <IonLabel>
-                        {c.name}
-                        {c.used > 0 && <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{t('cores.used', { n: c.used })}</div>}
-                      </IonLabel>
-                      <IonNote slot="end" className="bs-num">
-                        {c.weight} g
-                      </IonNote>
-                    </IonItem>
-                  ))}
-                </div>
-              ))}
-            </IonList>
+            {groups.map((g) => (
+              <IonList inset key={g.maker}>
+                <IonListHeader>
+                  <IonLabel>{g.maker}</IonLabel>
+                </IonListHeader>
+                {g.entries.map((c) => (
+                  <IonItem key={c.id} button={canEdit} detail={false} onClick={() => canEdit && editor(c)}>
+                    <IonLabel>
+                      {coreDisplayName(c.name)}
+                      {c.used > 0 && (
+                        <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{tn('cores.used', c.used)}</div>
+                      )}
+                    </IonLabel>
+                    <IonNote slot="end" className="bs-num">
+                      {fmtNum(c.weight)} g
+                    </IonNote>
+                  </IonItem>
+                ))}
+              </IonList>
+            ))}
             {canEdit && suggestions.length > 0 && (
               <IonList inset>
-                <IonItemDivider>
+                <IonListHeader>
                   <IonLabel>
                     {t('cores.suggest')}
-                    <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>{t('cores.suggestHint')}</div>
+                    <div
+                      style={{
+                        fontSize: 'var(--bs-fs-caption)',
+                        fontWeight: 400,
+                        textTransform: 'none',
+                        letterSpacing: 0,
+                        whiteSpace: 'normal',
+                      }}
+                    >
+                      {t('cores.suggestHint')}
+                    </div>
                   </IonLabel>
-                </IonItemDivider>
+                </IonListHeader>
                 {suggestions.map((s) => (
                   <IonItem key={s.name}>
-                    <IonLabel>{s.name}</IonLabel>
+                    <IonLabel>{coreDisplayName(s.name)}</IonLabel>
                     <IonNote slot="end" className="bs-num">
-                      {s.weight} g
+                      {fmtNum(s.weight)} g
                     </IonNote>
                     <IonButton
                       slot="end"
                       size="small"
                       fill="clear"
                       disabled={m.add.isPending}
-                      onClick={() => void m.add.mutateAsync({ name: s.name, weight: s.weight }).then(() => haptic()).catch(fail)}
+                      onClick={() =>
+                        void m.add
+                          .mutateAsync({ name: s.name, weight: s.weight })
+                          .then(() => (haptic(), void toast({ message: t('common.saved'), duration: 1500, position: 'top' })))
+                          .catch(fail)
+                      }
                     >
                       {t('cores.add')}
                     </IonButton>

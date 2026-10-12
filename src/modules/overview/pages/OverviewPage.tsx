@@ -15,20 +15,22 @@ import {
   type RefresherEventDetail,
 } from '@ionic/react';
 import { useQuery } from '@tanstack/react-query';
-import { addCircleOutline, gridOutline, scaleOutline, scanOutline } from 'ionicons/icons';
+import { addCircleOutline, gridOutline, locationOutline, pricetagOutline, scaleOutline, sunnyOutline } from 'ionicons/icons';
 import { Link } from 'react-router-dom';
 import { assignmentLabel, bambuddy, fillRatio, remainingGrams } from '@/core/api';
-import { t } from '@/core/i18n';
+import { dryingDue } from '@/core/filament';
+import { fmtNum, t, tn } from '@/core/i18n';
 import { Badge, ColorRing, StatTile, StateView } from '@/core/ui';
 
 const LOW = 20;
 
 /** Schnellaktionen als Deep Links (Regel 2: Zusammenarbeit über Deep Links statt Imports). */
+// Scannen ist der Mittelknopf der Tab-Leiste – hier nicht doppelt
 const ACTIONS = [
-  { href: '/scan', icon: scanOutline, label: 'nav.scan' },
   { href: '/spools/weigh', icon: scaleOutline, label: 'weighs.action' },
   { href: '/spools/new', icon: addCircleOutline, label: 'spools.action.add' },
-  { href: '/spools/slots', icon: gridOutline, label: 'slots.title' },
+  { href: '/more/locations', icon: locationOutline, label: 'locations.title' },
+  { href: '/more/slots', icon: gridOutline, label: 'slots.title' },
 ] as const;
 
 /** Übersicht: Kennzahlen, Schnellaktionen, was im AMS liegt, was Aufmerksamkeit braucht. */
@@ -39,6 +41,9 @@ export function OverviewPage() {
   const active = (spools.data ?? []).filter((s) => !s.archived_at);
   const low = active.filter((s) => fillRatio(s) * 100 < (s.low_stock_threshold_pct ?? LOW)).sort((a, b) => fillRatio(a) - fillRatio(b));
   const totalKg = active.reduce((g, s) => g + remainingGrams(s), 0) / 1000;
+  // undefined = Zusatzdaten unbekannt (nicht „ohne Etikett“)
+  const unlabeled = active.filter((s) => s.label_printed_at === null).length;
+  const dueDry = active.filter((s) => dryingDue(s)?.due).length;
   const byId = new Map(active.map((s) => [s.id, s]));
   const loaded = (assignments.data ?? [])
     .map((a) => ({ a, s: byId.get(a.spool_id) }))
@@ -56,7 +61,7 @@ export function OverviewPage() {
           <IonTitle>{t('overview.title')}</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen>
+      <IonContent fullscreen className="bs-medium">
         <IonRefresher slot="fixed" onIonRefresh={(e) => void refresh(e)}>
           <IonRefresherContent />
         </IonRefresher>
@@ -71,13 +76,27 @@ export function OverviewPage() {
           <StateView state="offline" onRetry={() => void spools.refetch()} />
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--bs-s2)', padding: 'var(--bs-s4) var(--bs-s4) 0' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 'var(--bs-s2)',
+                padding: 'var(--bs-s4) var(--bs-s4) 0',
+              }}
+            >
               <StatTile value={active.length} label={t('overview.spools')} />
               <StatTile value={`${totalKg.toLocaleString('de-DE', { maximumFractionDigits: 1 })} kg`} label={t('overview.filament')} />
               <StatTile value={low.length} label={t('overview.low')} tone={low.length ? 'warn' : undefined} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--bs-s2)', padding: 'var(--bs-s3) var(--bs-s4) 0' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                gap: 'var(--bs-s2)',
+                padding: 'var(--bs-s3) var(--bs-s4) 0',
+              }}
+            >
               {ACTIONS.map((a) => (
                 <Link
                   key={a.href}
@@ -119,7 +138,7 @@ export function OverviewPage() {
                     </IonLabel>
                     {s && (
                       <IonLabel slot="end" className="bs-num" style={{ flex: 'none' }}>
-                        {remainingGrams(s)} g
+                        {fmtNum(remainingGrams(s))} g
                       </IonLabel>
                     )}
                   </IonItem>
@@ -129,9 +148,21 @@ export function OverviewPage() {
 
             <IonList inset>
               <IonListHeader>{t('overview.attention')}</IonListHeader>
-              {low.length === 0 && (
+              {low.length === 0 && unlabeled === 0 && dueDry === 0 && (
                 <IonItem lines="none">
                   <IonLabel color="medium">{t('overview.allGood')}</IonLabel>
+                </IonItem>
+              )}
+              {dueDry > 0 && (
+                <IonItem routerLink="/spools?filter=dry" detail>
+                  <IonIcon icon={sunnyOutline} slot="start" color="warning" aria-hidden />
+                  <IonLabel>{tn('overview.dryDue', dueDry)}</IonLabel>
+                </IonItem>
+              )}
+              {unlabeled > 0 && (
+                <IonItem routerLink="/spools?filter=unlabeled" detail>
+                  <IonIcon icon={pricetagOutline} slot="start" color="primary" aria-hidden />
+                  <IonLabel>{tn('overview.unlabeled', unlabeled)}</IonLabel>
                 </IonItem>
               )}
               {low.map((s) => (
@@ -141,10 +172,13 @@ export function OverviewPage() {
                   </div>
                   <IonLabel>
                     #{s.id} {s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')}
-                    <p>{[s.material, s.subtype].filter(Boolean).join(' ')}{s.brand ? ` · ${s.brand}` : ''}</p>
+                    <p>
+                      {[s.material, s.subtype].filter(Boolean).join(' ')}
+                      {s.brand ? ` · ${s.brand}` : ''}
+                    </p>
                   </IonLabel>
                   <div slot="end">
-                    <Badge tone="warn">{remainingGrams(s)} g</Badge>
+                    <Badge tone="warn">{fmtNum(remainingGrams(s))} g</Badge>
                   </div>
                 </IonItem>
               ))}

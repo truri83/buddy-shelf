@@ -113,11 +113,11 @@ export function StowPage() {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/spools/locations" text="" />
+            <IonBackButton defaultHref="/more/locations" text="" />
           </IonButtons>
           <IonTitle>{location ? t('stow.title', { name: location.name }) : t('stow.titleShort')}</IonTitle>
           <IonButtons slot="end">
-            <IonButton strong onClick={() => (router.canGoBack() ? router.goBack() : router.push('/spools', 'back'))}>
+            <IonButton strong onClick={() => (router.canGoBack() ? router.goBack() : router.push('/more/locations', 'back'))}>
               {t('stow.done')}
             </IonButton>
           </IonButtons>
@@ -126,6 +126,8 @@ export function StowPage() {
       <IonContent>
         {locations.isPending || spools.isPending ? (
           <StateView state="loading" />
+        ) : locations.isError || spools.isError ? (
+          <StateView state="offline" onRetry={() => void Promise.all([locations.refetch(), spools.refetch()])} />
         ) : !location ? (
           <StateView state="error" message={t('stow.unknown', { id: String(id) })} />
         ) : !canEdit ? (
@@ -143,13 +145,13 @@ export function StowPage() {
                 <IonInput
                   label={t('scan.manual')}
                   labelPlacement="stacked"
-                  placeholder="7 / bm:s:7"
+                  placeholder="7"
                   value={manual}
                   onIonInput={(e) => setManual(String(e.detail.value ?? ''))}
                   onKeyDown={(e) => e.key === 'Enter' && submitManual()}
                 />
                 <IonButton slot="end" fill="clear" disabled={!manual.trim()} onClick={submitManual}>
-                  {t('scan.open')}
+                  {t('stow.action')}
                 </IonButton>
               </IonItem>
             </IonList>

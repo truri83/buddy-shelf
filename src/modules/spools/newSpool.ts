@@ -23,6 +23,48 @@ export interface SpoolDraft {
   quantity: number;
   /** Herstellernummer (Bambu z. B. 10102) → Bambuddy material_number */
   materialNumber: string;
+  /** null = voll; sonst Rest in g (nur beim Anlegen) */
+  remaining: number | null;
+  /** Preis je Spule in €, als Text (Komma erlaubt) */
+  price: string;
+  note: string;
+  /** sealed | drybox | open | '' */
+  storageType: string;
+  /** JJJJ-MM-TT oder null */
+  driedAt: string | null;
+}
+
+/** Lagerungsarten (Spooly „Feuchtigkeitstracking“) – Grundlage der Trocknungs-Erinnerung. */
+export const STORAGE_TYPES = ['sealed', 'bag', 'drybox', 'open'] as const;
+export type StorageType = (typeof STORAGE_TYPES)[number];
+
+/** Grundfarben fürs schnelle Antippen (Name deutsch, Hex ohne #). */
+export const BASE_COLORS = [
+  ['Schwarz', '000000'],
+  ['Weiß', 'FFFFFF'],
+  ['Grau', '8A8D91'],
+  ['Silber', 'C0C0C0'],
+  ['Rot', 'D9363E'],
+  ['Orange', 'F07A1A'],
+  ['Gelb', 'F2C94C'],
+  ['Grün', '3CB371'],
+  ['Dunkelgrün', '2E6B3A'],
+  ['Blau', '3B82F6'],
+  ['Hellblau', '5DADE2'],
+  ['Dunkelblau', '1F3A8A'],
+  ['Lila', '8B5CF6'],
+  ['Pink', 'E055A0'],
+  ['Braun', '8B4513'],
+  ['Beige', 'D8C8A8'],
+  ['Gold', 'D4AF37'],
+  ['Türkis', '40B5AD'],
+] as const;
+
+/** Preis je Spule → € je kg (Bambuddy speichert cost_per_kg). */
+export function pricePerKg(price: string, labelWeight: number): number | null {
+  const p = Number(price.replace(',', '.').trim());
+  if (!price.trim() || !Number.isFinite(p) || p < 0 || labelWeight <= 0) return null;
+  return Math.round((p / (labelWeight / 1000)) * 100) / 100;
 }
 
 export function emptyDraft(): SpoolDraft {
@@ -39,6 +81,11 @@ export function emptyDraft(): SpoolDraft {
     locationId: null,
     quantity: 1,
     materialNumber: '',
+    remaining: null,
+    price: '',
+    note: '',
+    storageType: '',
+    driedAt: null,
   };
 }
 
@@ -57,6 +104,11 @@ export function draftFromSpool(s: Spool): SpoolDraft {
     locationId: s.location_id,
     quantity: 1,
     materialNumber: s.material_number ?? '',
+    remaining: null,
+    price: s.cost_per_kg != null ? String(Math.round(s.cost_per_kg * (s.label_weight / 1000) * 100) / 100).replace('.', ',') : '',
+    note: s.note ?? '',
+    storageType: s.storage_type ?? '',
+    driedAt: s.dried_at ?? null,
   };
 }
 
@@ -99,7 +151,10 @@ export function applyGtin(d: SpoolDraft, hits: GtinHit[]): SpoolDraft {
   const material = hit.material.toUpperCase();
   // Material als ganzes Wort entfernen, egal wo („Silk PLA“, „PLA Basic“, „Fiber HT Matte PLA“)
   const escaped = material.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const subtype = hit.filament.replace(new RegExp(`(^|\\s)${escaped}(?=\\s|$)`, 'gi'), ' ').replace(/\s+/g, ' ').trim();
+  const subtype = hit.filament
+    .replace(new RegExp(`(^|\\s)${escaped}(?=\\s|$)`, 'gi'), ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return {
     ...d,
     brand: hit.brand,
@@ -128,6 +183,10 @@ export function draftToCreate(d: SpoolDraft): SpoolCreate {
     core_weight_catalog_id: d.coreCatalogId,
     location_id: d.locationId,
     material_number: text(d.materialNumber),
+    note: text(d.note),
+    cost_per_kg: pricePerKg(d.price, d.labelWeight),
+    // Angefangene Spule: Rest → Verbrauch
+    ...(d.remaining != null ? { weight_used: Math.max(0, Math.min(d.labelWeight, d.labelWeight - d.remaining)) } : {}),
     ...(d.kind === 'refill' ? { category: REFILL_CATEGORY } : {}),
   };
 }
@@ -138,10 +197,22 @@ export function draftToUpdate(d: SpoolDraft, original: Spool): SpoolUpdate {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(full)) {
     if (k === 'category') continue;
-    if ((original as unknown as Record<string, unknown>)[k] !== v && !(v == null && (original as unknown as Record<string, unknown>)[k] == null)) out[k] = v;
+    if (
+      (original as unknown as Record<string, unknown>)[k] !== v &&
+      !(v == null && (original as unknown as Record<string, unknown>)[k] == null)
+    )
+      out[k] = v;
   }
   const wasRefill = original.category === REFILL_CATEGORY;
   if (d.kind === 'refill' && !wasRefill) out.category = REFILL_CATEGORY;
   if (d.kind !== 'refill' && wasRefill) out.category = null;
   return out as SpoolUpdate;
+}
+
+/** Zusatzdaten aus dem Formular, die nicht über Bambuddy laufen (getrocknet, Lagerungsart) – nur Änderungen. */
+export function draftExtras(d: SpoolDraft, original?: Pick<Spool, 'dried_at' | 'storage_type'>) {
+  const patch: { dried_at?: string | null; storage_type?: string | null } = {};
+  if ((d.driedAt ?? null) !== (original?.dried_at ?? null)) patch.dried_at = d.driedAt;
+  if ((d.storageType || null) !== (original?.storage_type ?? null)) patch.storage_type = d.storageType || null;
+  return patch;
 }

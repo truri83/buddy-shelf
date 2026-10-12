@@ -33,12 +33,30 @@ export interface Spool {
   /** Zusatzdaten von Buddy Shelf (Spoolman-Zusatzfeld bzw. Datei), nicht von Bambuddy */
   dried_at?: string | null;
   label_printed_at?: string | null;
+  /** Lagerungsart: sealed | drybox | open */
+  storage_type?: string | null;
+  /** Preis je kg (Bambuddy) */
+  cost_per_kg?: number | null;
 }
 
 export type SpoolUpdate = Partial<
   Pick<
     Spool,
-    'material' | 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'weight_used' | 'note' | 'storage_location' | 'location_id' | 'category' | 'core_weight_catalog_id' | 'material_number'
+    | 'material'
+    | 'subtype'
+    | 'color_name'
+    | 'rgba'
+    | 'brand'
+    | 'label_weight'
+    | 'core_weight'
+    | 'weight_used'
+    | 'note'
+    | 'storage_location'
+    | 'location_id'
+    | 'category'
+    | 'core_weight_catalog_id'
+    | 'material_number'
+    | 'cost_per_kg'
   >
 >;
 
@@ -76,7 +94,21 @@ export interface LocationCreate {
 
 /** POST /inventory/spools – nur `material` ist Pflicht. */
 export type SpoolCreate = { material: string } & Partial<
-  Pick<Spool, 'subtype' | 'color_name' | 'rgba' | 'brand' | 'label_weight' | 'core_weight' | 'location_id' | 'note' | 'material_number' | 'category'>
+  Pick<
+    Spool,
+    | 'subtype'
+    | 'color_name'
+    | 'rgba'
+    | 'brand'
+    | 'label_weight'
+    | 'core_weight'
+    | 'location_id'
+    | 'note'
+    | 'material_number'
+    | 'category'
+    | 'weight_used'
+    | 'cost_per_kg'
+  >
 > & { core_weight_catalog_id?: number | null };
 
 /** Filament aus der Datenbank SpoolmanDB (über /catalog unseres Servers) */
@@ -178,7 +210,6 @@ export interface PrinterStatus {
   /** Externe Halterungen: id 254 (links) / 255 (rechts) → Zuweisung ams_id 255, tray_id = id − 254 */
   vt_tray: AmsTray[];
 }
-
 
 export interface SpoolAssignmentCreate {
   spool_id: number;

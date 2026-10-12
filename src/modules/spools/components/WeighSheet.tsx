@@ -1,7 +1,20 @@
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonModal, IonNote, IonTitle, IonToolbar, useIonToast } from '@ionic/react';
-import { useState } from 'react';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonInput,
+  IonItem,
+  IonList,
+  IonModal,
+  IonNote,
+  IonTitle,
+  IonToolbar,
+  useIonToast,
+} from '@ionic/react';
+import { useRef, useState } from 'react';
 import { weightUsedFromScale, type Spool } from '@/core/api';
-import { t } from '@/core/i18n';
+import { fmtDate, t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { FillBar } from '@/core/ui';
 import { netToGross } from '../cores';
@@ -18,6 +31,7 @@ interface Props {
 
 /** SP-05/SP-10: Brutto (Waage mit Spule) oder Netto eingeben → Vorschau Rest → speichern (Bambuddys Waagen-Endpunkt). */
 export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
+  const modal = useRef<HTMLIonModalElement>(null);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useWeighMode();
@@ -44,10 +58,20 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   };
 
   return (
-    <IonModal isOpen={isOpen} onWillPresent={() => (setValue(''), setError(null))} onDidDismiss={onDismiss} initialBreakpoint={0.75} breakpoints={[0, 0.75, 1]}>
+    <IonModal
+      ref={modal}
+      isOpen={isOpen}
+      onWillPresent={() => (setValue(''), setError(null))}
+      onDidDismiss={onDismiss}
+      initialBreakpoint={0.75}
+      breakpoints={[0, 0.75, 1]}
+    >
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('weigh.title')}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => void modal.current?.dismiss()}>{t('common.close')}</IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -65,7 +89,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
               placeholder="g"
               value={value}
               onIonInput={(e) => setValue(String(e.detail.value ?? ''))}
-              onKeyDown={(e) => e.key === 'Enter' && void save()}
+              onKeyDown={(e) => e.key === 'Enter' && !weigh.isPending && void save()}
               className="bs-num"
             />
           </IonItem>
@@ -83,14 +107,19 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
           )}
           {tooLight && <IonNote color="warning">{t('weigh.tooLight', { g: spool.core_weight })}</IonNote>}
           {spool.last_scale_weight != null && spool.last_weighed_at && (
-            <IonNote>{t('weigh.last', { g: spool.last_scale_weight, date: new Date(spool.last_weighed_at).toLocaleDateString('de-DE') })}</IonNote>
+            <IonNote>{t('weigh.last', { g: spool.last_scale_weight, date: fmtDate(spool.last_weighed_at) })}</IonNote>
           )}
           {error && (
             <IonNote color="danger" role="alert">
               {error}
             </IonNote>
           )}
-          <IonButton expand="block" disabled={gross == null || weigh.isPending} onClick={() => void save()} style={{ marginTop: 'var(--bs-s3)' }}>
+          <IonButton
+            expand="block"
+            disabled={gross == null || weigh.isPending}
+            onClick={() => void save()}
+            style={{ marginTop: 'var(--bs-s3)' }}
+          >
             {t('common.save')}
           </IonButton>
         </div>

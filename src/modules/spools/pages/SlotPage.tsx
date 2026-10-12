@@ -1,9 +1,10 @@
 import {
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
-  IonButton,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonList,
@@ -16,10 +17,11 @@ import {
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
+import { closeCircleOutline } from 'ionicons/icons';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
-import { t } from '@/core/i18n';
+import { fmtNum, t } from '@/core/i18n';
 import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, MaterialBadge, ScannerView, StateView } from '@/core/ui';
@@ -105,7 +107,7 @@ export function SlotPage() {
     (raw: string) => {
       const r = parseScan(raw);
       if (r.kind === 'spool') void assignSpool(r.spoolId);
-      else if (r.kind === 'slot') navigate(`/spools/slot/${r.printerId}/${r.amsId}/${r.trayId}`, { replace: true });
+      else if (r.kind === 'slot') navigate(`/more/slots/${r.printerId}/${r.amsId}/${r.trayId}`, { replace: true });
       else {
         warnFeedback();
         setMessage(t('slot.notSpool'));
@@ -125,7 +127,7 @@ export function SlotPage() {
     slot &&
     void alert({
       header: slot.label,
-      message: t('ams.remove') + '?',
+      message: t('ams.removeQ'),
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
         {
@@ -145,7 +147,7 @@ export function SlotPage() {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/scan" text="" />
+            <IonBackButton defaultHref="/more/slots" text="" />
           </IonButtons>
           <IonTitle>{slot ? `${slot.printerName} · ${slot.label}` : t('slot.title')}</IonTitle>
         </IonToolbar>
@@ -184,17 +186,12 @@ export function SlotPage() {
                     <strong>{spoolTitle(occupant)}</strong>
                     <div style={{ display: 'flex', gap: 'var(--bs-s2)', alignItems: 'center' }}>
                       <MaterialBadge material={[occupant.material, occupant.subtype].filter(Boolean).join(' ')} />
-                      <span className="bs-num">{remainingGrams(occupant)} g</span>
+                      <span className="bs-num">{fmtNum(remainingGrams(occupant))} g</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={confirmEmpty}
-                    aria-label={t('ams.remove')}
-                    style={{ all: 'unset', cursor: 'pointer', color: 'var(--bs-text-2)', padding: 'var(--bs-s2)' }}
-                  >
-                    ✕
-                  </button>
+                  <IonButton fill="clear" color="medium" disabled={!canEdit} onClick={confirmEmpty} aria-label={t('ams.remove')}>
+                    <IonIcon slot="icon-only" icon={closeCircleOutline} />
+                  </IonButton>
                 </>
               ) : isNewRfid(slot, spools.data ?? []) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)', width: '100%' }}>
@@ -229,7 +226,7 @@ export function SlotPage() {
                 <IonInput
                   label={t('scan.manual')}
                   labelPlacement="stacked"
-                  placeholder="7 / bm:s:7"
+                  placeholder="7"
                   value={manual}
                   onIonInput={(e) => setManual(String(e.detail.value ?? ''))}
                   onKeyDown={(e) => e.key === 'Enter' && submitManual()}

@@ -8,6 +8,12 @@ export function t(key: MessageKey | (string & {}), vars?: Record<string, string 
 }
 
 export type { MessageKey };
+
+/** Einzahl/Mehrzahl: nutzt `<key>One` bei n = 1, sonst `<key>`; {n} wird ersetzt. */
+export function tn(key: MessageKey | (string & {}), n: number, vars?: Record<string, string | number>): string {
+  const one = `${key}One`;
+  return t(n === 1 && one in de ? one : key, { n, ...vars });
+}
 export { colorFamily, colorSearchText, colorToEnglish, colorToGerman, foldGerman, otherLanguageName, type ColorFamily } from './colors';
 
 /** Zahlen in deutscher Schreibweise (1.000 statt 1000). */

@@ -1,9 +1,12 @@
 import { IonButton, IonIcon, useIonAlert, useIonToast } from '@ionic/react';
-import { waterOutline } from 'ionicons/icons';
+import { sunnyOutline } from 'ionicons/icons';
 import type { CSSProperties } from 'react';
 import type { Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
-import { daysSince, dryingAdvice, todayIso } from '../drying';
+import { daysSince, dryingAdvice, dryingDue, getDehydratorMax, todayIso } from '@/core/filament';
+import { ChoiceChip } from '@/core/ui';
+import { STORAGE_TYPES } from '../newSpool';
+import { STORAGE_ICONS } from '../storage';
 import { useSetExtras } from '../hooks/useSpools';
 
 /** „vor 3 Tagen“ usw. */
@@ -17,13 +20,19 @@ const range = ([a, b]: [number, number]) => (a === b ? `${a}` : `${a}–${b}`);
 /** SP-15: Empfehlung für den Dörrautomaten + „zuletzt getrocknet“. */
 export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: boolean; style: CSSProperties }) {
   const advice = dryingAdvice(spool.material);
+  const due = dryingDue(spool);
   const set = useSetExtras();
   const [alert] = useIonAlert();
   const [toast] = useIonToast();
-  const save = (dried_at: string | null) =>
-    set.mutateAsync({ ids: [spool.id], patch: { dried_at } }).catch(
+  const save = (patch: { dried_at?: string | null; storage_type?: string | null }) =>
+    set.mutateAsync({ ids: [spool.id], patch }).catch(
       (e: unknown) =>
-        void toast({ message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }), duration: 3000, position: 'top', color: 'danger' }),
+        void toast({
+          message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+          duration: 3000,
+          position: 'top',
+          color: 'danger',
+        }),
     );
   const pickDate = () =>
     void alert({
@@ -31,14 +40,16 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
       inputs: [{ name: 'date', type: 'date', value: spool.dried_at?.slice(0, 10) ?? todayIso(), max: todayIso() }],
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
-        { text: t('common.save'), handler: (v: { date?: string }) => void (v.date && save(v.date)) },
+        { text: t('common.save'), handler: (v: { date?: string }) => void (v.date && save({ dried_at: v.date })) },
       ],
     });
 
   return (
     <section style={style}>
-      <h2 style={{ margin: '0 0 var(--bs-s3)', fontSize: 'var(--bs-fs-title)', display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)' }}>
-        <IonIcon icon={waterOutline} aria-hidden style={{ color: 'var(--bs-accent)' }} />
+      <h2
+        style={{ margin: '0 0 var(--bs-s3)', fontSize: 'var(--bs-fs-title)', display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)' }}
+      >
+        <IonIcon icon={sunnyOutline} aria-hidden style={{ color: 'var(--bs-accent)' }} />
         {t('dry.title')}
       </h2>
       <div style={{ display: 'grid', gap: 'var(--bs-s1)' }}>
@@ -50,11 +61,44 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
                 {t('dry.ams', { temp: advice.ams.temp, hours: advice.ams.hours })}
               </span>
             )}
-            {advice.tooHotForDehydrator && <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-warn)' }}>{t('dry.tooHot')}</span>}
+            {advice.tooHotForDehydrator && (
+              <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-warn)' }}>
+                {t('dry.tooHot', { max: getDehydratorMax() ?? '' })}
+              </span>
+            )}
           </>
         ) : (
           <span style={{ color: 'var(--bs-text-2)' }}>{t('dry.unknown', { material: spool.material })}</span>
         )}
+        {/* Lagerungsart: Grundlage der Erinnerung */}
+        <div
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', marginTop: 'var(--bs-s2)' }}
+          role="group"
+          aria-label={t('new.storageType')}
+        >
+          {STORAGE_TYPES.map((k) => (
+            <ChoiceChip
+              key={k}
+              selected={spool.storage_type === k}
+              disabled={!canEdit || set.isPending}
+              onSelect={() => void save({ storage_type: spool.storage_type === k ? null : k })}
+            >
+              <IonIcon icon={STORAGE_ICONS[k]} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
+              {t(`storage.${k}`)}
+            </ChoiceChip>
+          ))}
+        </div>
+        <div style={{ fontSize: 'var(--bs-fs-caption)', color: due?.due ? 'var(--bs-warn)' : 'var(--bs-text-2)' }}>
+          {due
+            ? due.due
+              ? due.dueInDays === 0
+                ? t('dry.dueToday')
+                : t('dry.dueNow', { n: -due.dueInDays })
+              : t('dry.dueIn', { n: due.dueInDays })
+            : spool.storage_type === 'sealed'
+              ? t('dry.noReminderSealed')
+              : t('dry.noReminder')}
+        </div>
         <div style={{ marginTop: 'var(--bs-s2)' }}>
           <span style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>{t('dry.last')}: </span>
           {spool.dried_at ? (
@@ -68,14 +112,14 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
       </div>
       {canEdit && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s2)', marginTop: 'var(--bs-s3)' }}>
-          <IonButton size="small" disabled={set.isPending} onClick={() => void save(todayIso())}>
+          <IonButton size="small" disabled={set.isPending} onClick={() => void save({ dried_at: todayIso() })}>
             {t('dry.markToday')}
           </IonButton>
           <IonButton size="small" fill="outline" disabled={set.isPending} onClick={pickDate}>
             {t('dry.pickDate')}
           </IonButton>
           {spool.dried_at && (
-            <IonButton size="small" fill="clear" color="medium" disabled={set.isPending} onClick={() => void save(null)}>
+            <IonButton size="small" fill="clear" color="medium" disabled={set.isPending} onClick={() => void save({ dried_at: null })}>
               {t('dry.clear')}
             </IonButton>
           )}

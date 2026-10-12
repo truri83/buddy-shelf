@@ -23,7 +23,7 @@ import {
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAllowed, weightUsedFromScale, type Spool } from '@/core/api';
-import { t } from '@/core/i18n';
+import { t, tn } from '@/core/i18n';
 import { haptic, warnFeedback, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ScannerView, StateView } from '@/core/ui';
@@ -149,7 +149,7 @@ export function WeighSessionPage() {
     if (session.done.length === 0) return go();
     void alert({
       header: t('weighs.newRound'),
-      message: t('weighs.newRoundQ', { n: session.done.length }),
+      message: tn('weighs.newRoundQ', session.done.length),
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
         { text: t('weighs.newRound'), role: 'destructive', handler: go },
@@ -206,6 +206,9 @@ export function WeighSessionPage() {
               <IonItem>
                 <IonToggle checked={session.inventory} onIonChange={(e) => setSession((x) => ({ ...x, inventory: e.detail.checked }))}>
                   {t('weighs.inventory')}
+                  <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                    {t('weighs.inventoryHint')}
+                  </div>
                 </IonToggle>
               </IonItem>
               {session.inventory && (
@@ -230,7 +233,16 @@ export function WeighSessionPage() {
 
             {/* Aktuelle Spule: Gewicht eintippen, Enter */}
             {current ? (
-              <section style={{ background: 'var(--bs-surface)', borderRadius: 'var(--bs-r-lg)', padding: 'var(--bs-s4)', marginBottom: 'var(--bs-s3)', display: 'grid', gap: 'var(--bs-s2)' }}>
+              <section
+                style={{
+                  background: 'var(--bs-surface)',
+                  borderRadius: 'var(--bs-r-lg)',
+                  padding: 'var(--bs-s4)',
+                  marginBottom: 'var(--bs-s3)',
+                  display: 'grid',
+                  gap: 'var(--bs-s2)',
+                }}
+              >
                 <strong>{spoolTitle(current)}</strong>
                 <WeighModeSwitch mode={mode} onChange={setMode} />
                 {mode === 'gross' && <CoreRow spool={current} onChanged={(s) => setCurrent(s)} />}
@@ -275,7 +287,7 @@ export function WeighSessionPage() {
                 <IonInput
                   label={t('scan.manual')}
                   labelPlacement="stacked"
-                  placeholder="7 / bm:s:7"
+                  placeholder="7"
                   value={manual}
                   onIonInput={(e) => setManual(String(e.detail.value ?? ''))}
                   onKeyDown={(e) => e.key === 'Enter' && submitManual()}
@@ -296,6 +308,11 @@ export function WeighSessionPage() {
                   </IonButton>
                 )}
               </IonListHeader>
+              {session.done.length === 0 && (
+                <IonItem lines="none">
+                  <IonNote>{t('weighs.empty')}</IonNote>
+                </IonItem>
+              )}
               {session.done.map((d) => {
                 const s = byId(d.spoolId);
                 return (
@@ -313,7 +330,12 @@ export function WeighSessionPage() {
             {session.inventory && (
               <IonList inset>
                 <IonListHeader>
-                  <IonLabel>{t('weighs.missing', { n: missing.length, where: session.locationId != null ? locName(session.locationId) : t('weighs.everywhere') })}</IonLabel>
+                  <IonLabel>
+                    {t('weighs.missing', {
+                      n: missing.length,
+                      where: session.locationId != null ? locName(session.locationId) : t('weighs.everywhere'),
+                    })}
+                  </IonLabel>
                   <IonButton size="small" fill="clear" onClick={() => setShowMissing((v) => !v)}>
                     {showMissing ? t('weighs.hide') : t('weighs.show')}
                   </IonButton>

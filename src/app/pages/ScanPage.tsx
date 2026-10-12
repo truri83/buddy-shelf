@@ -25,6 +25,12 @@ import { applyConfig, dispatchScan } from '../scan';
  * Vorlage „Scan“ (SP-02): Kamera mit Zielrahmen, Treffer → Scan-Verteiler. Code-Eingabe bleibt als Ersatz.
  * Die Kamera läuft nur, solange der Tab sichtbar ist.
  */
+/** Von Hand: „4“ oder „#4“ ist die Spulennummer, alles andere geht als Code durch. */
+const asCode = (v: string) => {
+  const n = v.trim().replace(/^#/, '');
+  return /^\d{1,7}$/.test(n) ? `bm:s:${n}` : v.trim();
+};
+
 export function ScanPage() {
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -91,15 +97,15 @@ export function ScanPage() {
             <IonInput
               label={t('scan.manual')}
               labelPlacement="stacked"
-              placeholder="bm:s:4"
+              placeholder="4"
               value={code}
               onIonInput={(e) => setCode(String(e.detail.value ?? ''))}
-              onKeyDown={(e) => e.key === 'Enter' && code.trim() && handleCode(code)}
+              onKeyDown={(e) => e.key === 'Enter' && code.trim() && handleCode(asCode(code))}
             />
           </IonItem>
         </IonList>
         <IonNote style={{ display: 'block', padding: '0 var(--bs-s4)' }}>{t('scan.manualHint')}</IonNote>
-        <IonButton expand="block" className="ion-margin-top" onClick={() => handleCode(code)} disabled={!code.trim()}>
+        <IonButton expand="block" className="ion-margin-top" onClick={() => handleCode(asCode(code))} disabled={!code.trim()}>
           {t('scan.open')}
         </IonButton>
       </IonContent>

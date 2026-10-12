@@ -1,5 +1,21 @@
-import { IonButton, IonContent, IonHeader, IonItem, IonItemDivider, IonLabel, IonList, IonModal, IonNote, IonSpinner, IonTitle, IonToolbar, useIonAlert, useIonToast } from '@ionic/react';
-import { useState } from 'react';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonItem,
+  IonItemDivider,
+  IonLabel,
+  IonList,
+  IonModal,
+  IonNote,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
+  useIonAlert,
+  useIonToast,
+} from '@ionic/react';
+import { useRef, useState } from 'react';
 import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
@@ -33,6 +49,7 @@ function Dot({ rgba }: { rgba: string | null }) {
 
 /** SP-03: Slot wählen. Freier Slot = ein Tipp; belegter Slot = eine Rückfrage. */
 export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
+  const modal = useRef<HTMLIonModalElement>(null);
   const { slots, printers, isPending } = useSlots();
   const spools = useSpools();
   const assign = useAssignSpool();
@@ -50,7 +67,9 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
       const res = await assign.mutateAsync({ spoolId: spool.id, slot });
       haptic();
       void toast({
-        message: t('ams.done', { id: spool.id, slot: `${slot.printerName} · ${slot.label}` }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''),
+        message:
+          t('ams.done', { id: spool.id, slot: `${slot.printerName} · ${slot.label}` }) +
+          (res.pending_config ? ` – ${t('ams.pending')}` : ''),
         duration: 2500,
         position: 'top',
       });
@@ -91,10 +110,20 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
   const multiPrinter = printers.length > 1;
 
   return (
-    <IonModal isOpen={isOpen} onWillPresent={() => setError(null)} onDidDismiss={onDismiss} initialBreakpoint={0.85} breakpoints={[0, 0.85, 1]}>
+    <IonModal
+      ref={modal}
+      isOpen={isOpen}
+      onWillPresent={() => setError(null)}
+      onDidDismiss={onDismiss}
+      initialBreakpoint={0.85}
+      breakpoints={[0, 0.85, 1]}
+    >
       <IonHeader>
         <IonToolbar>
           <IonTitle>{t('ams.title')}</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => void modal.current?.dismiss()}>{t('common.close')}</IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -125,12 +154,22 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
                     const occupant = slot.assignment ? byId.get(slot.assignment.spool_id) : undefined;
                     const mine = slot.assignment?.spool_id === spool.id;
                     return (
-                      <IonItem key={`${slot.amsId}:${slot.trayId}`} button={!mine} detail={false} disabled={busy} onClick={() => choose(slot)}>
+                      <IonItem
+                        key={`${slot.amsId}:${slot.trayId}`}
+                        button={!mine}
+                        detail={false}
+                        disabled={busy}
+                        onClick={() => choose(slot)}
+                      >
                         <Dot rgba={occupant?.rgba ?? slot.trayColor} />
                         <IonLabel>
                           <div style={{ fontWeight: 600 }}>{slot.label}</div>
                           <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>
-                            {occupant ? spoolTitle(occupant) : slot.assignment ? `#${slot.assignment.spool_id}` : (slot.trayType ?? t('ams.free'))}
+                            {occupant
+                              ? spoolTitle(occupant)
+                              : slot.assignment
+                                ? `#${slot.assignment.spool_id}`
+                                : (slot.trayType ?? t('ams.free'))}
                           </div>
                         </IonLabel>
                         {mine && (

@@ -18,9 +18,19 @@ import {
   useIonViewWillEnter,
 } from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline } from 'ionicons/icons';
+import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline, serverOutline } from 'ionicons/icons';
 import { useState } from 'react';
-import { ApiError, configureApi, getApiConfig, isTestedVersion, useAuthStatus, useBambuddyVersion, useInventorySource, useMe } from '@/core/api';
+import {
+  ApiError,
+  configureApi,
+  getApiConfig,
+  isTestedVersion,
+  useAuthStatus,
+  useBambuddyVersion,
+  useInventorySource,
+  useMe,
+} from '@/core/api';
+import { getDehydratorMax, setDehydratorMax } from '@/core/filament';
 import { t } from '@/core/i18n';
 import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
 import { modules } from '../registry';
@@ -36,6 +46,7 @@ export function SettingsPage() {
   const [key, setKey] = useState(() => getApiConfig().apiKey ?? '');
   const [saved, setSaved] = useState(false);
   const [sound, setSound] = useState(scanSoundEnabled);
+  const [dehydrator, setDehydrator] = useState(() => String(getDehydratorMax() ?? ''));
   useIonViewWillEnter(() => {
     const c = getApiConfig();
     setUrl(c.baseUrl);
@@ -81,18 +92,26 @@ export function SettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <IonList inset>
-          {actions.map((a) => (
-            <IonItem key={a.id} routerLink={a.href} detail>
-              <IonIcon icon={a.icon} slot="start" color="primary" aria-hidden />
-              <IonLabel>{t(a.label)}</IonLabel>
-            </IonItem>
-          ))}
-          <IonItem routerLink="/more/templates" detail>
-            <IonIcon icon={documentTextOutline} slot="start" color="primary" aria-hidden />
-            <IonLabel>{t('templates.title')}</IonLabel>
-          </IonItem>
-        </IonList>
+        {/* Täglich gebraucht oben, Einrichtung darunter (Manifest: group 'setup') */}
+        {(['daily', 'setup'] as const).map((group) => (
+          <IonList inset key={group}>
+            <IonListHeader>{t(`settings.group.${group}`)}</IonListHeader>
+            {actions
+              .filter((a) => (a.group ?? 'daily') === group)
+              .map((a) => (
+                <IonItem key={a.id} routerLink={a.href} detail>
+                  <IonIcon icon={a.icon} slot="start" color="primary" aria-hidden />
+                  <IonLabel>{t(a.label)}</IonLabel>
+                </IonItem>
+              ))}
+            {group === 'setup' && (
+              <IonItem routerLink="/more/templates" detail>
+                <IonIcon icon={documentTextOutline} slot="start" color="primary" aria-hidden />
+                <IonLabel>{t('templates.title')}</IonLabel>
+              </IonItem>
+            )}
+          </IonList>
+        ))}
 
         <IonList inset>
           <IonItem lines="none">
@@ -106,6 +125,21 @@ export function SettingsPage() {
               {t('settings.scanSound')}
               <div style={sub}>{t('settings.scanSoundHint')}</div>
             </IonToggle>
+          </IonItem>
+          <IonItem lines="none">
+            <IonInput
+              label={t('settings.dehydratorMax')}
+              labelPlacement="stacked"
+              inputmode="numeric"
+              placeholder="–"
+              helperText={t('settings.dehydratorMaxHint')}
+              value={dehydrator}
+              onIonInput={(e) => {
+                const v = String(e.detail.value ?? '').replace(/[^0-9]/g, '');
+                setDehydrator(v);
+                setDehydratorMax(v ? Number(v) : null);
+              }}
+            />
           </IonItem>
         </IonList>
 
@@ -124,6 +158,7 @@ export function SettingsPage() {
           </IonItem>
           {source.data && (
             <IonItem lines="none">
+              <IonIcon icon={serverOutline} slot="start" style={{ color: 'var(--bs-text-2)' }} aria-hidden />
               <IonLabel>
                 {source.data.spoolman ? t('settings.sourceSpoolman') : t('settings.sourceBambuddy')}
                 <div style={sub}>{source.data.spoolman ? (source.data.url ?? '') : t('settings.sourceBambuddyHint')}</div>
@@ -139,7 +174,13 @@ export function SettingsPage() {
             </IonItem>
             <div slot="content">
               <IonItem>
-                <IonInput label={t('settings.url')} labelPlacement="stacked" placeholder="–" value={url} onIonInput={(e) => setUrl(String(e.detail.value ?? ''))} />
+                <IonInput
+                  label={t('settings.url')}
+                  labelPlacement="stacked"
+                  placeholder="–"
+                  value={url}
+                  onIonInput={(e) => setUrl(String(e.detail.value ?? ''))}
+                />
               </IonItem>
               <IonItem>
                 <IonInput
