@@ -17,7 +17,6 @@ import {
   IonToolbar,
   IonFooter,
   useIonAlert,
-  useIonToast,
   type RefresherEventDetail,
 } from '@ionic/react';
 import {
@@ -39,7 +38,7 @@ import { ApiError, useAllowed } from '@/core/api';
 import { dryingDue, useDryingConfig } from '@/core/filament';
 import { t, tn } from '@/core/i18n';
 import { storage } from '@/core/platform';
-import { ChoiceChip, SPLIT_QUERY, StateView, useMediaQuery } from '@/core/ui';
+import { ChoiceChip, SPLIT_QUERY, StateView, useMediaQuery, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { MoveSheet } from '../components/MoveSheet';
 import { FamilyFilter } from '../components/FamilyFilter';
@@ -110,7 +109,7 @@ export function SpoolListPage() {
   const canEdit = useAllowed('inventory:update');
   const archive = useBulkArchive();
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
+  const notify = useNotify();
 
   const groups = useMemo(() => {
     const list = sortSpools(
@@ -166,18 +165,10 @@ export function SpoolListPage() {
             archive
               .mutateAsync(chosen.map((x) => x.id))
               .then((r) => {
-                void toast({ message: tn('select.archived', r.archived), duration: 2000, position: 'top' });
+                notify.ok(tn('select.archived', r.archived));
                 endSelect();
               })
-              .catch(
-                (e: unknown) =>
-                  void toast({
-                    message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-                    duration: 3000,
-                    position: 'top',
-                    color: 'danger',
-                  }),
-              );
+              .catch(notify.fail);
           },
         },
       ],

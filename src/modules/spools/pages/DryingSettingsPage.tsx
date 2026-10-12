@@ -15,14 +15,13 @@ import {
   IonTitle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import { add, flameOutline, notificationsOffOutline, notificationsOutline, thermometerOutline, timeOutline } from 'ionicons/icons';
 import { useState } from 'react';
 import { useAllowed } from '@/core/api';
 import { DEFAULT_DRYING, FAMILIES, useDryingConfig, useSaveDryingConfig, type DryingConfig, type StorageKind } from '@/core/filament';
 import { t } from '@/core/i18n';
-import { ChoiceChip, EditSheet, FieldRow, MaterialBadge, MetaChip, NumberInput, RangeInput } from '@/core/ui';
+import { ChoiceChip, EditSheet, FieldRow, MaterialBadge, MetaChip, NumberInput, PermissionNote, RangeInput, useNotify } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
 
@@ -53,7 +52,7 @@ export function DryingSettingsPage() {
   const [editing, setEditing] = useState<FamilyDraft | null>(null);
   const cfg = draft ?? saved;
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const families = Object.keys(cfg.materials).sort((a, b) => FAMILIES.indexOf(a as never) - FAMILIES.indexOf(b as never));
   const missing = FAMILIES.filter((f) => !cfg.materials[f]);
 
@@ -93,17 +92,9 @@ export function DryingSettingsPage() {
       .mutateAsync(value)
       .then(() => {
         setDraft(null);
-        void toast({ message: t('common.saved'), duration: 1500, position: 'top' });
+        notify.ok(t('common.saved'));
       })
-      .catch(
-        (e: unknown) =>
-          void toast({
-            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-            duration: 3000,
-            position: 'top',
-            color: 'danger',
-          }),
-      );
+      .catch(notify.fail);
 
   const reset = () =>
     void alert({
@@ -133,11 +124,7 @@ export function DryingSettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {!canEdit && (
-          <IonNote color="warning" style={{ display: 'block', padding: 'var(--bs-s4) var(--bs-s5) 0' }}>
-            {t('common.noPermission')}
-          </IonNote>
-        )}
+        {!canEdit && <PermissionNote />}
 
         <IonList inset>
           <IonListHeader>{t('drySet.dehydrator')}</IonListHeader>

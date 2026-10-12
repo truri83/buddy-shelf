@@ -15,14 +15,13 @@ import {
   IonTitle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import { add, cubeOutline, discOutline, scaleOutline, sparklesOutline, trashOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type CatalogEntry } from '@/core/api';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
-import { EditSheet, FieldRow, NumberInput, StateView, TextRow } from '@/core/ui';
+import { EditSheet, FieldRow, NumberInput, StateView, TextRow, useNotify } from '@/core/ui';
 import { coreDisplayName, coreSuggestions, groupCores } from '../cores';
 import { useCatalog, useCatalogMutations, useDbSpoolWeights, useSpools } from '../hooks/useSpools';
 
@@ -35,14 +34,7 @@ export function CoreWeightsPage() {
   const canEdit = useAllowed('inventory:update');
   const [query, setQuery] = useState('');
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
-  const fail = (e: unknown) =>
-    void toast({
-      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-      duration: 3000,
-      position: 'top',
-      color: 'danger',
-    });
+  const notify = useNotify();
 
   const groups = useMemo(() => {
     const q = query.toLowerCase();
@@ -65,10 +57,10 @@ export function CoreWeightsPage() {
     try {
       await (edit.id ? m.update.mutateAsync({ id: edit.id, ...e }) : m.add.mutateAsync(e));
       haptic();
-      void toast({ message: t('common.saved'), duration: 1500, position: 'top' });
+      notify.ok(t('common.saved'));
       return true;
     } catch (err) {
-      fail(err);
+      notify.fail(err);
       return false;
     }
   };
@@ -87,7 +79,7 @@ export function CoreWeightsPage() {
             void m.remove
               .mutateAsync(id)
               .then(() => setEdit(null))
-              .catch(fail),
+              .catch(notify.fail),
         },
       ],
     });
@@ -174,8 +166,8 @@ export function CoreWeightsPage() {
                       onClick={() =>
                         void m.add
                           .mutateAsync({ name: s.name, weight: s.weight })
-                          .then(() => (haptic(), void toast({ message: t('common.saved'), duration: 1500, position: 'top' })))
-                          .catch(fail)
+                          .then(() => (haptic(), notify.ok(t('common.saved'))))
+                          .catch(notify.fail)
                       }
                     >
                       {t('cores.add')}

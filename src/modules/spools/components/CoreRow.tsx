@@ -1,9 +1,9 @@
-import { IonItem, IonLabel, IonNote, IonSegment, IonSegmentButton, useIonToast } from '@ionic/react';
+import { IonItem, IonLabel, IonNote, IonSegment, IonSegmentButton } from '@ionic/react';
 import { useMemo, useState } from 'react';
 import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { storage } from '@/core/platform';
-import { PickerSheet, type PickerItem } from '@/core/ui';
+import { PickerSheet, useNotify, type PickerItem } from '@/core/ui';
 import { coreDisplayName, matchCore } from '../cores';
 import { useCatalog, useUpdateSpool } from '../hooks/useSpools';
 
@@ -12,7 +12,7 @@ export function CoreRow({ spool, onChanged }: { spool: Spool; onChanged?: (s: Sp
   const catalog = useCatalog();
   const update = useUpdateSpool();
   const [open, setOpen] = useState(false);
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const entry = matchCore(spool, catalog.data ?? []);
   const items: PickerItem[] = useMemo(
     () => (catalog.data ?? []).map((c) => ({ value: String(c.id), label: coreDisplayName(c.name), sublabel: `${c.weight} g` })),
@@ -24,7 +24,7 @@ export function CoreRow({ spool, onChanged }: { spool: Spool; onChanged?: (s: Sp
     const c = item ? catalog.data?.find((x) => String(x.id) === item.value) : undefined;
     const weight = c?.weight ?? Number(value.replace(',', '.').replace(/\s*g$/i, ''));
     if (!Number.isFinite(weight) || weight < 0 || weight > 2000) {
-      void toast({ message: t('weigh.coreInvalid'), duration: 2500, position: 'top', color: 'warning' });
+      notify.warn(t('weigh.coreInvalid'));
       return;
     }
     try {
@@ -34,12 +34,7 @@ export function CoreRow({ spool, onChanged }: { spool: Spool; onChanged?: (s: Sp
       });
       onChanged?.(updated);
     } catch (e) {
-      void toast({
-        message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-        duration: 3000,
-        position: 'top',
-        color: 'danger',
-      });
+      notify.fail(e);
     }
   };
 

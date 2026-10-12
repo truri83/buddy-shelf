@@ -15,7 +15,6 @@ import {
   IonToggle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import { add, albumsOutline, createOutline, locationOutline, pricetagOutline, scanOutline, star, trashOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
@@ -24,7 +23,7 @@ import { t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { LabelPrintSheet, useLabelTemplates, type LabelVariables } from '@/core/printing';
 import { encodeLocationCode } from '@/core/qr/codes';
-import { ChoiceChip, EditSheet, MetaChip, StateView, TextRow } from '@/core/ui';
+import { ChoiceChip, EditSheet, MetaChip, StateView, TextRow, useNotify } from '@/core/ui';
 import { LocationSymbol } from '../components/LocationSymbol';
 import { useLocationPrefs, useSaveLocationPrefs } from '../hooks/useLocationPrefs';
 import { useCreateLocation, useDeleteLocation, useLocations, useRenameLocation } from '../hooks/useSpools';
@@ -52,21 +51,12 @@ export function LocationsPage() {
   const { templates } = useLabelTemplates('location');
   const [printing, setPrinting] = useState<Location[] | null>(null);
   const [edit, setEdit] = useState<Edit | null>(null);
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const [alert] = useIonAlert();
   const list = useMemo(() => [...(locations.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'de')), [locations.data]);
   const records = useMemo(() => (printing ?? []).map(vars), [printing]);
 
-  const fail = (e: unknown) =>
-    void toast({
-      message:
-        e instanceof ApiError && e.status === 409
-          ? t('locations.exists')
-          : t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-      duration: 3000,
-      position: 'top',
-      color: 'danger',
-    });
+  const fail = (e: unknown) => notify.fail(e, e instanceof ApiError && e.status === 409 ? t('locations.exists') : undefined);
 
   const editor = (l?: Location) =>
     setEdit(
@@ -84,7 +74,7 @@ export function LocationsPage() {
       const next = withLocation(prefs, l.id, edit.icon, edit.isDefault);
       if (JSON.stringify(next) !== JSON.stringify(prefs)) await savePrefs.mutateAsync(next);
       haptic();
-      if (edit.location) void toast({ message: t('common.saved'), duration: 1500, position: 'top' });
+      if (edit.location) notify.ok(t('common.saved'));
       else setPrinting([l]); // neuer Ort: gleich das Etikett anbieten
       return true;
     } catch (e) {

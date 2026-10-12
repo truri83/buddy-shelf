@@ -18,8 +18,18 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, networkMode: 'offlineFirst' }, mutations: { networkMode: 'always' } },
 });
 
+// Tabs der Module + „Mehr“; der Scan-Knopf sitzt immer in der Mitte: links die vordere Hälfte, rechts der Rest.
+// Alle Tabs gleich breit; fehlt rechts einer, füllt eine Lücke neben dem Scan-Knopf auf (Mehr spiegelt den ersten Tab).
+const TABS = [
+  ...tabModules.map((m) => ({ id: m.id, href: m.tab!.href, icon: m.icon, label: m.title })),
+  { id: 'more', href: '/more', icon: ellipsisHorizontal, label: 'nav.more' },
+];
+const left = TABS.slice(0, Math.ceil(TABS.length / 2));
+const right = TABS.slice(left.length);
+const gap = left.length - right.length;
+
 export function App() {
-  const [first, ...rest] = tabModules;
+  const first = tabModules[0];
   return (
     <QueryClientProvider client={queryClient}>
       <IonApp>
@@ -33,16 +43,10 @@ export function App() {
               <Route path="/" element={<Navigate to={first?.tab?.href ?? '/more'} replace />} />
             </IonRouterOutlet>
             <IonTabBar slot="bottom">
-              {first && (
-                <IonTabButton tab={first.id} href={first.tab!.href}>
-                  <IonIcon icon={first.icon} aria-hidden />
-                  <IonLabel>{t(first.title)}</IonLabel>
-                </IonTabButton>
-              )}
-              {rest.slice(0, 1).map((m) => (
-                <IonTabButton key={m.id} tab={m.id} href={m.tab!.href}>
-                  <IonIcon icon={m.icon} aria-hidden />
-                  <IonLabel>{t(m.title)}</IonLabel>
+              {left.map((tab) => (
+                <IonTabButton key={tab.id} tab={tab.id} href={tab.href} className="bs-tab">
+                  <IonIcon icon={tab.icon} aria-hidden />
+                  <IonLabel>{t(tab.label)}</IonLabel>
                 </IonTabButton>
               ))}
               {/* Scannen als runder Mittelknopf ohne Beschriftung; Name für Screenreader */}
@@ -51,16 +55,15 @@ export function App() {
                   <IonIcon icon={scanOutline} aria-hidden />
                 </span>
               </IonTabButton>
-              {rest.slice(1).map((m) => (
-                <IonTabButton key={m.id} tab={m.id} href={m.tab!.href}>
-                  <IonIcon icon={m.icon} aria-hidden />
-                  <IonLabel>{t(m.title)}</IonLabel>
+              {Array.from({ length: gap }, (_, i) => (
+                <IonTabButton key={`gap${i}`} tab={`gap${i}`} disabled className="bs-tab bs-tab-gap" aria-hidden tabIndex={-1} />
+              ))}
+              {right.map((tab) => (
+                <IonTabButton key={tab.id} tab={tab.id} href={tab.href} className="bs-tab">
+                  <IonIcon icon={tab.icon} aria-hidden />
+                  <IonLabel>{t(tab.label)}</IonLabel>
                 </IonTabButton>
               ))}
-              <IonTabButton tab="more" href="/more">
-                <IonIcon icon={ellipsisHorizontal} aria-hidden />
-                <IonLabel>{t('nav.more')}</IonLabel>
-              </IonTabButton>
             </IonTabBar>
           </IonTabs>
         </IonReactRouter>

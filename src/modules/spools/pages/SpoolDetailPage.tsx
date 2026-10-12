@@ -9,15 +9,14 @@ import {
   IonTitle,
   IonToolbar,
   useIonActionSheet,
-  useIonToast,
 } from '@ionic/react';
 import { copyOutline, createOutline } from 'ionicons/icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAllowed } from '@/core/api';
 import { todayIso } from '@/core/filament';
 import { t } from '@/core/i18n';
-import { StateView } from '@/core/ui';
+import { StateView, useNotify } from '@/core/ui';
 import { DETAIL_SHEETS, SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
 import { useSetExtras, useSpool } from '../hooks/useSpools';
 
@@ -41,18 +40,8 @@ export function SpoolDetailPage() {
 
   // SP-17: Spulen-Etikett gescannt → Schnellmenü statt nur Detailseite
   const [present] = useIonActionSheet();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const navigate = useNavigate();
-  const fail = useCallback(
-    (e: unknown) =>
-      void toast({
-        message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-        duration: 3000,
-        position: 'top',
-        color: 'danger',
-      }),
-    [toast],
-  );
   const quickShown = useRef(false);
   useEffect(() => {
     const s = spool.data;
@@ -70,8 +59,8 @@ export function SpoolDetailPage() {
                 handler: () =>
                   void setExtras
                     .mutateAsync({ ids: [s.id], patch: { dried_at: todayIso() } })
-                    .then(() => void toast({ message: t('dry.marked', { id: s.id }), duration: 2000, position: 'top' }))
-                    .catch(fail),
+                    .then(() => notify.ok(t('dry.marked', { id: s.id })))
+                    .catch(notify.fail),
               },
               { text: t('spools.action.toAms'), handler: pick('ams') },
               { text: t('spools.action.move'), handler: pick('move') },
@@ -86,7 +75,7 @@ export function SpoolDetailPage() {
         if (e.detail.role === 'cancel' || e.detail.role === 'backdrop') setParams({}, { replace: true });
       },
     });
-  }, [spool.data, params, present, canEdit, setExtras, toast, setParams, navigate, fail]);
+  }, [spool.data, params, present, canEdit, setExtras, notify, setParams, navigate]);
 
   const s = spool.data;
 

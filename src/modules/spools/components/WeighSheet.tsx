@@ -10,14 +10,13 @@ import {
   IonNote,
   IonTitle,
   IonToolbar,
-  useIonToast,
 } from '@ionic/react';
 import { useRef, useState } from 'react';
 import { weightUsedFromScale, type Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { stockLevel, useDisplayConfig } from '@/core/filament';
-import { FillBar } from '@/core/ui';
+import { errorText, FillBar, useNotify } from '@/core/ui';
 import { netToGross } from '../cores';
 import { useWeighSpool } from '../hooks/useSpools';
 import { spoolTitle } from '../slots';
@@ -38,7 +37,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   const [mode, setMode] = useWeighMode();
   const weigh = useWeighSpool();
   const display = useDisplayConfig();
-  const [toast] = useIonToast();
+  const notify = useNotify();
 
   const entered = parseGrams(value);
   const gross = entered == null ? null : mode === 'net' ? netToGross(entered, spool.core_weight) : entered;
@@ -51,11 +50,11 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
     try {
       await weigh.mutateAsync({ spoolId: spool.id, gross });
       haptic();
-      void toast({ message: t('weigh.done', { id: spool.id, g: rest ?? 0 }), duration: 2000, position: 'top' });
+      notify.ok(t('weigh.done', { id: spool.id, g: rest ?? 0 }));
       setValue('');
       onDismiss();
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      setError(errorText(e));
     }
   };
 

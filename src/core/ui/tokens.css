@@ -220,6 +220,16 @@ ion-card {
   margin: 0;
   color: inherit;
 }
+/* Mittelknopf mit fester Breite; alle übrigen Tabs (und Lücken) gleich breit (App.tsx) */
+ion-tab-button.bs-tab-scan {
+  flex: 0 0 72px;
+}
+ion-tab-bar > .bs-tab {
+  flex: 1 1 0;
+}
+ion-tab-button.bs-tab-gap {
+  visibility: hidden;
+}
 ion-tab-button.bs-tab-scan:active .bs-tab-fab {
   transform: scale(0.92);
 }

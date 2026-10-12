@@ -12,13 +12,12 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  useIonToast,
 } from '@ionic/react';
 import { useMemo, useState } from 'react';
 import { useAllowed, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
-import { Badge, rgbaToCss, StateView } from '@/core/ui';
+import { Badge, rgbaToCss, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { useAdoptFromSlot, useSlots, useSpools } from '../hooks/useSpools';
 import { isNewRfid, slotLabelVariables, spoolTitle, type Slot } from '../slots';
@@ -31,23 +30,15 @@ export function SlotsPage() {
   const adopt = useAdoptFromSlot();
   const canEdit = useAllowed('inventory:update');
   const [adopted, setAdopted] = useState<Spool | null>(null);
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const adoptSlot = (s: Slot) =>
     adopt
       .mutateAsync(s)
       .then((spool) => {
-        void toast({ message: t('rfid.adopted', { id: spool.id, slot: s.label }), duration: 2500, position: 'top' });
+        notify.ok(t('rfid.adopted', { id: spool.id, slot: s.label }));
         setAdopted(spool); // gleich Etikett drucken
       })
-      .catch(
-        (e: unknown) =>
-          void toast({
-            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-            duration: 3000,
-            position: 'top',
-            color: 'danger',
-          }),
-      );
+      .catch(notify.fail);
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
   const records = useMemo(() => slots.map(slotLabelVariables), [slots]);
   const { templates } = useLabelTemplates('slot');

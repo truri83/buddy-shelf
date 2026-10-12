@@ -1,10 +1,10 @@
-import { IonButton, IonIcon, useIonToast } from '@ionic/react';
+import { IonButton, IonIcon } from '@ionic/react';
 import { cartOutline, gridOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import type { CSSProperties, ReactNode } from 'react';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed, type Spool } from '@/core/api';
 import { materialLabel, stockLevel, todayIso, useDisplayConfig } from '@/core/filament';
 import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
-import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss } from '@/core/ui';
+import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss, useNotify } from '@/core/ui';
 import { useAssignments, useLocations, useSetExtras } from '../hooks/useSpools';
 import { locationName } from '../logic';
 import { fmtMoney, LEVEL_TEXT } from '../stock';
@@ -57,14 +57,7 @@ export function SpoolDetailView({
   const assignments = useAssignments();
   const canEdit = useAllowed('inventory:update');
   const setExtras = useSetExtras();
-  const [toast] = useIonToast();
-  const fail = (e: unknown) =>
-    void toast({
-      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-      duration: 3000,
-      position: 'top',
-      color: 'danger',
-    });
+  const notify = useNotify();
   const assignment = assignments.data?.find((a) => a.spool_id === s.id);
   const ams = assignment ? assignmentLabel(assignment) : null;
   const level = stockLevel(s, display);
@@ -219,8 +212,8 @@ export function SpoolDetailView({
                       onClick={() =>
                         void setExtras
                           .mutateAsync({ ids: [s.id], patch: { label_printed_at: s.label_printed_at ? null : todayIso() } })
-                          .then(() => void toast({ message: t('common.saved'), duration: 1500, position: 'top' }))
-                          .catch(fail)
+                          .then(() => notify.ok(t('common.saved')))
+                          .catch(notify.fail)
                       }
                     >
                       {s.label_printed_at ? t('labels.markNone') : t('labels.markHas')}

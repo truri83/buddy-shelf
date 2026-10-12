@@ -1,9 +1,9 @@
-import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet, useIonToast } from '@ionic/react';
+import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet } from '@ionic/react';
 import { ellipsisVertical, locationOutline, sunnyOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
-import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
+import { Badge, ColorRing, FillBar, MaterialBadge, useNotify } from '@/core/ui';
 import { dryingDue, materialLabel, stockLevel, todayIso, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
 import { fmtMoney, LEVEL_TEXT } from '../stock';
@@ -37,21 +37,13 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
   const [present] = useIonActionSheet();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const setExtras = useSetExtras();
   const markDried = () =>
     setExtras
       .mutateAsync({ ids: [spool.id], patch: { dried_at: todayIso() } })
-      .then(() => void toast({ message: t('dry.marked', { id: spool.id }), duration: 2000, position: 'top' }))
-      .catch(
-        (e: unknown) =>
-          void toast({
-            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-            duration: 3000,
-            position: 'top',
-            color: 'danger',
-          }),
-      );
+      .then(() => notify.ok(t('dry.marked', { id: spool.id })))
+      .catch(notify.fail);
 
   // Aktionen öffnen die Detailseite mit dem passenden Blatt (?action=…)
   const openMenu = () =>

@@ -82,9 +82,12 @@ Kennzahl-Kachel, Abschnittskopf, Objektzeile, Leer-/Fehler-/Offline-Hinweis ✅,
 | `MetaChip` | kleine Werte mit Symbol in Listenzeilen (🌡 45–55 °C · ⏱ 4–8 h · 🔔 alle 30 Tage) |
 | `StatTile` | Kennzahl mit Symbol, Statusfarbe, optional Link |
 | `ColorRing` | **nur** Filamentfarbe (Spulen-Symbol mit Nabe) – nie Status |
-| `FillBar` | **nur** Füllstand in Statusfarbe: grün ok · gelb niedrig · rot fast leer (≤ 5 %) |
+| `FillBar` | **nur** Füllstand in Statusfarbe: grün ok · gelb niedrig · rot fast leer; Stufe aus `stockLevel` (Schwellen unter Mehr → Spulen-Anzeige) |
 | `ChoiceChip` in `.bs-chip-row` | wischbare Filter-/Auswahlreihen |
 | `useMediaQuery`, `SPLIT_QUERY` | Breitenstufen; ab 1000 px Liste links + Detail rechts |
+| `StateView` | ganze Seite: lädt · leer · Fehler · offline · keine Rechte (`denied`), jeweils mit Symbol in Statusfarbe |
+| `PermissionNote` | Hinweis oben auf Seiten, die man ohne Schreibrecht nur ansehen kann |
+| `useNotify`, `errorText` | Rückmeldungen oben: `ok` (2 s), `warn` (gelb), `fail` (rot, 3,5 s); `errorText(e)` für Fehlerzeilen in Blättern – kein eigenes `useIonToast` |
 
 Regeln:
 - Kein `IonAlert` mit Eingabefeldern (iOS zeigt dort keine Beschriftungen) – nur für Ja/Nein-Rückfragen.
@@ -92,3 +95,5 @@ Regeln:
 - Statusfarben nur aus Tokens (`--bs-good`, `--bs-warn`, `--bs-critical`), Akzent für Aktionen.
 - Jede Seite hell + dunkel, Handy/Tablet (hoch + quer)/Desktop prüfen. Breite über `--bs-page-max`, `.bs-medium`, `.bs-wide`, `.bs-card-grid`, Container-Abfragen (`.bs-detail`).
 - Werte, die man anpassen will, per Oberfläche pflegbar (Server `/prefs/<bereich>`), Datei nur als Startwerte.
+- Tab-Leiste: Scan-Knopf immer in der Mitte, alle Tabs gleich breit; fehlt auf einer Seite ein Tab, füllt eine unsichtbare Lücke neben dem Knopf auf (`App.tsx`).
+- Jeder Text in `de.ts` wird benutzt – `src/core/i18n/keys.test.ts` schlägt sonst an.

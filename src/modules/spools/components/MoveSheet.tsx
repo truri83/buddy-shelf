@@ -11,12 +11,12 @@ import {
   IonNote,
   IonTitle,
   IonToolbar,
-  useIonToast,
 } from '@ionic/react';
 import { useRef, useState } from 'react';
 import type { Location, Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
+import { errorText, useNotify } from '@/core/ui';
 import { useBulkMove, useCreateLocation, useLocations, useMoveSpool } from '../hooks/useSpools';
 import { orderLocations } from '../logic';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
@@ -44,7 +44,7 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
   const create = useCreateLocation();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [toast] = useIonToast();
+  const notify = useNotify();
 
   const ordered = orderLocations(locations.data ?? [], storage.get<number | null>(LAST_KEY, null));
 
@@ -56,15 +56,11 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
       if (loc) storage.set(LAST_KEY, loc.id);
       haptic();
       const where = loc?.name ?? t('move.none');
-      void toast({
-        message: single ? t('move.done', { id: single.id, name: where }) : t('move.doneMany', { n: spools.length, name: where }),
-        duration: 2000,
-        position: 'top',
-      });
+      notify.ok(single ? t('move.done', { id: single.id, name: where }) : t('move.doneMany', { n: spools.length, name: where }));
       onDone?.();
       onDismiss();
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      setError(errorText(e));
     }
   };
 
@@ -77,7 +73,7 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
       setName('');
       await choose(loc);
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      setError(errorText(e));
     }
   };
 

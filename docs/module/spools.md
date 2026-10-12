@@ -265,5 +265,4 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 
 | Paket | Inhalt |
 | --- | --- |
-| Rest aus dem UX-Review | einheitliche Fehler-/Rechte-Zustände (ein Baustein), `useNotify` statt kopierter Toasts, Scan-Knopf mittig bei gerader Tab-Zahl, ungenutzte Texte entfernen |
 | Später | Multi-Color/Verlauf (Spoolman `multi_color_hexes`), Nachkaufen-Links, „reicht noch x Tage“, Druckdienst fürs iPhone, native iOS-App (Push für Trocknungs-Erinnerung) |

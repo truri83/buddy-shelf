@@ -13,13 +13,12 @@ import {
   IonTitle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import { useRef, useState } from 'react';
 import type { Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
-import { rgbaToCss } from '@/core/ui';
+import { errorText, rgbaToCss, useNotify } from '@/core/ui';
 import { useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
 import { spoolTitle, type Slot } from '../slots';
 
@@ -56,7 +55,7 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
   const unassign = useUnassign();
   const [error, setError] = useState<string | null>(null);
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
+  const notify = useNotify();
 
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
   const current = slots.find((s) => s.assignment?.spool_id === spool.id);
@@ -66,16 +65,12 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
     try {
       const res = await assign.mutateAsync({ spoolId: spool.id, slot });
       haptic();
-      void toast({
-        message:
-          t('ams.done', { id: spool.id, slot: `${slot.printerName} · ${slot.label}` }) +
-          (res.pending_config ? ` – ${t('ams.pending')}` : ''),
-        duration: 2500,
-        position: 'top',
-      });
+      notify.ok(
+        t('ams.done', { id: spool.id, slot: `${slot.printerName} · ${slot.label}` }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''),
+      );
       onDismiss();
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      setError(errorText(e));
     }
   };
 
@@ -99,10 +94,10 @@ export function AmsSheet({ spool, isOpen, onDismiss }: Props) {
     try {
       await unassign.mutateAsync(current);
       haptic();
-      void toast({ message: t('ams.removed', { id: spool.id, slot: current.label }), duration: 2000, position: 'top' });
+      notify.ok(t('ams.removed', { id: spool.id, slot: current.label }));
       onDismiss();
     } catch (e) {
-      setError(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+      setError(errorText(e));
     }
   };
 

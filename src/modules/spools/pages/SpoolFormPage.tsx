@@ -24,7 +24,6 @@ import {
   IonTitle,
   IonToggle,
   IonToolbar,
-  useIonToast,
 } from '@ionic/react';
 import { barcodeOutline, cartOutline, checkmark, colorPaletteOutline, documentTextOutline, sunnyOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,7 +32,19 @@ import { useAllowed, type FilamentEntry, type GtinHit, type Spool } from '@/core
 import { colorSearchText, fmtDate, fmtNum, otherLanguageName, t, tn } from '@/core/i18n';
 import { BARCODES_ONLY, haptic, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
-import { ChoiceChip, ColorRing, FillBar, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
+import {
+  ChoiceChip,
+  ColorRing,
+  FillBar,
+  GramInput,
+  PermissionNote,
+  PickerSheet,
+  rgbaToCss,
+  ScannerView,
+  StateView,
+  useNotify,
+  type PickerItem,
+} from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { coreDisplayName } from '../cores';
 import { todayIso, useDisplayConfig } from '@/core/filament';
@@ -168,7 +179,7 @@ function SpoolForm({
   const setExtras = useSetExtras();
   const canEdit = useAllowed('inventory:update');
   const navigate = useNavigate();
-  const [toast] = useIonToast();
+  const notify = useNotify();
 
   const set = <K extends keyof SpoolDraft>(k: K, v: SpoolDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const setRgba = (rgba: string | null) => {
@@ -213,14 +224,6 @@ function SpoolForm({
     if (!draft.colorName.trim() || BASE_COLORS.some(([n]) => n === draft.colorName)) set('colorName', name);
   };
 
-  const fail = (e: unknown) =>
-    void toast({
-      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-      duration: 3500,
-      position: 'top',
-      color: 'danger',
-    });
-
   const save = async () => {
     if (!valid) return;
     if (draft.kind === 'refill') storage.set(REFILL_KEY, draft.coreWeight);
@@ -231,18 +234,18 @@ function SpoolForm({
         const extras = draftExtras(draft, source);
         if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: [source.id], patch: extras });
         haptic();
-        void toast({ message: t('edit.saved', { id: source.id }), duration: 2000, position: 'top' });
+        notify.ok(t('edit.saved', { id: source.id }));
         navigate(`/spools/${source.id}`, { replace: true });
         return;
       }
       const list = await create.mutateAsync({ spool: draftToCreate({ ...draft, locationId }), quantity: draft.quantity });
       const extras = draftExtras(draft);
-      if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: list.map((s) => s.id), patch: extras }).catch(fail);
+      if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: list.map((s) => s.id), patch: extras }).catch(notify.fail);
       haptic();
-      void toast({ message: tn('new.created', list.length), duration: 2000, position: 'top' });
+      notify.ok(tn('new.created', list.length));
       setCreated(list);
     } catch (e) {
-      fail(e);
+      notify.fail(e);
     }
   };
 
@@ -302,11 +305,7 @@ function SpoolForm({
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {!canEdit && (
-          <IonNote color="warning" style={{ display: 'block', padding: 'var(--bs-s4) var(--bs-s5) 0' }}>
-            {t('common.noPermission')}
-          </IonNote>
-        )}
+        {!canEdit && <PermissionNote />}
         {!editing && (
           <IonList inset>
             <IonItem button detail onClick={() => setScanOpen(true)}>

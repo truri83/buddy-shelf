@@ -16,7 +16,6 @@ import {
   IonToggle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import {
   add,
@@ -32,7 +31,7 @@ import { useState } from 'react';
 import { useAllowed } from '@/core/api';
 import { FAMILIES, thresholdsValid, useDisplayConfig, useSaveDisplayConfig, type DisplayConfig, type StockLevel } from '@/core/filament';
 import { fmtNum, t } from '@/core/i18n';
-import { ChoiceChip, EditSheet, FieldRow, FillBar, MaterialBadge, MetaChip, NumberInput } from '@/core/ui';
+import { ChoiceChip, EditSheet, FieldRow, FillBar, MaterialBadge, MetaChip, NumberInput, PermissionNote, useNotify } from '@/core/ui';
 
 /** Entwurf: Zahlen dürfen beim Tippen kurz leer sein. */
 type Draft = Omit<DisplayConfig, 'lowPct' | 'emptyPct' | 'defaultWeight'> & {
@@ -70,7 +69,7 @@ export function DisplaySettingsPage() {
   const [editing, setEditing] = useState<FamilyDraft | null>(null);
   const cfg: Draft = draft ?? saved;
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const families = Object.keys(cfg.materials).sort((a, b) => FAMILIES.indexOf(a as never) - FAMILIES.indexOf(b as never));
   const missing = FAMILIES.filter((f) => !cfg.materials[f]);
   const thresholdsOk = thresholdsValid(cfg);
@@ -104,17 +103,9 @@ export function DisplaySettingsPage() {
       .mutateAsync(value)
       .then(() => {
         setDraft(null);
-        void toast({ message: t('common.saved'), duration: 1500, position: 'top' });
+        notify.ok(t('common.saved'));
       })
-      .catch(
-        (e: unknown) =>
-          void toast({
-            message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-            duration: 3000,
-            position: 'top',
-            color: 'danger',
-          }),
-      );
+      .catch(notify.fail);
 
   const reset = () =>
     void alert({
@@ -144,11 +135,7 @@ export function DisplaySettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {!canEdit && (
-          <IonNote color="warning" style={{ display: 'block', padding: 'var(--bs-s4) var(--bs-s5) 0' }}>
-            {t('common.noPermission')}
-          </IonNote>
-        )}
+        {!canEdit && <PermissionNote />}
 
         {/* Vorschau: so sehen Balken mit den aktuellen Schwellen aus */}
         <IonList inset>

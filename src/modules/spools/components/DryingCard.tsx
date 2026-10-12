@@ -1,10 +1,10 @@
-import { IonButton, IonIcon, IonList, useIonToast } from '@ionic/react';
+import { IonButton, IonIcon, IonList } from '@ionic/react';
 import { calendarOutline, sunnyOutline } from 'ionicons/icons';
 import { useState, type CSSProperties } from 'react';
 import type { Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
 import { daysSince, dryingAdvice, dryingDue, todayIso, useDryingConfig } from '@/core/filament';
-import { ChoiceChip, EditSheet, TextRow } from '@/core/ui';
+import { ChoiceChip, EditSheet, TextRow, useNotify } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
 import { useSetExtras } from '../hooks/useSpools';
@@ -23,17 +23,9 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
   const advice = dryingAdvice(spool.material, cfg);
   const due = dryingDue(spool, cfg);
   const set = useSetExtras();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const save = (patch: { dried_at?: string | null; storage_type?: string | null }) =>
-    set.mutateAsync({ ids: [spool.id], patch }).catch(
-      (e: unknown) =>
-        void toast({
-          message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-          duration: 3000,
-          position: 'top',
-          color: 'danger',
-        }),
-    );
+    set.mutateAsync({ ids: [spool.id], patch }).catch(notify.fail);
   const [date, setDate] = useState<string | null>(null);
   const pickDate = () => setDate(spool.dried_at?.slice(0, 10) ?? todayIso());
 

@@ -13,7 +13,6 @@ import {
   IonTitle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
@@ -25,7 +24,7 @@ import { fmtNum, t } from '@/core/i18n';
 import { materialLabel } from '@/core/filament';
 import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
-import { ColorRing, MaterialBadge, ScannerView, StateView } from '@/core/ui';
+import { ColorRing, errorText, MaterialBadge, ScannerView, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { useAdoptFromSlot, useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
 import { isNewRfid, spoolTitle } from '../slots';
@@ -49,7 +48,7 @@ export function SlotPage() {
   const [adopted, setAdopted] = useState<import('@/core/api').Spool | null>(null);
   const busy = useRef(false);
   const navigate = useNavigate();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const [alert] = useIonAlert();
 
   useIonViewDidEnter(() => setActive(true));
@@ -78,17 +77,15 @@ export function SlotPage() {
         const res = await assign.mutateAsync({ spoolId, slot });
         haptic();
         setMessage(null);
-        void toast({
-          message: t('ams.done', { id: spoolId, slot: slot.label }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''),
+        notify.ok(t('ams.done', { id: spoolId, slot: slot.label }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''), {
           duration: 4000,
-          position: 'top',
           buttons: [
             {
               text: t('common.undo'),
               handler: () => {
                 // vorherige Spule zurück bzw. Slot wieder leeren
                 (previous ? assign.mutateAsync({ spoolId: previous, slot }) : unassign.mutateAsync(slot)).catch((e: unknown) =>
-                  setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })),
+                  setMessage(errorText(e)),
                 );
               },
             },
@@ -96,12 +93,12 @@ export function SlotPage() {
         });
       } catch (e) {
         warnFeedback();
-        setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+        setMessage(errorText(e));
       } finally {
         busy.current = false;
       }
     },
-    [slot, spools.data, assign, unassign, toast, canEdit],
+    [slot, spools.data, assign, unassign, notify, canEdit],
   );
 
   const onCode = useCallback(
@@ -135,9 +132,7 @@ export function SlotPage() {
           text: t('ams.remove'),
           role: 'destructive',
           handler: () => {
-            unassign
-              .mutateAsync(slot)
-              .catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })));
+            unassign.mutateAsync(slot).catch((e: unknown) => setMessage(errorText(e)));
           },
         },
       ],
@@ -204,7 +199,7 @@ export function SlotPage() {
                       void adopt
                         .mutateAsync(slot)
                         .then((s) => setAdopted(s))
-                        .catch((e: unknown) => setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) })))
+                        .catch((e: unknown) => setMessage(errorText(e)))
                     }
                   >
                     {t('rfid.adopt')}

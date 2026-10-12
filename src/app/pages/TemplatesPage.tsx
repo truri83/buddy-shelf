@@ -14,7 +14,6 @@ import {
   IonTitle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
 } from '@ionic/react';
 import {
   cloudUploadOutline,
@@ -40,7 +39,7 @@ import {
   type LabelTemplate,
   type TemplateKind,
 } from '@/core/printing';
-import { Badge } from '@/core/ui';
+import { Badge, useNotify } from '@/core/ui';
 
 const KINDS: TemplateKind[] = ['spool', 'slot', 'location'];
 const KIND_ICONS: Record<TemplateKind, string> = { spool: pricetagOutline, slot: gridOutline, location: locationOutline };
@@ -53,14 +52,7 @@ export function TemplatesPage() {
   const remove = useDeleteTemplate();
   const file = useRef<HTMLInputElement>(null);
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
-  const fail = (e: unknown) =>
-    void toast({
-      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-      duration: 3500,
-      position: 'top',
-      color: 'danger',
-    });
+  const notify = useNotify();
 
   const exportTemplate = (tpl: LabelTemplate) => {
     saveFile(new Blob([JSON.stringify(templateData(tpl), null, 2)], { type: 'application/json' }), `${tpl.id}.json`);
@@ -75,9 +67,9 @@ export function TemplatesPage() {
       const own = templates.find((x) => x.id === parsed.id && !x.builtin);
       const tpl = { ...parsed, title, id: own ? own.id : newTemplateId(title) };
       await save.mutateAsync(tpl);
-      void toast({ message: t(own ? 'templates.updated' : 'templates.imported', { title }), duration: 2500, position: 'top' });
+      notify.ok(t(own ? 'templates.updated' : 'templates.imported', { title }));
     } catch (e) {
-      fail(e instanceof SyntaxError ? new Error(t('templates.noJson')) : e);
+      notify.fail(e instanceof SyntaxError ? new Error(t('templates.noJson')) : e);
     }
   };
 
@@ -87,7 +79,7 @@ export function TemplatesPage() {
       message: t('templates.deleteQ', { title: tpl.title }),
       buttons: [
         { text: t('common.cancel'), role: 'cancel' },
-        { text: t('templates.delete'), role: 'destructive', handler: () => void remove.mutateAsync(tpl.id).catch(fail) },
+        { text: t('templates.delete'), role: 'destructive', handler: () => void remove.mutateAsync(tpl.id).catch(notify.fail) },
       ],
     });
 

@@ -17,7 +17,6 @@ import {
   IonToggle,
   IonToolbar,
   useIonAlert,
-  useIonToast,
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
@@ -26,7 +25,7 @@ import { useAllowed, weightUsedFromScale, type Spool } from '@/core/api';
 import { t, tn } from '@/core/i18n';
 import { haptic, warnFeedback, storage } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
-import { ScannerView, StateView } from '@/core/ui';
+import { errorText, PermissionNote, ScannerView, StateView, useNotify } from '@/core/ui';
 import { CoreRow, useWeighMode, WeighModeSwitch } from '../components/CoreRow';
 import { netToGross } from '../cores';
 import { useArchiveSpool, useLocations, useMoveSpool, useSpools, useWeighSpool } from '../hooks/useSpools';
@@ -53,7 +52,7 @@ export function WeighSessionPage() {
   const input = useRef<HTMLIonInputElement>(null);
   const [mode, setMode] = useWeighMode();
   const [alert] = useIonAlert();
-  const [toast] = useIonToast();
+  const notify = useNotify();
   const canEdit = useAllowed('inventory:update');
   // Für Scanner-Rückrufe: aktuelle Spule und laufendes Speichern ohne veraltete Closures
   const currentRef = useRef<Spool | null>(null);
@@ -63,7 +62,7 @@ export function WeighSessionPage() {
   }, [current]);
   const fail = useCallback((e: unknown) => {
     warnFeedback();
-    setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+    setMessage(errorText(e));
   }, []);
 
   useIonViewDidEnter(() => setActive(true));
@@ -172,7 +171,7 @@ export function WeighSessionPage() {
           handler: () => {
             archive
               .mutateAsync(s.id)
-              .then(() => void toast({ message: t('weighs.archived', { id: s.id }), duration: 2000, position: 'top' }))
+              .then(() => notify.ok(t('weighs.archived', { id: s.id })))
               .catch(fail);
           },
         },
@@ -196,11 +195,7 @@ export function WeighSessionPage() {
           <StateView state="offline" onRetry={() => void spools.refetch()} />
         ) : (
           <>
-            {!canEdit && (
-              <IonNote color="warning" style={{ display: 'block', marginBottom: 'var(--bs-s3)' }}>
-                {t('common.noPermission')}
-              </IonNote>
-            )}
+            {!canEdit && <PermissionNote flush />}
             {/* Modus */}
             <IonList inset style={{ margin: '0 0 var(--bs-s3)' }}>
               <IonItem>

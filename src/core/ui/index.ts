@@ -1,7 +1,8 @@
 export { ColorRing } from './components/ColorRing';
 export { FillBar } from './components/FillBar';
 export { Badge, MaterialBadge } from './components/Badge';
-export { StateView } from './components/StateView';
+export { PermissionNote, StateView } from './components/StateView';
+export { errorText, useNotify } from './useNotify';
 export { materialToken, rgbaToCss } from './material';
 export { ScannerView } from './components/ScannerView';
 export { PickerSheet, type PickerItem } from './components/PickerSheet';

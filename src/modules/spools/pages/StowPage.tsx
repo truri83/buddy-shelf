@@ -23,7 +23,7 @@ import { useAllowed } from '@/core/api';
 import { t } from '@/core/i18n';
 import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
-import { ScannerView, StateView } from '@/core/ui';
+import { errorText, ScannerView, StateView } from '@/core/ui';
 import { useLocations, useMoveSpool, useSpools } from '../hooks/useSpools';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
 import { locationText } from '../locationPrefs';
@@ -96,7 +96,7 @@ export function StowPage() {
         })
         .catch((e: unknown) => {
           warnFeedback();
-          setMessage(t('common.failed', { msg: e instanceof Error ? e.message : String(e) }));
+          setMessage(errorText(e));
         })
         .finally(() => busy.current.delete(s.id));
     },
@@ -136,7 +136,7 @@ export function StowPage() {
         ) : !location ? (
           <StateView state="error" message={t('stow.unknown', { id: String(id) })} />
         ) : !canEdit ? (
-          <StateView state="error" message={t('common.noPermission')} />
+          <StateView state="denied" />
         ) : (
           <>
             <ScannerView active={active} onCode={onCode} hint={t('stow.hint', { name: location.name })} />
