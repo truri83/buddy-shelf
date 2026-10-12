@@ -22,6 +22,7 @@ import {
 } from '@ionic/react';
 import {
   add,
+  alertCircleOutline,
   archiveOutline,
   checkmarkCircleOutline,
   copyOutline,
@@ -46,7 +47,18 @@ import { SpoolCard } from '../components/SpoolCard';
 import { SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
 import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
 import { isNewRfid } from '../slots';
-import { amsLabel, familyOf, groupSpools, locationName, matchesSearch, sortSpools, variantOf, type GroupBy, type SortBy } from '../logic';
+import {
+  amsLabel,
+  familyOf,
+  groupSpools,
+  isLow,
+  locationName,
+  matchesSearch,
+  sortSpools,
+  variantOf,
+  type GroupBy,
+  type SortBy,
+} from '../logic';
 
 /** Vorlage „Liste“: Kopf mit Suche, Filter-Chips, gruppierte Karten, Leer-Zustand. */
 export function SpoolListPage() {
@@ -62,6 +74,7 @@ export function SpoolListPage() {
   const filter = params.get('filter');
   const unlabeledOnly = filter === 'unlabeled';
   const dryOnly = filter === 'dry';
+  const lowOnly = filter === 'low';
   const family = params.get('fam');
   const variant = params.get('sub');
   /** Adresse ändern, ohne die anderen Filter zu verlieren */
@@ -73,11 +86,12 @@ export function SpoolListPage() {
     }
     setParams(next, { replace: true });
   };
-  const setFilter = (f: 'unlabeled' | 'dry' | null) => updateParams({ filter: f });
+  const setFilter = (f: 'unlabeled' | 'dry' | 'low' | null) => updateParams({ filter: f });
   const setUnlabeledOnly = (on: boolean) => setFilter(on ? 'unlabeled' : null);
   const dryCfg = useDryingConfig();
   const dueDry = (spools.data ?? []).filter((s) => dryingDue(s, dryCfg)?.due).length;
   const unlabeled = (spools.data ?? []).filter((s) => s.label_printed_at === null).length;
+  const lowCount = (spools.data ?? []).filter((s) => !s.archived_at && isLow(s)).length;
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
   // SP-12 Mehrfachauswahl
@@ -100,13 +114,14 @@ export function SpoolListPage() {
           matchesSearch(s, query) &&
           (!unlabeledOnly || s.label_printed_at === null) &&
           (!dryOnly || !!dryingDue(s, dryCfg)?.due) &&
+          (!lowOnly || isLow(s)) &&
           (!family || familyOf(s) === family) &&
           (variant == null || variantOf(s) === variant),
       ),
       sortBy,
     );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, dryCfg, family, variant]);
+  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, lowOnly, dryCfg, family, variant]);
 
   const toggleSort = () => {
     const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';
@@ -276,6 +291,12 @@ export function SpoolListPage() {
                   <ChoiceChip selected={unlabeledOnly} onSelect={() => setUnlabeledOnly(!unlabeledOnly)}>
                     <IonIcon icon={pricetagOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
                     {t('labels.unlabeled', { n: unlabeled })}
+                  </ChoiceChip>
+                )}
+                {(lowCount > 0 || lowOnly) && (
+                  <ChoiceChip selected={lowOnly} onSelect={() => setFilter(lowOnly ? null : 'low')}>
+                    <IonIcon icon={alertCircleOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)', color: 'var(--bs-warn)' }} />
+                    {t('spools.lowFilter', { n: lowCount })}
                   </ChoiceChip>
                 )}
                 {(dueDry > 0 || dryOnly) && (

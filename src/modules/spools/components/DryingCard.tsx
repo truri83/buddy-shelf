@@ -1,10 +1,10 @@
-import { IonButton, IonIcon, useIonAlert, useIonToast } from '@ionic/react';
-import { sunnyOutline } from 'ionicons/icons';
-import type { CSSProperties } from 'react';
+import { IonButton, IonIcon, IonList, useIonToast } from '@ionic/react';
+import { calendarOutline, sunnyOutline } from 'ionicons/icons';
+import { useState, type CSSProperties } from 'react';
 import type { Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
 import { daysSince, dryingAdvice, dryingDue, todayIso, useDryingConfig } from '@/core/filament';
-import { ChoiceChip } from '@/core/ui';
+import { ChoiceChip, EditSheet, TextRow } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
 import { useSetExtras } from '../hooks/useSpools';
@@ -23,7 +23,6 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
   const advice = dryingAdvice(spool.material, cfg);
   const due = dryingDue(spool, cfg);
   const set = useSetExtras();
-  const [alert] = useIonAlert();
   const [toast] = useIonToast();
   const save = (patch: { dried_at?: string | null; storage_type?: string | null }) =>
     set.mutateAsync({ ids: [spool.id], patch }).catch(
@@ -35,15 +34,8 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
           color: 'danger',
         }),
     );
-  const pickDate = () =>
-    void alert({
-      header: t('dry.pickDate'),
-      inputs: [{ name: 'date', type: 'date', value: spool.dried_at?.slice(0, 10) ?? todayIso(), max: todayIso() }],
-      buttons: [
-        { text: t('common.cancel'), role: 'cancel' },
-        { text: t('common.save'), handler: (v: { date?: string }) => void (v.date && save({ dried_at: v.date })) },
-      ],
-    });
+  const [date, setDate] = useState<string | null>(null);
+  const pickDate = () => setDate(spool.dried_at?.slice(0, 10) ?? todayIso());
 
   return (
     <section style={style}>
@@ -126,6 +118,26 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
           )}
         </div>
       )}
+      <EditSheet
+        isOpen={date !== null}
+        title={t('dry.pickDate')}
+        saveDisabled={!date || date > todayIso()}
+        busy={set.isPending}
+        onSave={async () => (date ? (await save({ dried_at: date }), true) : false)}
+        onDismiss={() => setDate(null)}
+      >
+        <IonList inset>
+          <TextRow
+            icon={calendarOutline}
+            type="date"
+            label={t('dry.last')}
+            value={date ?? ''}
+            max={todayIso()}
+            onChange={setDate}
+            lines="none"
+          />
+        </IonList>
+      </EditSheet>
     </section>
   );
 }

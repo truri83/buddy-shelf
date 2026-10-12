@@ -16,7 +16,15 @@ import {
   useIonAlert,
   useIonToast,
 } from '@ionic/react';
-import { cloudUploadOutline, downloadOutline, openOutline, trashOutline } from 'ionicons/icons';
+import {
+  cloudUploadOutline,
+  downloadOutline,
+  gridOutline,
+  locationOutline,
+  openOutline,
+  pricetagOutline,
+  trashOutline,
+} from 'ionicons/icons';
 import { useRef } from 'react';
 import { t } from '@/core/i18n';
 import { saveFile } from '@/core/platform';
@@ -35,6 +43,7 @@ import {
 import { Badge } from '@/core/ui';
 
 const KINDS: TemplateKind[] = ['spool', 'slot', 'location'];
+const KIND_ICONS: Record<TemplateKind, string> = { spool: pricetagOutline, slot: gridOutline, location: locationOutline };
 const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
 
 /** Etikett-Vorlagen: eingebaute + eigene (Server-Ordner). Gestaltet wird auf niim.blue, hier nur Import/Export. */
@@ -118,6 +127,7 @@ export function TemplatesPage() {
               .filter((x) => x.kind === kind)
               .map((tpl) => (
                 <IonItem key={tpl.id}>
+                  <IonIcon icon={KIND_ICONS[tpl.kind]} slot="start" color={tpl.builtin ? 'medium' : 'primary'} aria-hidden />
                   <IonLabel>
                     {tpl.title}
                     <div style={sub}>

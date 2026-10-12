@@ -6,7 +6,6 @@ import {
   IonFooter,
   IonHeader,
   IonIcon,
-  IonInput,
   IonItem,
   IonLabel,
   IonList,
@@ -18,26 +17,32 @@ import {
   useIonAlert,
   useIonToast,
 } from '@ionic/react';
-import { add } from 'ionicons/icons';
+import { add, flameOutline, notificationsOffOutline, notificationsOutline, thermometerOutline, timeOutline } from 'ionicons/icons';
 import { useState } from 'react';
 import { useAllowed } from '@/core/api';
-import { FAMILIES, useDryingConfig, useSaveDryingConfig, type DryingConfig, type DryingRow, type StorageKind } from '@/core/filament';
+import { DEFAULT_DRYING, FAMILIES, useDryingConfig, useSaveDryingConfig, type DryingConfig, type StorageKind } from '@/core/filament';
 import { t } from '@/core/i18n';
-import { StateView } from '@/core/ui';
+import { ChoiceChip, EditSheet, FieldRow, MaterialBadge, MetaChip, NumberInput, RangeInput } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
 
-const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
 const range = ([a, b]: [number, number]) => (a === b ? `${a}` : `${a}–${b}`);
-/** leer → null, sonst positive Zahl (Komma erlaubt) */
-const num = (v: unknown): number | null => {
-  const n = Number(
-    String(v ?? '')
-      .replace(',', '.')
-      .trim(),
-  );
-  return String(v ?? '').trim() && Number.isFinite(n) && n >= 0 ? n : null;
-};
+
+interface FamilyDraft {
+  fam: string;
+  isNew: boolean;
+  temp: [number | null, number | null];
+  hours: [number | null, number | null];
+  days: number | null;
+}
+
+const familyValid = (d: FamilyDraft) =>
+  !!d.fam &&
+  d.temp.every((v) => v != null && v > 0 && v <= 120) &&
+  d.hours.every((v) => v != null && v > 0 && v <= 72) &&
+  d.temp[1]! >= d.temp[0]! &&
+  d.hours[1]! >= d.hours[0]! &&
+  (d.days == null || d.days > 0);
 
 /** Trocknung pflegen: Dörrautomat, Lagerungsarten, Werte je Materialfamilie (gilt für alle Geräte). */
 export function DryingSettingsPage() {
@@ -45,8 +50,8 @@ export function DryingSettingsPage() {
   const save = useSaveDryingConfig();
   const canEdit = useAllowed('inventory:update');
   const [draft, setDraft] = useState<DryingConfig | null>(null);
+  const [editing, setEditing] = useState<FamilyDraft | null>(null);
   const cfg = draft ?? saved;
-  const dirty = draft !== null;
   const [alert] = useIonAlert();
   const [toast] = useIonToast();
   const families = Object.keys(cfg.materials).sort((a, b) => FAMILIES.indexOf(a as never) - FAMILIES.indexOf(b as never));
@@ -54,54 +59,34 @@ export function DryingSettingsPage() {
 
   const change = (fn: (c: DryingConfig) => DryingConfig) => setDraft(fn(structuredClone(cfg)));
 
-  const editFamily = (fam: string) => {
-    const row: DryingRow = cfg.materials[fam] ?? { temp: [50, 60], hours: [4, 8], ams: null, reminderDays: 14 };
-    void alert({
-      header: fam,
-      message: t('drySet.familyHint'),
-      inputs: [
-        { name: 't0', type: 'number', label: t('drySet.tempFrom'), placeholder: t('drySet.tempFrom'), value: row.temp[0] },
-        { name: 't1', type: 'number', label: t('drySet.tempTo'), placeholder: t('drySet.tempTo'), value: row.temp[1] },
-        { name: 'h0', type: 'number', label: t('drySet.hoursFrom'), placeholder: t('drySet.hoursFrom'), value: row.hours[0] },
-        { name: 'h1', type: 'number', label: t('drySet.hoursTo'), placeholder: t('drySet.hoursTo'), value: row.hours[1] },
-        {
-          name: 'days',
-          type: 'number',
-          label: t('drySet.reminderDays'),
-          placeholder: t('drySet.reminderDays'),
-          value: row.reminderDays ?? '',
-        },
-      ],
-      buttons: [
-        { text: t('common.cancel'), role: 'cancel' },
-        {
-          text: t('common.save'),
-          handler: (v: Record<string, string>) => {
-            const [t0, t1, h0, h1] = [num(v.t0), num(v.t1), num(v.h0), num(v.h1)];
-            if (t0 == null || t1 == null || h0 == null || h1 == null || t1 < t0 || h1 < h0 || t1 > 120) {
-              void toast({ message: t('drySet.invalid'), duration: 2500, position: 'top', color: 'warning' });
-              return false;
-            }
-            change((c) => ({
-              ...c,
-              materials: { ...c.materials, [fam]: { ...row, temp: [t0, t1], hours: [h0, h1], reminderDays: num(v.days) || null } },
-            }));
-            return true;
-          },
-        },
-      ],
+  const openFamily = (fam: string | null) => {
+    const row = fam ? cfg.materials[fam] : undefined;
+    setEditing({
+      fam: fam ?? missing[0] ?? '',
+      isNew: !fam,
+      temp: row ? [...row.temp] : [50, 60],
+      hours: row ? [...row.hours] : [4, 8],
+      days: row ? row.reminderDays : 14,
     });
   };
 
-  const addFamily = () =>
-    void alert({
-      header: t('drySet.addFamily'),
-      inputs: missing.map((f, i) => ({ type: 'radio' as const, label: f, value: f, checked: i === 0 })),
-      buttons: [
-        { text: t('common.cancel'), role: 'cancel' },
-        { text: t('common.next'), handler: (f: string) => void (f && editFamily(f)) },
-      ],
-    });
+  const applyFamily = () => {
+    if (!editing || !familyValid(editing)) return false;
+    const prev = cfg.materials[editing.fam];
+    change((c) => ({
+      ...c,
+      materials: {
+        ...c.materials,
+        [editing.fam]: {
+          temp: editing.temp as [number, number],
+          hours: editing.hours as [number, number],
+          ams: prev?.ams ?? null,
+          reminderDays: editing.days,
+        },
+      },
+    }));
+    return true;
+  };
 
   const persist = (value: DryingConfig | null) =>
     save
@@ -130,6 +115,8 @@ export function DryingSettingsPage() {
       ],
     });
 
+  const ams = editing ? (cfg.materials[editing.fam]?.ams ?? DEFAULT_DRYING.materials[editing.fam]?.ams ?? null) : null;
+
   return (
     <IonPage>
       <IonHeader>
@@ -146,78 +133,141 @@ export function DryingSettingsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        {!canEdit && <StateView state="error" message={t('common.noPermission')} />}
+        {!canEdit && (
+          <IonNote color="warning" style={{ display: 'block', padding: 'var(--bs-s4) var(--bs-s5) 0' }}>
+            {t('common.noPermission')}
+          </IonNote>
+        )}
+
         <IonList inset>
           <IonListHeader>{t('drySet.dehydrator')}</IonListHeader>
-          <IonItem lines="none">
-            <IonInput
+          <FieldRow icon={flameOutline} label={t('drySet.maxTemp')} hint={t('drySet.maxTempHint')} lines="none">
+            <NumberInput
               label={t('drySet.maxTemp')}
-              labelPlacement="stacked"
-              inputmode="numeric"
-              placeholder="–"
-              helperText={t('settings.dehydratorMaxHint')}
-              disabled={!canEdit}
-              value={cfg.dehydratorMax ?? ''}
-              onIonInput={(e) => change((c) => ({ ...c, dehydratorMax: num(String(e.detail.value ?? '').replace(/[^0-9]/g, '')) }))}
+              unit="°C"
+              value={cfg.dehydratorMax}
+              onChange={(v) => canEdit && change((c) => ({ ...c, dehydratorMax: v }))}
             />
-          </IonItem>
+          </FieldRow>
         </IonList>
 
         <IonList inset>
           <IonListHeader>{t('drySet.storage')}</IonListHeader>
-          {STORAGE_TYPES.map((k) => (
-            <IonItem key={k}>
-              <IonIcon icon={STORAGE_ICONS[k]} slot="start" color="primary" aria-hidden />
-              <IonInput
+          {STORAGE_TYPES.map((k, i) => {
+            const f = cfg.storageFactor[k as StorageKind];
+            return (
+              <FieldRow
+                key={k}
+                icon={STORAGE_ICONS[k]}
+                tone={f == null ? 'muted' : 'accent'}
                 label={t(`storage.${k}`)}
-                labelPlacement="start"
-                inputmode="decimal"
-                placeholder={t('drySet.noReminder')}
-                disabled={!canEdit}
-                value={cfg.storageFactor[k as StorageKind] ?? ''}
-                onIonInput={(e) => change((c) => ({ ...c, storageFactor: { ...c.storageFactor, [k]: num(e.detail.value) } }))}
-                style={{ textAlign: 'right' }}
+                hint={f == null ? t('drySet.noReminder') : t('drySet.factorHint', { f: String(f).replace('.', ',') })}
+                lines={i === STORAGE_TYPES.length - 1 ? 'none' : undefined}
               >
-                <span slot="end" style={sub}>
-                  ×
-                </span>
-              </IonInput>
-            </IonItem>
-          ))}
-          <IonNote style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4) var(--bs-s3)', ...sub }}>
-            {t('drySet.storageHint')}
-          </IonNote>
+                <NumberInput
+                  label={t(`storage.${k}`)}
+                  unit="×"
+                  value={f}
+                  onChange={(v) => canEdit && change((c) => ({ ...c, storageFactor: { ...c.storageFactor, [k]: v } }))}
+                />
+              </FieldRow>
+            );
+          })}
         </IonList>
+        <IonNote className="bs-section-note">{t('drySet.storageHint')}</IonNote>
 
         <IonList inset>
           <IonListHeader>{t('drySet.families')}</IonListHeader>
           {families.map((fam) => {
             const r = cfg.materials[fam]!;
             return (
-              <IonItem key={fam} button={canEdit} detail={canEdit} onClick={() => canEdit && editFamily(fam)}>
+              <IonItem key={fam} button={canEdit} detail={canEdit} onClick={() => canEdit && openFamily(fam)}>
                 <IonLabel>
-                  <strong>{fam}</strong>
-                  <div style={sub}>
-                    {t('drySet.row', { temp: range(r.temp), hours: range(r.hours) })}
-                    {' · '}
-                    {r.reminderDays ? t('drySet.everyDays', { n: r.reminderDays }) : t('drySet.noReminder')}
+                  <MaterialBadge material={fam} />
+                  <div className="bs-meta-row">
+                    <MetaChip icon={thermometerOutline}>{range(r.temp)} °C</MetaChip>
+                    <MetaChip icon={timeOutline}>{range(r.hours)} h</MetaChip>
+                    {r.reminderDays ? (
+                      <MetaChip icon={notificationsOutline} tone="accent">
+                        {t('drySet.everyDays', { n: r.reminderDays })}
+                      </MetaChip>
+                    ) : (
+                      <MetaChip icon={notificationsOffOutline}>{t('drySet.noReminder')}</MetaChip>
+                    )}
                   </div>
                 </IonLabel>
               </IonItem>
             );
           })}
           {canEdit && missing.length > 0 && (
-            <IonItem button detail={false} lines="none" onClick={addFamily}>
+            <IonItem button detail={false} lines="none" onClick={() => openFamily(null)}>
               <IonIcon icon={add} slot="start" color="primary" aria-hidden />
               <IonLabel color="primary">{t('drySet.addFamily')}</IonLabel>
             </IonItem>
           )}
-          <IonNote style={{ display: 'block', padding: 'var(--bs-s2) var(--bs-s4) var(--bs-s3)', ...sub }}>
-            {t('drySet.familiesHint')}
-          </IonNote>
         </IonList>
+        <IonNote className="bs-section-note">{t('drySet.familiesHint')}</IonNote>
+
+        <EditSheet
+          isOpen={!!editing}
+          title={editing?.isNew ? t('drySet.addFamily') : (editing?.fam ?? '')}
+          saveDisabled={!editing || !familyValid(editing)}
+          onSave={applyFamily}
+          onDismiss={() => setEditing(null)}
+        >
+          {editing && (
+            <>
+              {editing.isNew && (
+                <div
+                  className="bs-chip-row"
+                  style={{ display: 'flex', gap: 'var(--bs-s1)', overflowX: 'auto', padding: 'var(--bs-s3) var(--bs-s4) 0' }}
+                >
+                  {missing.map((f) => (
+                    <ChoiceChip key={f} selected={editing.fam === f} onSelect={() => setEditing({ ...editing, fam: f })}>
+                      {f}
+                    </ChoiceChip>
+                  ))}
+                </div>
+              )}
+              <IonList inset>
+                <FieldRow icon={thermometerOutline} label={t('drySet.temp')}>
+                  <RangeInput
+                    label={t('drySet.temp')}
+                    unit="°C"
+                    value={editing.temp}
+                    onChange={(temp) => setEditing({ ...editing, temp })}
+                  />
+                </FieldRow>
+                <FieldRow icon={timeOutline} label={t('drySet.hours')}>
+                  <RangeInput
+                    label={t('drySet.hours')}
+                    unit="h"
+                    value={editing.hours}
+                    onChange={(hours) => setEditing({ ...editing, hours })}
+                  />
+                </FieldRow>
+                <FieldRow
+                  icon={editing.days ? notificationsOutline : notificationsOffOutline}
+                  tone={editing.days ? 'accent' : 'muted'}
+                  label={t('drySet.reminder')}
+                  hint={t('drySet.reminderHint')}
+                  lines="none"
+                >
+                  <NumberInput
+                    label={t('drySet.reminder')}
+                    unit={t('drySet.days')}
+                    value={editing.days}
+                    onChange={(days) => setEditing({ ...editing, days })}
+                  />
+                </FieldRow>
+              </IonList>
+              {ams && <IonNote className="bs-section-note">{t('dry.ams', { temp: ams.temp, hours: ams.hours })}</IonNote>}
+              <IonNote className="bs-section-note">{t('drySet.familiesHint')}</IonNote>
+            </>
+          )}
+        </EditSheet>
       </IonContent>
-      {dirty && (
+      {draft && (
         <IonFooter>
           <IonToolbar>
             <div style={{ display: 'flex', gap: 'var(--bs-s2)', padding: 'var(--bs-s2) var(--bs-s3)' }}>

@@ -17,12 +17,12 @@ import {
   useIonAlert,
   useIonToast,
 } from '@ionic/react';
-import { add } from 'ionicons/icons';
+import { add, cubeOutline, discOutline, scaleOutline, sparklesOutline, trashOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type CatalogEntry } from '@/core/api';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
-import { StateView } from '@/core/ui';
+import { EditSheet, FieldRow, NumberInput, StateView, TextRow } from '@/core/ui';
 import { coreDisplayName, coreSuggestions, groupCores } from '../cores';
 import { useCatalog, useCatalogMutations, useDbSpoolWeights, useSpools } from '../hooks/useSpools';
 
@@ -54,48 +54,44 @@ export function CoreWeightsPage() {
     return coreSuggestions(db.data ?? [], catalog.data ?? []).filter((s) => !q || s.name.toLowerCase().includes(q));
   }, [db.data, catalog.data, query]);
 
-  const valid = (name: string, weight: string) => name.trim().length > 0 && Number(weight) > 0 && Number(weight) < 2000;
-
+  // Bearbeiten-Blatt: neu (id undefined) oder bestehender Eintrag
+  const [edit, setEdit] = useState<{ id?: number; name: string; weight: number | null } | null>(null);
+  const editValid = !!edit && edit.name.trim().length > 0 && edit.weight != null && edit.weight > 0 && edit.weight < 2000;
   const editor = (entry?: CatalogEntry) =>
+    setEdit(entry ? { id: entry.id, name: entry.name, weight: entry.weight } : { name: '', weight: null });
+  const saveEdit = async () => {
+    if (!edit || !editValid) return false;
+    const e = { name: edit.name.trim(), weight: Math.round(edit.weight!) };
+    try {
+      await (edit.id ? m.update.mutateAsync({ id: edit.id, ...e }) : m.add.mutateAsync(e));
+      haptic();
+      void toast({ message: t('common.saved'), duration: 1500, position: 'top' });
+      return true;
+    } catch (err) {
+      fail(err);
+      return false;
+    }
+  };
+  const confirmDelete = () => {
+    if (!edit?.id) return;
+    const id = edit.id;
     void alert({
-      header: entry ? t('cores.edit') : t('cores.new'),
-      inputs: [
-        { name: 'name', type: 'text', placeholder: t('cores.name'), value: entry?.name ?? '' },
-        { name: 'weight', type: 'number', placeholder: t('cores.weight'), value: entry?.weight ?? '', min: 1, max: 2000 },
-      ],
+      header: t('cores.delete'),
+      message: t('cores.deleteQ', { name: edit.name }),
       buttons: [
-        ...(entry
-          ? [
-              {
-                text: t('cores.delete'),
-                role: 'destructive',
-                handler: () => {
-                  void alert({
-                    header: t('cores.delete'),
-                    message: t('cores.deleteQ', { name: entry.name }),
-                    buttons: [
-                      { text: t('common.cancel'), role: 'cancel' },
-                      { text: t('cores.delete'), role: 'destructive', handler: () => void m.remove.mutateAsync(entry.id).catch(fail) },
-                    ],
-                  });
-                },
-              },
-            ]
-          : []),
         { text: t('common.cancel'), role: 'cancel' },
         {
-          text: t('common.save'),
-          handler: (v: { name: string; weight: string }) => {
-            if (!valid(v.name, v.weight)) return false;
-            const e = { name: v.name.trim(), weight: Math.round(Number(v.weight)) };
-            void (entry ? m.update.mutateAsync({ id: entry.id, ...e }) : m.add.mutateAsync(e))
-              .then(() => (haptic(), void toast({ message: t('common.saved'), duration: 1500, position: 'top' })))
-              .catch(fail);
-            return true;
-          },
+          text: t('cores.delete'),
+          role: 'destructive',
+          handler: () =>
+            void m.remove
+              .mutateAsync(id)
+              .then(() => setEdit(null))
+              .catch(fail),
         },
       ],
     });
+  };
 
   return (
     <IonPage>
@@ -130,7 +126,8 @@ export function CoreWeightsPage() {
                   <IonLabel>{g.maker}</IonLabel>
                 </IonListHeader>
                 {g.entries.map((c) => (
-                  <IonItem key={c.id} button={canEdit} detail={false} onClick={() => canEdit && editor(c)}>
+                  <IonItem key={c.id} button={canEdit} detail={canEdit} onClick={() => canEdit && editor(c)}>
+                    <IonIcon icon={/cardboard|pappe/i.test(c.name) ? cubeOutline : discOutline} slot="start" color="primary" aria-hidden />
                     <IonLabel>
                       {coreDisplayName(c.name)}
                       {c.used > 0 && (
@@ -164,6 +161,7 @@ export function CoreWeightsPage() {
                 </IonListHeader>
                 {suggestions.map((s) => (
                   <IonItem key={s.name}>
+                    <IonIcon icon={sparklesOutline} slot="start" color="medium" aria-hidden />
                     <IonLabel>{coreDisplayName(s.name)}</IonLabel>
                     <IonNote slot="end" className="bs-num">
                       {fmtNum(s.weight)} g
@@ -188,6 +186,39 @@ export function CoreWeightsPage() {
             )}
           </>
         )}
+        <EditSheet
+          isOpen={!!edit}
+          title={edit?.id ? t('cores.edit') : t('cores.new')}
+          saveDisabled={!editValid}
+          busy={m.add.isPending || m.update.isPending}
+          onSave={saveEdit}
+          onDismiss={() => setEdit(null)}
+        >
+          {edit && (
+            <>
+              <IonList inset>
+                <TextRow
+                  icon={discOutline}
+                  label={t('cores.name')}
+                  placeholder={t('cores.namePlaceholder')}
+                  value={edit.name}
+                  onChange={(name) => setEdit({ ...edit, name })}
+                />
+                <FieldRow icon={scaleOutline} label={t('cores.weight')} lines="none">
+                  <NumberInput label={t('cores.weight')} unit="g" value={edit.weight} onChange={(weight) => setEdit({ ...edit, weight })} />
+                </FieldRow>
+              </IonList>
+              {edit.id && (
+                <div style={{ padding: '0 var(--bs-s4)' }}>
+                  <IonButton expand="block" fill="outline" color="danger" onClick={confirmDelete}>
+                    <IonIcon slot="start" icon={trashOutline} />
+                    {t('cores.delete')}
+                  </IonButton>
+                </div>
+              )}
+            </>
+          )}
+        </EditSheet>
       </IonContent>
     </IonPage>
   );

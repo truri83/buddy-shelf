@@ -15,7 +15,18 @@ import {
   type RefresherEventDetail,
 } from '@ionic/react';
 import { useQuery } from '@tanstack/react-query';
-import { addCircleOutline, gridOutline, locationOutline, pricetagOutline, scaleOutline, sunnyOutline } from 'ionicons/icons';
+import {
+  addCircleOutline,
+  albumsOutline,
+  alertCircleOutline,
+  barbellOutline,
+  checkmarkCircleOutline,
+  gridOutline,
+  locationOutline,
+  pricetagOutline,
+  scaleOutline,
+  sunnyOutline,
+} from 'ionicons/icons';
 import { Link } from 'react-router-dom';
 import { assignmentLabel, bambuddy, fillRatio, remainingGrams } from '@/core/api';
 import { dryingDue, useDryingConfig } from '@/core/filament';
@@ -85,9 +96,19 @@ export function OverviewPage() {
                 padding: 'var(--bs-s4) var(--bs-s4) 0',
               }}
             >
-              <StatTile value={active.length} label={t('overview.spools')} />
-              <StatTile value={`${totalKg.toLocaleString('de-DE', { maximumFractionDigits: 1 })} kg`} label={t('overview.filament')} />
-              <StatTile value={low.length} label={t('overview.low')} tone={low.length ? 'warn' : undefined} />
+              <StatTile value={active.length} label={t('overview.spools')} icon={albumsOutline} to="/spools" />
+              <StatTile
+                value={`${totalKg.toLocaleString('de-DE', { maximumFractionDigits: 1 })} kg`}
+                label={t('overview.filament')}
+                icon={barbellOutline}
+              />
+              <StatTile
+                value={low.length}
+                label={t('overview.low')}
+                icon={low.length ? alertCircleOutline : checkmarkCircleOutline}
+                tone={low.length ? 'warn' : 'good'}
+                to={low.length ? '/spools?filter=low' : undefined}
+              />
             </div>
 
             <div

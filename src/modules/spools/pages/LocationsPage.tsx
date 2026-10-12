@@ -12,16 +12,15 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  useIonAlert,
   useIonToast,
 } from '@ionic/react';
-import { add, pricetagOutline } from 'ionicons/icons';
+import { add, albumsOutline, locationOutline, pricetagOutline, scanOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type Location } from '@/core/api';
 import { t, tn } from '@/core/i18n';
 import { LabelPrintSheet, useLabelTemplates, type LabelVariables } from '@/core/printing';
 import { encodeLocationCode } from '@/core/qr/codes';
-import { StateView } from '@/core/ui';
+import { EditSheet, MetaChip, StateView, TextRow } from '@/core/ui';
 import { useCreateLocation, useLocations } from '../hooks/useSpools';
 
 const vars = (l: Location): LabelVariables => ({ code: encodeLocationCode(l.id), location: l.name });
@@ -33,39 +32,29 @@ export function LocationsPage() {
   const canEdit = useAllowed('inventory:update');
   const { templates } = useLabelTemplates('location');
   const [printing, setPrinting] = useState<Location[] | null>(null);
-  const [alert] = useIonAlert();
   const [toast] = useIonToast();
   const list = useMemo(() => [...(locations.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'de')), [locations.data]);
   const records = useMemo(() => (printing ?? []).map(vars), [printing]);
 
-  const newLocation = () =>
-    void alert({
-      header: t('locations.new'),
-      inputs: [{ name: 'name', type: 'text', placeholder: t('locations.name') }],
-      buttons: [
-        { text: t('common.cancel'), role: 'cancel' },
-        {
-          text: t('common.save'),
-          handler: (v: { name?: string }) => {
-            const name = v.name?.trim();
-            if (!name) return false;
-            create
-              .mutateAsync(name)
-              .then((l) => setPrinting([l])) // gleich das Etikett anbieten
-              .catch(
-                (e: unknown) =>
-                  void toast({
-                    message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
-                    duration: 3000,
-                    position: 'top',
-                    color: 'danger',
-                  }),
-              );
-            return true;
-          },
-        },
-      ],
-    });
+  const [newName, setNewName] = useState<string | null>(null);
+  const newLocation = () => setNewName('');
+  const saveNew = async () => {
+    const name = newName?.trim();
+    if (!name) return false;
+    try {
+      const l = await create.mutateAsync(name);
+      setPrinting([l]); // gleich das Etikett anbieten
+      return true;
+    } catch (e) {
+      void toast({
+        message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+        duration: 3000,
+        position: 'top',
+        color: 'danger',
+      });
+      return false;
+    }
+  };
 
   return (
     <IonPage>
@@ -99,9 +88,15 @@ export function LocationsPage() {
             <IonList inset>
               {list.map((l) => (
                 <IonItem key={l.id} routerLink={`/spools/stow/${l.id}`} detail>
+                  <IonIcon icon={locationOutline} slot="start" color="primary" aria-hidden />
                   <IonLabel>
                     {l.name}
-                    <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{tn('spools.count', l.spool_count)}</div>
+                    <div className="bs-meta-row">
+                      <MetaChip icon={albumsOutline}>{tn('spools.count', l.spool_count)}</MetaChip>
+                      <MetaChip icon={scanOutline} tone="accent">
+                        {t('stow.action')}
+                      </MetaChip>
+                    </div>
                   </IonLabel>
                   <IonButton
                     slot="end"
@@ -133,6 +128,26 @@ export function LocationsPage() {
           isOpen={!!printing?.length}
           onDismiss={() => setPrinting(null)}
         />
+        <EditSheet
+          isOpen={newName !== null}
+          title={t('locations.new')}
+          saveDisabled={!newName?.trim()}
+          busy={create.isPending}
+          onSave={saveNew}
+          onDismiss={() => setNewName(null)}
+        >
+          <IonList inset>
+            <TextRow
+              icon={locationOutline}
+              label={t('locations.name')}
+              value={newName ?? ''}
+              onChange={setNewName}
+              lines="none"
+              autofocus
+            />
+          </IonList>
+          <IonNote className="bs-section-note">{t('locations.newHint')}</IonNote>
+        </EditSheet>
       </IonContent>
     </IonPage>
   );
