@@ -20,8 +20,9 @@ import {
 import { closeCircleOutline } from 'ionicons/icons';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fillRatio, remainingGrams, useAllowed } from '@/core/api';
+import { remainingGrams, useAllowed } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
+import { materialLabel } from '@/core/filament';
 import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, MaterialBadge, ScannerView, StateView } from '@/core/ui';
@@ -180,12 +181,12 @@ export function SlotPage() {
             >
               {occupant ? (
                 <>
-                  <ColorRing rgba={occupant.rgba} fill={fillRatio(occupant)} size={56} label={occupant.color_name ?? occupant.material} />
+                  <ColorRing rgba={occupant.rgba} size={56} label={occupant.color_name ?? occupant.material} />
                   <div style={{ flex: 1, display: 'grid', gap: 'var(--bs-s1)' }}>
                     <IonNote>{t('slot.current')}</IonNote>
                     <strong>{spoolTitle(occupant)}</strong>
                     <div style={{ display: 'flex', gap: 'var(--bs-s2)', alignItems: 'center' }}>
-                      <MaterialBadge material={[occupant.material, occupant.subtype].filter(Boolean).join(' ')} />
+                      <MaterialBadge material={materialLabel(occupant)} />
                       <span className="bs-num">{fmtNum(remainingGrams(occupant))} g</span>
                     </div>
                   </div>

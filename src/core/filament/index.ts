@@ -12,5 +12,5 @@ export {
   type DryingRow,
   type StorageKind,
 } from './drying';
-export { FAMILIES, materialFamily, materialVariant, type MaterialFamily } from './material';
+export { cleanSubtype, FAMILIES, materialFamily, materialLabel, materialVariant, type MaterialFamily } from './material';
 export { useDryingConfig, useSaveDryingConfig } from './useDryingConfig';

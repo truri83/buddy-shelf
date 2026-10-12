@@ -42,3 +42,15 @@ export function materialVariant(material: string, subtype?: string | null): stri
   rest = rest.replace(/^[\s-]+/, '');
   return [rest, subtype?.trim()].filter(Boolean).join(' ');
 }
+
+/** Sorte nur, wenn sie nicht bloß der Farbname ist (Spoolman liefert oft den Filamentnamen = Farbe als Sorte). */
+export function cleanSubtype(s: { subtype?: string | null; color_name?: string | null }): string | null {
+  const sub = s.subtype?.trim();
+  if (!sub) return null;
+  return s.color_name && sub.toLowerCase() === s.color_name.trim().toLowerCase() ? null : sub;
+}
+
+/** Text fürs Material-Abzeichen: „PLA+ Matte“, ohne doppelten Farbnamen. */
+export function materialLabel(s: { material: string; subtype?: string | null; color_name?: string | null }): string {
+  return [s.material, cleanSubtype(s)].filter(Boolean).join(' ');
+}

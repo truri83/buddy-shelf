@@ -1,16 +1,20 @@
-import { rgbaToCss } from '../material';
-
 interface Props {
   /** 0–1 */
   fill: number;
+  /** unter der Warnschwelle */
   low?: boolean;
-  /** Filamentfarbe (RRGGBBAA) – füllt den Balken wie bei Spooly; ohne Angabe neutral */
-  rgba?: string | null;
   height?: number;
 }
 
-export function FillBar({ fill, low, rgba, height = 6 }: Props) {
-  const bar = rgba ? rgbaToCss(rgba) : low ? 'var(--bs-warn)' : 'var(--bs-text-2)';
+/** Ab hier gilt die Spule als fast leer (rot). */
+export const EMPTY_FILL = 0.05;
+
+/**
+ * Füllstand in Statusfarbe: grün = ausreichend, gelb = niedrig, rot = fast leer.
+ * Die Filamentfarbe zeigt ausschließlich das Spulen-Symbol (ColorRing) – nie der Balken.
+ */
+export function FillBar({ fill, low, height = 6 }: Props) {
+  const bar = fill <= EMPTY_FILL ? 'var(--bs-critical)' : low ? 'var(--bs-warn)' : 'var(--bs-good)';
   return (
     <div
       role="progressbar"
@@ -19,17 +23,7 @@ export function FillBar({ fill, low, rgba, height = 6 }: Props) {
       aria-valuenow={Math.round(fill * 100)}
       style={{ height, borderRadius: height / 2, background: 'var(--bs-surface-2)', overflow: 'hidden' }}
     >
-      <div
-        className="bs-fill"
-        style={{
-          width: `${Math.round(fill * 100)}%`,
-          height: '100%',
-          borderRadius: height / 2,
-          background: bar,
-          // Kontur, damit Weiß/Schwarz auf hellem bzw. dunklem Grund sichtbar bleiben
-          boxShadow: rgba ? 'inset 0 0 0 1px color-mix(in srgb, var(--bs-text-2) 45%, transparent)' : undefined,
-        }}
-      />
+      <div className="bs-fill" style={{ width: `${Math.round(fill * 100)}%`, height: '100%', borderRadius: height / 2, background: bar }} />
     </div>
   );
 }

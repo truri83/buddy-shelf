@@ -1,5 +1,5 @@
 import { fillRatio, slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
-import { materialFamily, materialVariant } from '@/core/filament';
+import { cleanSubtype, materialFamily, materialVariant } from '@/core/filament';
 import { colorFamily, colorSearchText, foldGerman, t } from '@/core/i18n';
 
 export const DEFAULT_LOW_PCT = 20;
@@ -71,4 +71,4 @@ export function matchesSearch(s: Spool, q: string): boolean {
 export const familyOf = (s: Pick<Spool, 'material'>) => materialFamily(s.material) ?? (s.material.trim().toUpperCase() || '–');
 
 /** Unterart: „+“, „2.0+“, „Basic“, „Matte“ … ('' = ohne Angabe). */
-export const variantOf = (s: Pick<Spool, 'material' | 'subtype'>) => materialVariant(s.material, s.subtype);
+export const variantOf = (s: Pick<Spool, 'material' | 'subtype' | 'color_name'>) => materialVariant(s.material, cleanSubtype(s));

@@ -2,7 +2,7 @@ import { IonButton, IonIcon, useIonToast } from '@ionic/react';
 import { gridOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import type { CSSProperties, ReactNode } from 'react';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed, type Spool } from '@/core/api';
-import { todayIso } from '@/core/filament';
+import { materialLabel, todayIso } from '@/core/filament';
 import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss } from '@/core/ui';
 import { useAssignments, useLocations, useSetExtras } from '../hooks/useSpools';
@@ -72,12 +72,12 @@ export function SpoolDetailView({
         <div>
           <section style={{ ...card, display: 'grid', gap: 'var(--bs-s3)' }}>
             <div style={{ display: 'flex', gap: 'var(--bs-s4)', alignItems: 'center' }}>
-              <ColorRing rgba={s.rgba} fill={fillRatio(s)} size={84} label={name} />
+              <ColorRing rgba={s.rgba} size={84} label={name} />
               <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--bs-s1)' }}>
                 <strong style={{ fontSize: 'var(--bs-fs-title)' }}>{name}</strong>
                 {s.brand && <span style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{s.brand}</span>}
                 <div style={{ display: 'flex', gap: 'var(--bs-s1)', flexWrap: 'wrap' }}>
-                  <MaterialBadge material={[s.material, s.subtype].filter(Boolean).join(' ')} />
+                  <MaterialBadge material={materialLabel(s)} />
                   {s.category === 'Refill' && <Badge>{t('new.kind.refill')}</Badge>}
                   {ams && <Badge tone="good">{ams}</Badge>}
                   {isLow(s) && <Badge tone="warn">{t('spools.low')}</Badge>}
@@ -95,7 +95,7 @@ export function SpoolDetailView({
                 {Math.round(fillRatio(s) * 100)} %
               </span>
             </div>
-            <FillBar fill={fillRatio(s)} low={isLow(s)} rgba={s.rgba} height={10} />
+            <FillBar fill={fillRatio(s)} low={isLow(s)} height={10} />
           </section>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--bs-s2)', padding: '0 var(--bs-s3)' }}>

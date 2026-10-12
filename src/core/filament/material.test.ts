@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { materialFamily, materialVariant } from './material';
+import { materialFamily, materialLabel, materialVariant } from './material';
 
 describe('Materialfamilie', () => {
   it('Unterarten gehören zur Familie', () => {
@@ -20,5 +20,13 @@ describe('Materialfamilie', () => {
     expect(materialVariant('PLA', 'Basic')).toBe('Basic');
     expect(materialVariant('PLA-CF')).toBe('CF');
     expect(materialVariant('PLA')).toBe('');
+  });
+});
+
+describe('Material-Abzeichen', () => {
+  it('Sorte = Farbname wird nicht doppelt gezeigt', () => {
+    expect(materialLabel({ material: 'PLA', subtype: 'Jade White', color_name: 'Jade White' })).toBe('PLA');
+    expect(materialLabel({ material: 'PLA+', subtype: 'Black', color_name: 'black' })).toBe('PLA+');
+    expect(materialLabel({ material: 'PLA', subtype: 'Matte', color_name: 'Charcoal' })).toBe('PLA Matte');
   });
 });

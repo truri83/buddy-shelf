@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
-import { dryingDue, todayIso, useDryingConfig } from '@/core/filament';
+import { dryingDue, materialLabel, todayIso, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
 import { isLow } from '../logic';
 import { agoText } from './DryingCard';
@@ -84,7 +84,7 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
       <div style={{ display: 'grid', gap: 'var(--bs-s2)', padding: 'var(--bs-s3)', color: 'var(--bs-text)' }}>
         <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center' }}>
           {selecting && <IonCheckbox checked={selected} aria-label={`#${spool.id}`} style={{ pointerEvents: 'none' }} />}
-          <ColorRing rgba={spool.rgba} fill={fill} label={name} />
+          <ColorRing rgba={spool.rgba} label={name} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
             <strong style={{ fontSize: 'var(--bs-fs-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
@@ -121,7 +121,7 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
           )}
         </div>
         <div style={{ display: 'flex', gap: 'var(--bs-s1)', flexWrap: 'wrap', alignItems: 'center' }}>
-          <MaterialBadge material={[spool.material, spool.subtype].filter(Boolean).join(' ')} />
+          <MaterialBadge material={materialLabel(spool)} />
           {spool.category === 'Refill' && <Badge>{t('new.kind.refill')}</Badge>}
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
@@ -159,7 +159,7 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)' }}>
           <div style={{ flex: 1 }}>
-            <FillBar fill={fill} low={low} rgba={spool.rgba} height={8} />
+            <FillBar fill={fill} low={low} height={8} />
           </div>
           <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', whiteSpace: 'nowrap' }}>
             <strong>{fmtNum(remainingGrams(spool))} g</strong>

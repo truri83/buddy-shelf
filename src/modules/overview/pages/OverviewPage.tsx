@@ -152,7 +152,7 @@ export function OverviewPage() {
                 {loaded.map(({ a, s }) => (
                   <IonItem key={a.id} routerLink={`/spools/${a.spool_id}`} detail>
                     <div slot="start">
-                      <ColorRing rgba={s?.rgba ?? null} fill={s ? fillRatio(s) : 0} size={32} label={s?.color_name ?? `#${a.spool_id}`} />
+                      <ColorRing rgba={s?.rgba ?? null} size={32} label={s?.color_name ?? `#${a.spool_id}`} />
                     </div>
                     <IonLabel>
                       #{a.spool_id} {s ? (s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')) : ''}
@@ -190,7 +190,7 @@ export function OverviewPage() {
               {low.map((s) => (
                 <IonItem key={s.id} routerLink={`/spools/${s.id}`} detail>
                   <div slot="start">
-                    <ColorRing rgba={s.rgba} fill={fillRatio(s)} size={32} label={s.color_name ?? s.material} />
+                    <ColorRing rgba={s.rgba} size={32} label={s.color_name ?? s.material} />
                   </div>
                   <IonLabel>
                     #{s.id} {s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')}

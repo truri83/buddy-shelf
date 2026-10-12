@@ -99,7 +99,7 @@ describe('Materialfamilie in Liste', async () => {
   const { familyOf, variantOf } = await import('./logic');
   it('PLA+ gehört zu PLA, Unterart „+ Matte“', () => {
     expect(familyOf({ material: 'PLA+' })).toBe('PLA');
-    expect(variantOf({ material: 'PLA+', subtype: 'Matte' })).toBe('+ Matte');
+    expect(variantOf({ material: 'PLA+', subtype: 'Matte', color_name: null })).toBe('+ Matte');
     expect(familyOf({ material: 'PEEK' })).toBe('PEEK');
   });
 });

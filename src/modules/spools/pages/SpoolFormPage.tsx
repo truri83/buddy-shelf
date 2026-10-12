@@ -278,13 +278,13 @@ function SpoolForm({
         {/* Live-Vorschau: so sieht die Spule gleich in der Liste aus */}
         <IonToolbar>
           <div style={{ display: 'flex', gap: 'var(--bs-s3)', alignItems: 'center', padding: 'var(--bs-s1) var(--bs-s4) var(--bs-s2)' }}>
-            <ColorRing rgba={draft.rgba} fill={fill} size={52} label={title} />
+            <ColorRing rgba={draft.rgba} size={52} label={title} />
             <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 'var(--bs-s1)' }}>
               <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {title}
                 {draft.brand && <span style={{ ...sub, fontWeight: 400 }}> · {draft.brand}</span>}
               </strong>
-              <FillBar fill={fill} rgba={draft.rgba} height={6} />
+              <FillBar fill={fill} height={6} />
               <span className="bs-num" style={sub}>
                 {fmtNum(rest)} / {fmtNum(draft.labelWeight)} g · {Math.round(fill * 100)} %
                 {!editing && draft.quantity > 1 && ` · ${draft.quantity}×`}
