@@ -161,6 +161,7 @@ export function inventorySource(force = false): Promise<InventorySource> {
 
 /** Nur für Tests: Datenquelle vergessen. */
 export function _resetInventorySource() {
+  colorNames.clear();
   source = null;
   sourcePending = null;
 }
@@ -285,6 +286,38 @@ async function adoptFromSlotManually(s: { printer_id: number; ams_id: number; tr
   return bambuddy.spools.get(spool.id);
 }
 
+/**
+ * Bambuddy füllt einen unbekannten Farbnamen mit der Sorte („PETG Basic“ → „Basic“). Das ist keine Farbe: solche
+ * Namen gelten als fehlend, der echte kommt aus Bambuddys Farbkatalog (je Farbe + Material einmal je Sitzung).
+ */
+const colorNames = new Map<string, Promise<string | null>>();
+const fakeColorName = (s: Pick<Spool, 'color_name' | 'color_name_is_synthesized' | 'subtype'>) =>
+  !!s.color_name && (!!s.color_name_is_synthesized || s.color_name.trim().toLowerCase() === s.subtype?.trim().toLowerCase());
+
+function lookupColorName(hex: string, material: string): Promise<string | null> {
+  const key = `${hex}|${material}`;
+  let p = colorNames.get(key);
+  if (!p) {
+    const q = new URLSearchParams({ hex, material });
+    p = request<{ color_name?: string | null }>('GET', `/inventory/colors/by-material?${q}`)
+      .then((r) => r.color_name?.trim() || null)
+      .catch(() => (colorNames.delete(key), null));
+    colorNames.set(key, p);
+  }
+  return p;
+}
+
+async function withRealColorNames<S extends Spool>(list: S[]): Promise<S[]> {
+  return Promise.all(
+    list.map(async (s) => {
+      if (!fakeColorName(s)) return s;
+      const hex = s.rgba && /^[0-9a-f]{6}/i.test(s.rgba) ? s.rgba.slice(0, 6).toUpperCase() : null;
+      const material = [s.material, s.subtype].filter(Boolean).join(' ');
+      return { ...s, color_name: hex ? await lookupColorName(hex, material) : null };
+    }),
+  );
+}
+
 const listSpoolmanSlots = () => request<SpoolmanSlot[]>('GET', '/spoolman/inventory/slot-assignments/all');
 
 export const bambuddy = {
@@ -292,12 +325,12 @@ export const bambuddy = {
     list: async () => {
       const src = await inventorySource();
       const [list, extras] = await Promise.all([request<Spool[]>('GET', `${await inv()}/spools`), loadExtras()]);
-      return list.map((s) => withExtras(s, extras, src.spoolman));
+      return withRealColorNames(list.map((s) => withExtras(s, extras, src.spoolman)));
     },
     get: async (id: number): Promise<Spool> => {
       const src = await inventorySource();
       const [spool, extras] = await Promise.all([request<Spool>('GET', `${await inv()}/spools/${id}`), loadExtras()]);
-      return withExtras(spool, extras, src.spoolman);
+      return (await withRealColorNames([withExtras(spool, extras, src.spoolman)]))[0]!;
     },
     /** Dublettenprüfung per NFC: tag_uid und/oder tray_uuid (Bambu-RFID). */
     byTag: (q: { tagUid?: string; trayUuid?: string }) => {

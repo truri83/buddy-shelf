@@ -9,6 +9,8 @@ export interface Spool {
   material: string;
   subtype: string | null;
   color_name: string | null;
+  /** Bambuddy hat den Farbnamen nur erfunden (meist die Sorte, z. B. „Basic“) – kein echter Farbname */
+  color_name_is_synthesized?: boolean;
   /** RRGGBBAA */
   rgba: string | null;
   brand: string | null;

@@ -228,4 +228,23 @@ describe('Spoolman: Schreiben', () => {
     expect(seen.at(-1)).toEqual({ tag_uid: '9A37C54600000100', tray_uuid: null });
     await expect(bambuddy.spools.linkTag(7, { tagUid: '0'.repeat(16), trayUuid: null })).rejects.toThrow();
   });
+
+  it('„Basic“ ist die Sorte, kein Farbname: echten Namen aus Bambuddys Farbkatalog holen (einmal je Farbe)', async () => {
+    const calls = fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'GET /api/v1/spoolman/inventory/spools': () => [
+        spool(4, { material: 'PETG', subtype: 'Basic', color_name: 'Basic', color_name_is_synthesized: true, rgba: 'FFFFFFFF' }),
+        spool(5, { material: 'PETG', subtype: 'Basic', color_name: 'Basic', color_name_is_synthesized: true, rgba: 'FFFFFFFF' }),
+        spool(3, { material: 'ASA', subtype: 'Basic', color_name: 'Basic', rgba: '808080FF' }), // gleich der Sorte, ohne Markierung
+        spool(6, { material: 'PLA', subtype: 'Basic', color_name: 'Bambu Green', rgba: '00AE42FF' }), // echter Name bleibt
+        spool(9, { material: 'PLA', subtype: 'Matte', color_name: 'Matte', color_name_is_synthesized: true, rgba: null }), // ohne Farbe: leer
+      ],
+      'GET /extras/spools': () => ({ spools: {} }),
+      'GET /api/v1/inventory/colors/by-material?hex=FFFFFF&material=PETG+Basic': () => ({ color_name: 'Jade White' }),
+      'GET /api/v1/inventory/colors/by-material?hex=808080&material=ASA+Basic': () => ({ color_name: 'Gray' }),
+    });
+    const list = await bambuddy.spools.list();
+    expect(list.map((s) => s.color_name)).toEqual(['Jade White', 'Jade White', 'Gray', 'Bambu Green', null]);
+    expect(calls.filter((c) => c.includes('colors/by-material'))).toHaveLength(2);
+  });
 });
