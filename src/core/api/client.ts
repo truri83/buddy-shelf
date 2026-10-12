@@ -272,8 +272,16 @@ async function adoptFromSlotManually(s: { printer_id: number; ams_id: number; tr
   });
   const spool = (Array.isArray(created) ? created : created.created)[0];
   if (!spool) throw new ApiError(502, t('rfid.noSpool'));
-  await request('PATCH', `/spoolman/inventory/spools/${spool.id}/tag`, tray_uuid ? { tray_uuid } : { tag_uid });
-  await bambuddy.assignments.place({ spool_id: spool.id, printer_id: s.printer_id, ams_id: s.ams_id, tray_id: s.tray_id });
+  try {
+    await request('PATCH', `/spoolman/inventory/spools/${spool.id}/tag`, tray_uuid ? { tray_uuid } : { tag_uid });
+    await bambuddy.assignments.place({ spool_id: spool.id, printer_id: s.printer_id, ams_id: s.ams_id, tray_id: s.tray_id });
+  } catch (e) {
+    // Spule existiert schon – sagen, welche, statt „fehlgeschlagen“ (erneutes Übernehmen gäbe eine Dublette)
+    throw new ApiError(
+      e instanceof ApiError ? e.status : 500,
+      t('rfid.partial', { id: spool.id, msg: e instanceof Error ? e.message : String(e) }),
+    );
+  }
   return bambuddy.spools.get(spool.id);
 }
 
@@ -306,21 +314,43 @@ export const bambuddy = {
       return bambuddy.spools.get(id);
     },
     /** Mehrere gleiche Spulen in einem Schritt (quantity 1–50 bei Spoolman, 1–100 sonst). */
-    createMany: async (spool: SpoolCreate, quantity: number): Promise<Spool[]> => {
-      if (!(await inventorySource()).spoolman) return request<Spool[]>('POST', '/inventory/spools/bulk', { spool, quantity });
+    /**
+     * Anlegen. Was angelegt wurde, kommt IMMER zurück – auch wenn danach etwas scheitert (Zusatzdaten, Teilerfolg).
+     * Sonst sähe es nach Fehlschlag aus, man speichert erneut und hat Dubletten. `incomplete` sagt, was fehlt.
+     */
+    createMany: async (spool: SpoolCreate, quantity: number): Promise<{ spools: Spool[]; incomplete: string | null }> => {
+      if (!(await inventorySource()).spoolman) {
+        return { spools: await request<Spool[]>('POST', '/inventory/spools/bulk', { spool, quantity }), incomplete: null };
+      }
       const { rest, extras } = splitForSpoolman(spool);
       // 207 = nur ein Teil angelegt: { created, failed_count } – die angelegten trotzdem weiterreichen
-      const r = await request<Spool[] | { created: Spool[] }>('POST', '/spoolman/inventory/spools/bulk', { spool: rest, quantity });
+      const r = await request<Spool[] | { created: Spool[]; failed_count?: number }>('POST', '/spoolman/inventory/spools/bulk', {
+        spool: rest,
+        quantity,
+      });
       const created = Array.isArray(r) ? r : r.created;
-      await setExtras(
-        created.map((s) => s.id),
-        extras,
-      );
-      return created.map((s) => ({
-        ...s,
-        category: extras.category ?? s.category ?? null,
-        material_number: extras.article_number ?? s.material_number,
-      }));
+      const missing = Array.isArray(r) ? 0 : (r.failed_count ?? quantity - created.length);
+      let extrasError: string | null = null;
+      try {
+        await setExtras(
+          created.map((s) => s.id),
+          extras,
+        );
+      } catch (e) {
+        extrasError = e instanceof Error ? e.message : String(e);
+      }
+      const notes = [
+        missing > 0 ? t('new.partial', { n: missing }) : null,
+        extrasError ? t('new.extrasFailed', { msg: extrasError }) : null,
+      ];
+      return {
+        spools: created.map((s) => ({
+          ...s,
+          category: extrasError ? (s.category ?? null) : (extras.category ?? s.category ?? null),
+          material_number: extrasError ? s.material_number : (extras.article_number ?? s.material_number),
+        })),
+        incomplete: notes.filter(Boolean).join(' ') || null,
+      };
     },
     /** Zusatzdaten setzen (null = entfernen), auch für viele Spulen auf einmal */
     setExtras: (ids: number[], patch: ExtrasPatch) => setExtras(ids, patch),

@@ -172,4 +172,40 @@ describe('Spoolman: Schreiben', () => {
     await bambuddy.spools.weigh(4, 1137);
     expect(body).toEqual({ weight_grams: 1137 });
   });
+
+  it('Anlegen: scheitern danach die Zusatzdaten, kommen die Spulen trotzdem zurück (kein Doppelt-Speichern)', async () => {
+    fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'POST /api/v1/spoolman/inventory/spools/bulk': () => [spool(7), spool(8)],
+      'POST /extras/spools/bulk': () => new Response(JSON.stringify({ detail: 'Spoolman weg' }), { status: 503 }),
+    });
+    const r = await bambuddy.spools.createMany({ material: 'PLA', category: 'Refill' }, 2);
+    expect(r.spools.map((s) => s.id)).toEqual([7, 8]);
+    expect(r.incomplete).toMatch(/Spoolman weg/);
+  });
+
+  it('Anlegen: Teilerfolg (207) meldet, wie viele fehlen', async () => {
+    fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'POST /api/v1/spoolman/inventory/spools/bulk': () => new Response(JSON.stringify({ created: [spool(7)], failed_count: 2 }), { status: 207 }),
+    });
+    const r = await bambuddy.spools.createMany({ material: 'PLA' }, 3);
+    expect(r.spools.map((s) => s.id)).toEqual([7]);
+    expect(r.incomplete).toMatch(/2/);
+  });
+
+  it('RFID-Übernahme: angelegt, aber Chip nicht verknüpft → Fehler nennt die angelegte Spule', async () => {
+    fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'POST /api/v1/spoolman/spools/from-slot': () => new Response(JSON.stringify({ detail: 'API keys cannot …' }), { status: 403 }),
+      'GET /api/v1/printers/1/status': () => ({
+        id: 1,
+        ams: [{ id: 1, tray: [{ id: 0, tray_type: 'PLA', tray_sub_brands: 'PLA Basic', tray_color: '000000FF', remain: 50, tag_uid: 'A1B2C3D4E5F60708', tray_uuid: null }] }],
+        vt_tray: [],
+      }),
+      'POST /api/v1/spoolman/inventory/spools/bulk': () => [spool(9)],
+      'PATCH /api/v1/spoolman/inventory/spools/9/tag': () => new Response(JSON.stringify({ detail: 'kaputt' }), { status: 500 }),
+    });
+    await expect(bambuddy.spools.fromSlot({ printer_id: 1, ams_id: 1, tray_id: 0 })).rejects.toThrow(/#9/);
+  });
 });

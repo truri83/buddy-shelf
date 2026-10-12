@@ -250,12 +250,24 @@ function SpoolForm({
         navigate(`/spools/${source.id}`, { replace: true });
         return;
       }
-      const list = await create.mutateAsync({ spool: draftToCreate({ ...draft, locationId }), quantity: draft.quantity });
-      const extras = draftExtras(draft);
-      if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: list.map((s) => s.id), patch: extras }).catch(notify.fail);
-      haptic();
-      notify.ok(tn('new.created', list.length));
+      const { spools: list, incomplete } = await create.mutateAsync({
+        spool: draftToCreate({ ...draft, locationId }),
+        quantity: draft.quantity,
+      });
+      // Ab hier existieren die Spulen: Fehler danach nur melden, nie als „Speichern fehlgeschlagen“ (sonst Dubletten)
       setCreated(list);
+      const extras = draftExtras(draft);
+      const extrasFailed =
+        Object.keys(extras).length && list.length
+          ? await setExtras
+              .mutateAsync({ ids: list.map((s) => s.id), patch: extras })
+              .then(() => null)
+              .catch((e: unknown) => t('new.extrasFailed', { msg: e instanceof Error ? e.message : String(e) }))
+          : null;
+      haptic();
+      const warn = [incomplete, extrasFailed].filter(Boolean).join(' ');
+      if (warn) notify.warn(`${tn('new.created', list.length)} – ${warn}`);
+      else notify.ok(tn('new.created', list.length));
     } catch (e) {
       notify.fail(e);
     }
