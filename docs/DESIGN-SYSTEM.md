@@ -72,3 +72,23 @@ Kennzahl-Kachel, Abschnittskopf, Objektzeile, Leer-/Fehler-/Offline-Hinweis ✅,
 4. Plattformunterschiede in der Bedienung regelt Ionic bzw. `core/ui`, nie das Modul.
 5. Jeder Steckbrief enthält eine Skizze (Vorlage + Bausteine), bevor gebaut wird.
 6. Abnahme jeder Seite auf iPhone (hell + dunkel), Android-Größe und Desktop-Breite.
+
+## Bausteine und Regeln (Stand 12.10.2026)
+
+| Baustein (`src/core/ui`) | Wofür |
+| --- | --- |
+| `EditSheet` | jede Eingabe/Bearbeitung: Handy Blatt von unten, ab 768 px mittiger Dialog; Kopf Abbrechen · Titel · Speichern |
+| `FieldRow`, `NumberInput`, `RangeInput`, `TextRow` | Formularzeilen mit Symbol (Statusfarbe), Beschriftung, Hinweis und Einheit |
+| `MetaChip` | kleine Werte mit Symbol in Listenzeilen (🌡 45–55 °C · ⏱ 4–8 h · 🔔 alle 30 Tage) |
+| `StatTile` | Kennzahl mit Symbol, Statusfarbe, optional Link |
+| `ColorRing` | **nur** Filamentfarbe (Spulen-Symbol mit Nabe) – nie Status |
+| `FillBar` | **nur** Füllstand in Statusfarbe: grün ok · gelb niedrig · rot fast leer (≤ 5 %) |
+| `ChoiceChip` in `.bs-chip-row` | wischbare Filter-/Auswahlreihen |
+| `useMediaQuery`, `SPLIT_QUERY` | Breitenstufen; ab 1000 px Liste links + Detail rechts |
+
+Regeln:
+- Kein `IonAlert` mit Eingabefeldern (iOS zeigt dort keine Beschriftungen) – nur für Ja/Nein-Rückfragen.
+- Farbe des Filaments und Status nie vermischen (siehe ColorRing/FillBar).
+- Statusfarben nur aus Tokens (`--bs-good`, `--bs-warn`, `--bs-critical`), Akzent für Aktionen.
+- Jede Seite hell + dunkel, Handy/Tablet (hoch + quer)/Desktop prüfen. Breite über `--bs-page-max`, `.bs-medium`, `.bs-wide`, `.bs-card-grid`, Container-Abfragen (`.bs-detail`).
+- Werte, die man anpassen will, per Oberfläche pflegbar (Server `/prefs/<bereich>`), Datei nur als Startwerte.

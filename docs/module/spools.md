@@ -238,3 +238,12 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | --- | --- |
 | Status | zurückgestellt (auf Wunsch ans Ende) – wartet auf eine Beispiel-Exportdatei aus Spooly |
 | Ziel | Spooly-CSV einmalig in Bambuddy übernehmen (Nummern behalten), danach alles neu etikettieren (SP-12). |
+
+## Als Nächstes (Wünsche des Nutzers, 12.10.2026)
+
+| Paket | Inhalt |
+| --- | --- |
+| Lagerorte bearbeiten | Name, Symbol/Emoji, „Als Standard“ (neue Spulen landen dort), umbenennen, löschen (Bambuddy `PATCH/DELETE /inventory/locations/{id}`; Symbol/Standard in `/prefs`) |
+| Spulen-Anzeige | Warnschwellen „Niedrig“ (Standard 25 %) und „Fast leer“ (8 %, rot + Nachkauf-Hinweis), je Material überschreibbar; Signalfarben an/aus; Standard-Spulengröße; Preis/Feuchtigkeit in Listen anzeigen (`/prefs/display`) |
+| Rest aus dem UX-Review | einheitliche Fehler-/Rechte-Zustände (ein Baustein), `useNotify` statt kopierter Toasts, Scan-Knopf mittig bei gerader Tab-Zahl, ungenutzte Texte entfernen |
+| Später | Multi-Color/Verlauf (Spoolman `multi_color_hexes`), Nachkaufen-Links, „reicht noch x Tage“, Druckdienst fürs iPhone, native iOS-App (Push für Trocknungs-Erinnerung) |
