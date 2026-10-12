@@ -208,4 +208,24 @@ describe('Spoolman: Schreiben', () => {
     });
     await expect(bambuddy.spools.fromSlot({ printer_id: 1, ams_id: 1, tray_id: 0 })).rejects.toThrow(/#9/);
   });
+
+  it('Chip an vorhandene Spule hängen: Spoolman bevorzugt die tray_uuid, lokal link-tag', async () => {
+    const seen: unknown[] = [];
+    fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'PATCH /api/v1/spoolman/inventory/spools/7/tag': (b) => (seen.push(b), {}),
+    });
+    await bambuddy.spools.linkTag(7, { tagUid: '9a37c54600000100', trayUuid: 'e81a1fa9b2014b26b708706dbccb4dcf' });
+    await bambuddy.spools.linkTag(7, { tagUid: '9A37C54600000100', trayUuid: '0'.repeat(32) });
+    expect(seen).toEqual([{ tray_uuid: 'E81A1FA9B2014B26B708706DBCCB4DCF' }, { tag_uid: '9A37C54600000100' }]);
+
+    _resetInventorySource();
+    fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: false, url: null }),
+      'PATCH /api/v1/inventory/spools/7/link-tag': (b) => (seen.push(b), {}),
+    });
+    await bambuddy.spools.linkTag(7, { tagUid: '9A37C54600000100', trayUuid: null });
+    expect(seen.at(-1)).toEqual({ tag_uid: '9A37C54600000100', tray_uuid: null });
+    await expect(bambuddy.spools.linkTag(7, { tagUid: '0'.repeat(16), trayUuid: null })).rejects.toThrow();
+  });
 });

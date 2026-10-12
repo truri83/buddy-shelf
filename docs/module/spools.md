@@ -190,10 +190,11 @@ angelegt (neue ID), müssen nur diese wenigen Slot-Etiketten neu gedruckt werden
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | umgesetzt – mit X2D in Bambuddy zu prüfen (Bambuddy hat noch keinen Drucker) |
+| Status | umgesetzt, live mit X2D geprüft (12.10.); Lager-Spule verknüpfen statt Dublette |
 | Ziel | Neue Bambu-Spule ins AMS legen → App erkennt sie (RFID) → ein Tipp: anlegen, dem Slot zuweisen, Etikett drucken. |
-| Ablauf | Spulenliste zeigt Hinweis „n neue Bambu-Spulen im AMS“ → AMS-Slots → Slot mit „Neu erkannt“ → „Übernehmen“ → Etikett-Sheet |
-| Daten | `GET /printers/{id}/status` (`ams[].tray[].tag_uid/tray_uuid/tray_type/tray_sub_brands/tray_color`), neu = Chip vorhanden, keine Spule mit diesem `tag_uid`/`tray_uuid`, Slot ohne Zuweisung; `POST /inventory/spools/from-slot` `{ printer_id, ams_id, tray_id }` (legt an + weist zu; ohne Chip 400) |
+| Ablauf | Spulenliste zeigt Hinweis „n neue Bambu-Spulen im AMS“ → AMS-Slots → Slot mit „Neu erkannt“. Gibt es passende Lager-Spulen (gleiche Familie, ohne Chip, in keinem Slot; Sorte/Marke/Farbe sortieren): „Ist das eine Spule aus deinem Lager?“ → Tipp (oder deren Etikett scannen) verknüpft den Chip und legt sie in den Slot. Sonst bzw. „Nein, als neue Spule anlegen“ → Übernehmen → Etikett-Sheet. |
+| Voraussetzung | In Bambuddy „Unbekannte RFID-Spulen automatisch hinzufügen“ **aus** (Einstellungen → Spoolman), sonst legt Bambuddy beim Einlegen selbst eine neue Spule an (Dublette zur Lager-Spule). |
+| Daten | `GET /printers/{id}/status` (`ams[].tray[].tag_uid/tray_uuid/tray_type/tray_sub_brands/tray_color`), neu = Chip vorhanden, keine Spule mit diesem `tag_uid`/`tray_uuid`, Slot ohne Zuweisung; `POST /inventory/spools/from-slot` `{ printer_id, ams_id, tray_id }` (legt an + weist zu; ohne Chip 400). Verknüpfen: Spoolman `PATCH /spoolman/inventory/spools/{id}/tag` (`tray_uuid` bevorzugt, sonst `tag_uid`), lokal `PATCH /inventory/spools/{id}/link-tag`; danach Slot zuweisen. Bambuddy erkennt die Spule dann am Chip und gleicht den Füllstand ab. |
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Mock: Slot mit unbekanntem Chip zeigt „Neu erkannt“, Übernehmen legt Spule an, Slot zeigt sie, Etikett-Sheet öffnet |
 

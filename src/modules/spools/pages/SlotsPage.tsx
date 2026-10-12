@@ -14,13 +14,14 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAllowed, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
 import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
 import { Badge, rgbaToCss, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { useAdoptFromSlot, useSlots, useSpools } from '../hooks/useSpools';
-import { isNewRfid, slotLabelVariables, spoolTitle, type Slot } from '../slots';
+import { isNewRfid, linkCandidates, slotLabelVariables, spoolTitle, type Slot } from '../slots';
 
 /** SP-08: alle Slots mit Belegung; Slot-Etiketten (QR bm:t:…) für alle Slots in einem Druck. */
 export function SlotsPage() {
@@ -31,14 +32,22 @@ export function SlotsPage() {
   const canEdit = useAllowed('inventory:update');
   const [adopted, setAdopted] = useState<Spool | null>(null);
   const notify = useNotify();
+  const navigate = useNavigate();
+  // Passt eine Lager-Spule, erst fragen (Slot-Seite) – sonst gäbe es eine Dublette
   const adoptSlot = (s: Slot) =>
-    adopt
-      .mutateAsync(s)
-      .then((spool) => {
-        notify.ok(t('rfid.adopted', { id: spool.id, slot: s.label }));
-        setAdopted(spool); // gleich Etikett drucken
-      })
-      .catch(notify.fail);
+    linkCandidates(
+      s,
+      spools.data ?? [],
+      slots.flatMap((x) => (x.assignment ? [x.assignment] : [])),
+    ).length
+      ? navigate(`/more/slots/${s.printerId}/${s.amsId}/${s.trayId}`)
+      : adopt
+          .mutateAsync(s)
+          .then((spool) => {
+            notify.ok(t('rfid.adopted', { id: spool.id, slot: s.label }));
+            setAdopted(spool); // gleich Etikett drucken
+          })
+          .catch(notify.fail);
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
   const records = useMemo(() => slots.map(slotLabelVariables), [slots]);
   const { templates } = useLabelTemplates('slot');

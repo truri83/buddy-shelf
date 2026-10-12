@@ -51,3 +51,25 @@ describe('Neue Bambu-Spule im AMS (RFID)', async () => {
     expect(isNewRfid({ ...slot, trayType: null }, [])).toBe(false);
   });
 });
+
+describe('Neue Bambu-Spule mit Lager-Spule verknüpfen', async () => {
+  const { linkCandidates } = await import('./slots');
+  const slot = { printerId: 1, printerName: 'X2D', amsId: 1, trayId: 2, label: 'AMS 2 · 3', trayColor: 'F7F3E9FF', trayType: 'PLA', traySubBrand: 'PLA Matte', tagUid: '9A37C54600000100', trayUuid: null, assignment: null };
+  type Cand = { id: number; material: string; subtype: string | null; brand: string | null; color_name: string | null; rgba: string | null; archived_at: string | null; tag_uid: string | null; tray_uuid: string | null };
+  const s = (id: number, o: Partial<Cand>): Cand => ({ id, material: 'PLA', subtype: null, brand: 'Bambu Lab', color_name: null, rgba: null, archived_at: null, tag_uid: null, tray_uuid: null, ...o });
+  const spools = [
+    s(1, { subtype: 'Basic', rgba: '000000FF' }), // gleiche Familie, andere Sorte/Farbe → hinten
+    s(2, { subtype: 'Matte', rgba: 'F5F1E8FF', color_name: 'Ivory White' }), // passt am besten
+    s(3, { material: 'PETG', subtype: 'Matte', rgba: 'F7F3E9FF' }), // andere Familie → raus
+    s(4, { subtype: 'Matte', rgba: 'F7F3E9FF', tray_uuid: 'E81A1FA9B2014B26B708706DBCCB4DCF' }), // hat schon Chip → raus
+    s(5, { subtype: 'Matte', rgba: 'F7F3E9FF' }), // steckt in anderem Slot → raus
+    s(6, { subtype: 'Matte', rgba: 'F7F3E9FF', archived_at: '2026-10-01' }), // archiviert → raus
+    s(7, { material: 'PLA+', brand: 'Sunlu', rgba: 'FFFFFFFF' }), // Familie PLA, fremde Marke → dazwischen
+  ];
+  it('nur passende Familie, ohne Chip, nicht im AMS, nicht archiviert – beste zuerst', () => {
+    expect(linkCandidates(slot, spools, [a(5, 0, 1)]).map((x) => x.id)).toEqual([2, 7, 1]);
+  });
+  it('ohne Materialangabe im Slot keine Vorschläge', () => {
+    expect(linkCandidates({ ...slot, trayType: null }, spools, [])).toEqual([]);
+  });
+});

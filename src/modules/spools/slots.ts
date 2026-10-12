@@ -1,4 +1,5 @@
 import { slotLabel, type Printer, type PrinterStatus, type Spool, type SpoolAssignment } from '@/core/api';
+import { cleanSubtype, materialFamily, materialVariant } from '@/core/filament';
 import { EXTERNAL_AMS_ID, encodeSlotCode } from '@/core/qr/codes';
 
 /** Ein Platz für eine Spule: AMS-Slot oder externe Halterung (Bambuddy-Adressierung). */
@@ -80,6 +81,40 @@ export function isNewRfid(slot: Slot, spools: Pick<Spool, 'tag_uid' | 'tray_uuid
   const uuid = validTag(slot.trayUuid) ? slot.trayUuid!.toUpperCase() : null;
   if (!tag && !uuid) return false;
   return !spools.some((s) => (tag && s.tag_uid?.toUpperCase() === tag) || (uuid && s.tray_uuid?.toUpperCase() === uuid));
+}
+
+/** Abstand zweier Farben (RRGGBB…), 0 = gleich; ohne Farbe unendlich. */
+function colorDistance(a: string | null | undefined, b: string | null | undefined): number {
+  const rgb = (h: string | null | undefined) =>
+    h && /^[0-9a-f]{6}/i.test(h) ? [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) : null;
+  const x = rgb(a);
+  const y = rgb(b);
+  return x && y ? Math.hypot(x[0]! - y[0]!, x[1]! - y[1]!, x[2]! - y[2]!) : Infinity;
+}
+
+/**
+ * Lager-Spulen, die zu einer neu erkannten Bambu-Spule passen könnten (Chip verknüpfen statt Dublette anlegen):
+ * gleiche Materialfamilie, noch ohne Chip, in keinem Slot, nicht archiviert. Beste zuerst – Sorte, Marke, Farbe.
+ */
+export function linkCandidates<S extends Pick<Spool, 'id' | 'material' | 'subtype' | 'brand' | 'color_name' | 'rgba' | 'archived_at' | 'tag_uid' | 'tray_uuid'>>(
+  slot: Pick<Slot, 'trayType' | 'traySubBrand' | 'trayColor'>,
+  spools: S[],
+  assignments: Pick<SpoolAssignment, 'spool_id'>[],
+): S[] {
+  const fam = materialFamily(slot.trayType);
+  if (!fam) return [];
+  const variant = materialVariant(slot.traySubBrand ?? slot.trayType ?? '').toLowerCase();
+  const inSlot = new Set(assignments.map((x) => x.spool_id));
+  const score = (sp: S) => {
+    const sub = materialVariant(sp.material, cleanSubtype(sp)).toLowerCase();
+    const d = colorDistance(slot.trayColor, sp.rgba);
+    return (variant && sub === variant ? 3 : 0) + (/bambu/i.test(sp.brand ?? '') ? 2 : 0) + (d < 40 ? 3 : d < 100 ? 1 : 0);
+  };
+  return spools
+    .filter((sp) => !sp.archived_at && !validTag(sp.tag_uid) && !validTag(sp.tray_uuid) && !inSlot.has(sp.id) && materialFamily(sp.material) === fam)
+    .map((sp) => ({ sp, n: score(sp) }))
+    .sort((x, y) => y.n - x.n || x.sp.id - y.sp.id)
+    .map((x) => x.sp);
 }
 
 /** Platzhalter für Slot-Etiketten (Vorlagen der Art „slot“). */

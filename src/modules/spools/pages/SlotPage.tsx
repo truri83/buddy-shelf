@@ -17,7 +17,7 @@ import {
   useIonViewWillLeave,
 } from '@ionic/react';
 import { closeCircleOutline } from 'ionicons/icons';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { remainingGrams, useAllowed } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
@@ -26,8 +26,8 @@ import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, errorText, MaterialBadge, ScannerView, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
-import { useAdoptFromSlot, useAssignSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
-import { isNewRfid, spoolTitle } from '../slots';
+import { useAdoptFromSlot, useAssignSpool, useLinkTagToSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
+import { isNewRfid, linkCandidates, spoolTitle } from '../slots';
 
 /**
  * SP-08: Slot-Etikett gescannt → Seite zeigt, was im Slot liegt, Kamera bleibt offen →
@@ -45,6 +45,7 @@ export function SlotPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [manual, setManual] = useState('');
   const adopt = useAdoptFromSlot();
+  const link = useLinkTagToSpool();
   const [adopted, setAdopted] = useState<import('@/core/api').Spool | null>(null);
   const busy = useRef(false);
   const navigate = useNavigate();
@@ -56,63 +57,70 @@ export function SlotPage() {
 
   const slot = slots.find((s) => s.printerId === target.printerId && s.amsId === target.amsId && s.trayId === target.trayId);
   const occupant = slot?.assignment ? spools.data?.find((s) => s.id === slot.assignment!.spool_id) : undefined;
+  // Neu erkannte Bambu-Spule: ist es eine Lager-Spule? Dann Chip verknüpfen statt Dublette anlegen
+  const newRfid = !!slot && isNewRfid(slot, spools.data ?? []);
+  const candidates =
+    newRfid && slot
+      ? linkCandidates(
+          slot,
+          spools.data ?? [],
+          slots.flatMap((s) => (s.assignment ? [s.assignment] : [])),
+        ).slice(0, 3)
+      : [];
 
-  const assignSpool = useCallback(
-    async (spoolId: number) => {
-      if (!slot || busy.current) return;
-      if (!canEdit) {
-        setMessage(t('common.noPermission'));
-        return;
-      }
-      const spool = spools.data?.find((s) => s.id === spoolId);
-      if (spool?.archived_at) {
-        warnFeedback();
-        setMessage(t('slot.archived', { id: spoolId }));
-        return;
-      }
-      if (slot.assignment?.spool_id === spoolId) return;
-      busy.current = true;
-      const previous = slot.assignment?.spool_id ?? null;
-      try {
-        const res = await assign.mutateAsync({ spoolId, slot });
-        haptic();
-        setMessage(null);
-        notify.ok(t('ams.done', { id: spoolId, slot: slot.label }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''), {
-          duration: 4000,
-          buttons: [
-            {
-              text: t('common.undo'),
-              handler: () => {
-                // vorherige Spule zurück bzw. Slot wieder leeren
-                (previous ? assign.mutateAsync({ spoolId: previous, slot }) : unassign.mutateAsync(slot)).catch((e: unknown) =>
-                  setMessage(errorText(e)),
-                );
-              },
+  // ohne useCallback: der Scanner hält onCode über eine Ref, der React-Compiler memoisiert selbst
+  const assignSpool = async (spoolId: number) => {
+    if (!slot || busy.current) return;
+    if (!canEdit) {
+      setMessage(t('common.noPermission'));
+      return;
+    }
+    const spool = spools.data?.find((s) => s.id === spoolId);
+    if (spool?.archived_at) {
+      warnFeedback();
+      setMessage(t('slot.archived', { id: spoolId }));
+      return;
+    }
+    if (slot.assignment?.spool_id === spoolId) return;
+    busy.current = true;
+    const previous = slot.assignment?.spool_id ?? null;
+    try {
+      // Neue Bambu-Spule im Slot + Lager-Etikett gescannt: Chip gleich mitverknüpfen (sonst legt Bambuddy eine Dublette an)
+      const place = newRfid ? link : assign;
+      const res = await place.mutateAsync({ spoolId, slot });
+      haptic();
+      setMessage(null);
+      notify.ok(t('ams.done', { id: spoolId, slot: slot.label }) + (res.pending_config ? ` – ${t('ams.pending')}` : ''), {
+        duration: 4000,
+        buttons: [
+          {
+            text: t('common.undo'),
+            handler: () => {
+              // vorherige Spule zurück bzw. Slot wieder leeren
+              (previous ? assign.mutateAsync({ spoolId: previous, slot }) : unassign.mutateAsync(slot)).catch((e: unknown) =>
+                setMessage(errorText(e)),
+              );
             },
-          ],
-        });
-      } catch (e) {
-        warnFeedback();
-        setMessage(errorText(e));
-      } finally {
-        busy.current = false;
-      }
-    },
-    [slot, spools.data, assign, unassign, notify, canEdit],
-  );
+          },
+        ],
+      });
+    } catch (e) {
+      warnFeedback();
+      setMessage(errorText(e));
+    } finally {
+      busy.current = false;
+    }
+  };
 
-  const onCode = useCallback(
-    (raw: string) => {
-      const r = parseScan(raw);
-      if (r.kind === 'spool') void assignSpool(r.spoolId);
-      else if (r.kind === 'slot') navigate(`/more/slots/${r.printerId}/${r.amsId}/${r.trayId}`, { replace: true });
-      else {
-        warnFeedback();
-        setMessage(t('slot.notSpool'));
-      }
-    },
-    [assignSpool, navigate],
-  );
+  const onCode = (raw: string) => {
+    const r = parseScan(raw);
+    if (r.kind === 'spool') void assignSpool(r.spoolId);
+    else if (r.kind === 'slot') navigate(`/more/slots/${r.printerId}/${r.amsId}/${r.trayId}`, { replace: true });
+    else {
+      warnFeedback();
+      setMessage(t('slot.notSpool'));
+    }
+  };
 
   const submitManual = () => {
     const v = manual.trim().replace(/^#/, '');
@@ -189,11 +197,31 @@ export function SlotPage() {
                     <IonIcon slot="icon-only" icon={closeCircleOutline} />
                   </IonButton>
                 </>
-              ) : isNewRfid(slot, spools.data ?? []) ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)', width: '100%' }}>
-                  <IonNote style={{ flex: 1 }}>{t('rfid.slotHint', { what: slot.traySubBrand ?? slot.trayType ?? '' })}</IonNote>
+              ) : newRfid ? (
+                <div style={{ display: 'grid', gap: 'var(--bs-s3)', width: '100%' }}>
+                  <IonNote>{t('rfid.slotHint', { what: slot.traySubBrand ?? slot.trayType ?? '' })}</IonNote>
+                  {candidates.length > 0 && (
+                    <>
+                      <strong>{t('rfid.isStock')}</strong>
+                      {candidates.map((c) => (
+                        <IonButton
+                          key={c.id}
+                          fill="outline"
+                          disabled={link.isPending || !canEdit}
+                          onClick={() => void assignSpool(c.id)}
+                          style={{ margin: 0, '--padding-start': 'var(--bs-s2)' }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s2)', width: '100%', textAlign: 'left' }}>
+                            <ColorRing rgba={c.rgba} size={28} label={c.color_name ?? c.material} />
+                            <span style={{ flex: 1 }}>{spoolTitle(c)}</span>
+                          </span>
+                        </IonButton>
+                      ))}
+                      <IonNote>{t('rfid.orScan')}</IonNote>
+                    </>
+                  )}
                   <IonButton
-                    size="small"
+                    fill={candidates.length ? 'clear' : 'solid'}
                     disabled={adopt.isPending || !canEdit}
                     onClick={() =>
                       void adopt
@@ -201,8 +229,9 @@ export function SlotPage() {
                         .then((s) => setAdopted(s))
                         .catch((e: unknown) => setMessage(errorText(e)))
                     }
+                    style={{ margin: 0 }}
                   >
-                    {t('rfid.adopt')}
+                    {candidates.length ? t('rfid.adoptNew') : t('rfid.adopt')}
                   </IonButton>
                 </div>
               ) : (

@@ -228,6 +228,15 @@ export const handlers = [
     const s = spools.find((x) => x.id === Number(params.id));
     return s ? HttpResponse.json(asSpoolman(s)) : HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
   }),
+  // Chip an vorhandene Spule hängen (wie Bambuddy: nur eines von beiden)
+  http.patch(api('/spoolman/inventory/spools/:id/tag'), async ({ params, request }) => {
+    const s = spools.find((x) => x.id === Number(params.id));
+    if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
+    const b = (await request.json()) as { tag_uid?: string; tray_uuid?: string };
+    if (b.tray_uuid) s.tray_uuid = b.tray_uuid;
+    if (b.tag_uid) s.tag_uid = b.tag_uid;
+    return HttpResponse.json(asSpoolman(s));
+  }),
   http.patch(api('/spoolman/inventory/spools/:id/weight'), async ({ params, request }) => {
     const s = spools.find((x) => x.id === Number(params.id));
     if (!s) return HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });

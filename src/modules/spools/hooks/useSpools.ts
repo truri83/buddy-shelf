@@ -148,6 +148,22 @@ export function useAssignSpool() {
 }
 
 /** SP-13: Bambu-Spule aus dem RFID im Slot anlegen (Bambuddy weist sie gleich zu). */
+/** Neu erkannte Bambu-Spule = vorhandene Lager-Spule: Chip verknüpfen und in den Slot legen. */
+export function useLinkTagToSpool() {
+  const refresh = useRefresh();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ spoolId, slot }: { spoolId: number; slot: Pick<Slot, 'printerId' | 'amsId' | 'trayId' | 'tagUid' | 'trayUuid'> }) => {
+      await bambuddy.spools.linkTag(spoolId, { tagUid: slot.tagUid, trayUuid: slot.trayUuid });
+      return bambuddy.assignments.place({ spool_id: spoolId, printer_id: slot.printerId, ams_id: slot.amsId, tray_id: slot.trayId });
+    },
+    onSuccess: (_d, v) => {
+      refresh(v.spoolId);
+      void qc.invalidateQueries({ queryKey: spoolKeys.printers });
+    },
+  });
+}
+
 export function useAdoptFromSlot() {
   const refresh = useRefresh();
   const qc = useQueryClient();

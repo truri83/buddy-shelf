@@ -352,6 +352,19 @@ export const bambuddy = {
         incomplete: notes.filter(Boolean).join(' ') || null,
       };
     },
+    /**
+     * Bambu-Chip an eine vorhandene Spule hängen (Lager-Spule kommt ins AMS) – danach erkennt Bambuddy sie am Chip,
+     * statt eine Dublette anzulegen. Spoolman nimmt nur eines: tray_uuid bevorzugt, sonst tag_uid.
+     */
+    linkTag: async (spoolId: number, chip: { tagUid: string | null; trayUuid: string | null }) => {
+      const tray_uuid = hexTag(chip.trayUuid, 32);
+      const tag_uid = hexTag(chip.tagUid, [8, 30]);
+      if (!tray_uuid && !tag_uid) throw new ApiError(400, t('rfid.noSpool'));
+      if ((await inventorySource()).spoolman) {
+        return request('PATCH', `/spoolman/inventory/spools/${spoolId}/tag`, tray_uuid ? { tray_uuid } : { tag_uid });
+      }
+      return request('PATCH', `/inventory/spools/${spoolId}/link-tag`, { tag_uid, tray_uuid });
+    },
     /** Zusatzdaten setzen (null = entfernen), auch für viele Spulen auf einmal */
     setExtras: (ids: number[], patch: ExtrasPatch) => setExtras(ids, patch),
     /**
