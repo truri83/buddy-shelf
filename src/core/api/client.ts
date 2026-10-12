@@ -220,6 +220,38 @@ const fromSpoolmanSlot = (a: SpoolmanSlot, i: number): SpoolAssignment => ({
   pending_config: false,
 });
 
+/** Gültiger Chip-Wert: Hex, nicht nur Nullen (wie Bambuddy). */
+const hexTag = (v: string | null | undefined, len: number | [number, number]) => {
+  const ok = typeof len === 'number' ? v?.length === len : !!v && v.length >= len[0] && v.length <= len[1];
+  return ok && /^[0-9a-f]+$/i.test(v!) && /[1-9a-f]/i.test(v!) ? v!.toUpperCase() : null;
+};
+
+/** RFID-Übernahme im Spoolman-Modus ohne filaments:update (siehe fromSlot). */
+async function adoptFromSlotManually(s: { printer_id: number; ams_id: number; tray_id: number }): Promise<Spool> {
+  const st = await request<PrinterStatus>('GET', `/printers/${s.printer_id}/status`);
+  const tray =
+    s.ams_id === 255
+      ? st.vt_tray?.find((x) => x.id === 254 + s.tray_id)
+      : st.ams?.find((u) => u.id === s.ams_id)?.tray.find((x) => x.id === s.tray_id);
+  const tray_uuid = hexTag(tray?.tray_uuid, 32);
+  const tag_uid = hexTag(tray?.tag_uid, [8, 30]);
+  if (!tray?.tray_type || (!tray_uuid && !tag_uid)) throw new ApiError(400, t('rfid.noSpool'));
+  const material = tray.tray_type;
+  const sub = tray.tray_sub_brands ?? '';
+  // „PLA Matte“ → „Matte“ (Material vorne weg; ohne Regex, „PLA+“ o. Ä. sind Sonderzeichen)
+  const subtype = (sub.toUpperCase().startsWith(material.toUpperCase()) ? sub.slice(material.length) : sub).trim() || null;
+  const remain = tray.remain != null && tray.remain >= 0 && tray.remain <= 100 ? tray.remain : 100;
+  const created = await request<Spool[] | { created: Spool[] }>('POST', '/spoolman/inventory/spools/bulk', {
+    spool: { material, subtype, brand: 'Bambu Lab', rgba: tray.tray_color, label_weight: 1000, weight_used: Math.round(10 * (100 - remain)) },
+    quantity: 1,
+  });
+  const spool = (Array.isArray(created) ? created : created.created)[0];
+  if (!spool) throw new ApiError(502, t('rfid.noSpool'));
+  await request('PATCH', `/spoolman/inventory/spools/${spool.id}/tag`, tray_uuid ? { tray_uuid } : { tag_uid });
+  await bambuddy.assignments.place({ spool_id: spool.id, printer_id: s.printer_id, ams_id: s.ams_id, tray_id: s.tray_id });
+  return bambuddy.spools.get(spool.id);
+}
+
 const listSpoolmanSlots = () => request<SpoolmanSlot[]>('GET', '/spoolman/inventory/slot-assignments/all');
 
 export const bambuddy = {
@@ -275,9 +307,16 @@ export const bambuddy = {
     /** Spule aus dem RFID-Chip im AMS-Slot anlegen und dem Slot zuweisen (ohne Chip: 400) */
     fromSlot: async (s: { printer_id: number; ams_id: number; tray_id: number }): Promise<Spool> => {
       if (!(await inventorySource()).spoolman) return request<Spool>('POST', '/inventory/spools/from-slot', s);
-      const r = await request<{ success: boolean; spool_id: number | null }>('POST', '/spoolman/spools/from-slot', s);
-      if (!r.spool_id) throw new ApiError(502, t('rfid.noSpool'));
-      return bambuddy.spools.get(r.spool_id);
+      try {
+        const r = await request<{ success: boolean; spool_id: number | null }>('POST', '/spoolman/spools/from-slot', s);
+        if (!r.spool_id) throw new ApiError(502, t('rfid.noSpool'));
+        return await bambuddy.spools.get(r.spool_id);
+      } catch (e) {
+        // Bambuddy sperrt den Weg für jeden API-Schlüssel (filaments:update, auch bei Admins) →
+        // gleiches Ergebnis aus erlaubten Schritten: anlegen, Chip verknüpfen, in den Slot legen
+        if (e instanceof ApiError && e.status === 403) return adoptFromSlotManually(s);
+        throw e;
+      }
     },
     /** Gleiche Änderung für viele Spulen; Fehlschläge je Spule kommen in not_found zurück */
     bulkUpdate: async (ids: number[], update: SpoolUpdate): Promise<{ updated: number; not_found: number[] }> => {

@@ -138,6 +138,31 @@ describe('Spoolman: Schreiben', () => {
     expect(calls.filter((c) => !c.startsWith('GET'))).toEqual(['POST /api/v1/inventory/assignments', 'DELETE /api/v1/inventory/assignments/1/0/1']);
   });
 
+  it('RFID: gesperrter Bambuddy-Weg (403) → anlegen, Chip verknüpfen, in den Slot legen', async () => {
+    const seen: Record<string, unknown> = {};
+    const calls = fakeServer({
+      'GET /api/v1/spoolman/status': () => ({ enabled: true, url: null }),
+      'POST /api/v1/spoolman/spools/from-slot': () => new Response(JSON.stringify({ detail: 'API keys cannot …' }), { status: 403 }),
+      'GET /api/v1/printers/1/status': () => ({
+        id: 1,
+        ams: [{ id: 1, tray: [{ id: 0, tray_type: 'PLA', tray_sub_brands: 'PLA Matte', tray_color: '7C4B3AFF', remain: 80, tag_uid: 'A1B2C3D4E5F60708', tray_uuid: '0'.repeat(32) }] }],
+        vt_tray: [],
+      }),
+      'POST /api/v1/spoolman/inventory/spools/bulk': (b) => ((seen.create = b), [spool(7)]),
+      'PATCH /api/v1/spoolman/inventory/spools/7/tag': (b) => ((seen.tag = b), {}),
+      'GET /api/v1/spoolman/inventory/slot-assignments/all': () => [],
+      'POST /api/v1/spoolman/inventory/slot-assignments': (b) => ((seen.slot = b), {}),
+      'GET /api/v1/spoolman/inventory/spools/7': () => spool(7),
+      'GET /extras/spools': () => ({ spools: {} }),
+    });
+    const s = await bambuddy.spools.fromSlot({ printer_id: 1, ams_id: 1, tray_id: 0 });
+    expect(s.id).toBe(7);
+    expect(seen.create).toMatchObject({ spool: { material: 'PLA', subtype: 'Matte', brand: 'Bambu Lab', rgba: '7C4B3AFF', weight_used: 200 } });
+    expect(seen.tag).toEqual({ tag_uid: 'A1B2C3D4E5F60708' });
+    expect(seen.slot).toEqual({ spoolman_spool_id: 7, printer_id: 1, ams_id: 1, tray_id: 0 });
+    expect(calls).toContain('POST /api/v1/spoolman/spools/from-slot');
+  });
+
   it('Wiegen nutzt bei Spoolman dessen Gewichts-Endpunkt (brutto)', async () => {
     let body: unknown;
     fakeServer({
