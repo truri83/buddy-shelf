@@ -6,12 +6,16 @@ const KEY = ['prefs', 'drying'] as const;
 
 /** Trocknungswerte (Standard + eigene Anpassungen vom Server). Ohne Server: Standardwerte. */
 export function useDryingConfig(): DryingConfig {
-  const q = useQuery({
+  return useDryingConfigQuery().data ?? DEFAULT_DRYING;
+}
+
+/** Für die Einstellungsseite: erst bearbeiten, wenn geladen – sonst würden Standardwerte die eigenen überschreiben. */
+export function useDryingConfigQuery() {
+  return useQuery({
     queryKey: KEY,
     queryFn: async () => mergeDrying(await bambuddy.prefs.get<Partial<DryingConfig>>('drying')),
     staleTime: 5 * 60_000,
   });
-  return q.data ?? DEFAULT_DRYING;
 }
 
 /** Eigene Werte speichern (null = alles zurück auf Standard). */

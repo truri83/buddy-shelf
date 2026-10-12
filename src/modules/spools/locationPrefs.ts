@@ -24,6 +24,20 @@ export function normalizeLocationPrefs(v: unknown): LocationPrefs {
   return { icons, defaultId: typeof o.defaultId === 'number' ? o.defaultId : null };
 }
 
+/**
+ * Ändern immer auf dem aktuellen Server-Stand: erst lesen, dann schreiben. Kann nicht gelesen werden (offline,
+ * noch nicht geladen), wird nichts geschrieben – sonst würden leere Standardwerte alle Symbole löschen.
+ */
+export async function updateLocationPrefs(
+  load: () => Promise<unknown>,
+  save: (p: LocationPrefs) => Promise<unknown>,
+  change: (p: LocationPrefs) => LocationPrefs,
+): Promise<LocationPrefs> {
+  const next = change(normalizeLocationPrefs(await load()));
+  await save(next);
+  return next;
+}
+
 /** Symbol und Standard für einen Ort setzen (Standard abwählen nur, wenn dieser Ort Standard war). */
 export function withLocation(p: LocationPrefs, id: number, icon: string, isDefault: boolean): LocationPrefs {
   const icons = { ...p.icons };

@@ -22,6 +22,6 @@ export {
   type StockLevel,
   type StockThresholds,
 } from './display';
-export { useDisplayConfig, useSaveDisplayConfig } from './useDisplayConfig';
+export { useDisplayConfig, useDisplayConfigQuery, useSaveDisplayConfig } from './useDisplayConfig';
 export { cleanSubtype, FAMILIES, materialFamily, materialLabel, materialVariant, type MaterialFamily } from './material';
-export { useDryingConfig, useSaveDryingConfig } from './useDryingConfig';
+export { useDryingConfig, useDryingConfigQuery, useSaveDryingConfig } from './useDryingConfig';

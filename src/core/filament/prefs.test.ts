@@ -21,4 +21,13 @@ describe('Gemeinsame Einstellungen (Server)', () => {
     expect((await handlePrefs(store, 'GET', '/geheim', undefined)).status).toBe(404);
     await expect(store.put('drying', [1, 2])).rejects.toThrow(/Objekt/);
   });
+
+  it('PUT ohne Wert setzt nicht still zurück (nur ausdrücklich value: null)', async () => {
+    const store = prefsStore(join(dir, 'prefs.json'));
+    await handlePrefs(store, 'PUT', '/locations', { value: { icons: { 1: '📦' }, defaultId: 1 } });
+    for (const body of [undefined, {}, { wert: 1 }]) {
+      expect((await handlePrefs(store, 'PUT', '/locations', body)).status).toBe(400);
+    }
+    expect((await handlePrefs(store, 'GET', '/locations', undefined)).body).toEqual({ value: { icons: { 1: '📦' }, defaultId: 1 } });
+  });
 });

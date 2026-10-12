@@ -162,6 +162,7 @@ export const de = {
   'locations.symbolNone': 'Ohne Symbol',
   'locations.symbolOwn': 'Eigenes Symbol',
   'locations.symbolOwnHint': 'Emoji aus der Tastatur',
+  'locations.prefsUnavailable': 'Symbol und Standard-Ort sind gerade nicht erreichbar – Name ändern geht trotzdem.',
   'locations.default': 'Standard',
   'locations.asDefault': 'Als Standard',
   'locations.asDefaultHint': 'Neue Spulen landen hier, wenn du nichts anderes wählst.',

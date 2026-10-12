@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLocationId, locationText, normalizeLocationPrefs, symbolOf, withLocation, withoutLocation } from './locationPrefs';
+import { defaultLocationId, locationText, normalizeLocationPrefs, symbolOf, updateLocationPrefs, withLocation, withoutLocation } from './locationPrefs';
 
 describe('Lagerort-Angaben', () => {
   it('liest kaputte oder fehlende Werte als leer', () => {
@@ -33,5 +33,30 @@ describe('Lagerort-Angaben', () => {
     expect(symbolOf('👨‍👩‍👧x')).toBe('👨‍👩‍👧');
     expect(symbolOf('AB')).toBe('A');
     expect(symbolOf('   ')).toBe('');
+  });
+
+  it('Ändern baut auf dem aktuellen Server-Stand auf, nie auf leeren Standardwerten', async () => {
+    let server: unknown = { icons: { 1: '📦', 2: '🔥' }, defaultId: 2 };
+    const saved = await updateLocationPrefs(
+      async () => server,
+      async (v) => void (server = v),
+      (p) => withLocation(p, 3, '❄️', false),
+    );
+    expect(saved).toEqual({ icons: { 1: '📦', 2: '🔥', 3: '❄️' }, defaultId: 2 });
+    expect(server).toEqual(saved);
+  });
+
+  it('kann der Server nicht gelesen werden, wird nichts geschrieben', async () => {
+    let writes = 0;
+    await expect(
+      updateLocationPrefs(
+        async () => {
+          throw new Error('offline');
+        },
+        async () => void writes++,
+        (p) => p,
+      ),
+    ).rejects.toThrow('offline');
+    expect(writes).toBe(0);
   });
 });

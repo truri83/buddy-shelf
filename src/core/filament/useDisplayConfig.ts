@@ -6,12 +6,16 @@ const KEY = ['prefs', 'display'] as const;
 
 /** Spulen-Anzeige (Standard + eigene Anpassungen vom Server). Ohne Server: Standardwerte. */
 export function useDisplayConfig(): DisplayConfig {
-  const q = useQuery({
+  return useDisplayConfigQuery().data ?? DEFAULT_DISPLAY;
+}
+
+/** Für die Einstellungsseite: erst bearbeiten, wenn geladen – sonst würden Standardwerte die eigenen überschreiben. */
+export function useDisplayConfigQuery() {
+  return useQuery({
     queryKey: KEY,
     queryFn: async () => mergeDisplay(await bambuddy.prefs.get<Partial<DisplayConfig>>('display')),
     staleTime: 5 * 60_000,
   });
-  return q.data ?? DEFAULT_DISPLAY;
 }
 
 /** Eigene Werte speichern (null = alles zurück auf Standard). */

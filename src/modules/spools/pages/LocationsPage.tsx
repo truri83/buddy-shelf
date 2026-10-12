@@ -25,9 +25,9 @@ import { LabelPrintSheet, useLabelTemplates, type LabelVariables } from '@/core/
 import { encodeLocationCode } from '@/core/qr/codes';
 import { ChoiceChip, EditSheet, MetaChip, StateView, TextRow, useNotify } from '@/core/ui';
 import { LocationSymbol } from '../components/LocationSymbol';
-import { useLocationPrefs, useSaveLocationPrefs } from '../hooks/useLocationPrefs';
+import { useLocationPrefsQuery, useSaveLocationPrefs } from '../hooks/useLocationPrefs';
 import { useCreateLocation, useDeleteLocation, useLocations, useRenameLocation } from '../hooks/useSpools';
-import { LOCATION_EMOJIS, symbolOf, withLocation, withoutLocation } from '../locationPrefs';
+import { EMPTY_LOCATION_PREFS, LOCATION_EMOJIS, symbolOf, withLocation, withoutLocation } from '../locationPrefs';
 
 const vars = (l: Location): LabelVariables => ({ code: encodeLocationCode(l.id), location: l.name });
 
@@ -42,7 +42,10 @@ interface Edit {
 /** SP-17: Lagerorte mit Symbol, Standard-Ort für neue Spulen und Etikett (QR bm:l:<id>) – Scan startet „Einräumen“. */
 export function LocationsPage() {
   const locations = useLocations();
-  const prefs = useLocationPrefs();
+  const prefsQuery = useLocationPrefsQuery();
+  const prefs = prefsQuery.data ?? EMPTY_LOCATION_PREFS;
+  // Symbol/Standard nur mit echten Angaben bearbeiten – sonst würde ein leerer Stand gespeichert
+  const prefsReady = prefsQuery.isSuccess;
   const savePrefs = useSaveLocationPrefs();
   const create = useCreateLocation();
   const rename = useRenameLocation();
@@ -72,7 +75,8 @@ export function LocationsPage() {
       const l = edit.location ?? (await create.mutateAsync(name));
       if (edit.location && name !== edit.location.name) await rename.mutateAsync({ id: l.id, name });
       const next = withLocation(prefs, l.id, edit.icon, edit.isDefault);
-      if (JSON.stringify(next) !== JSON.stringify(prefs)) await savePrefs.mutateAsync(next);
+      if (prefsReady && JSON.stringify(next) !== JSON.stringify(prefs))
+        await savePrefs.mutateAsync((p) => withLocation(p, l.id, edit.icon, edit.isDefault));
       haptic();
       if (edit.location) notify.ok(t('common.saved'));
       else setPrinting([l]); // neuer Ort: gleich das Etikett anbieten
@@ -99,7 +103,7 @@ export function LocationsPage() {
               .mutateAsync(l.id)
               .then(async () => {
                 setEdit(null);
-                if (prefs.icons[l.id] || prefs.defaultId === l.id) await savePrefs.mutateAsync(withoutLocation(prefs, l.id));
+                if (prefs.icons[l.id] || prefs.defaultId === l.id) await savePrefs.mutateAsync((p) => withoutLocation(p, l.id));
               })
               .catch(fail),
         },
@@ -219,40 +223,49 @@ export function LocationsPage() {
                 />
               </IonList>
 
-              <IonList inset>
-                <IonListHeader>
-                  <IonLabel>{t('locations.symbol')}</IonLabel>
-                </IonListHeader>
-                <div className="bs-chip-row" style={{ padding: '0 var(--bs-s3) var(--bs-s2)', flexWrap: 'wrap' }}>
-                  <ChoiceChip selected={!edit.icon} onSelect={() => setEdit({ ...edit, icon: '' })} aria-label={t('locations.symbolNone')}>
-                    <IonIcon icon={locationOutline} aria-hidden />
-                  </ChoiceChip>
-                  {LOCATION_EMOJIS.map((e) => (
-                    <ChoiceChip key={e} selected={edit.icon === e} onSelect={() => setEdit({ ...edit, icon: e })} aria-label={e}>
-                      <span style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
+              {!prefsReady && <IonNote className="bs-section-note">{t('locations.prefsUnavailable')}</IonNote>}
+              {prefsReady && (
+                <IonList inset>
+                  <IonListHeader>
+                    <IonLabel>{t('locations.symbol')}</IonLabel>
+                  </IonListHeader>
+                  <div className="bs-chip-row" style={{ padding: '0 var(--bs-s3) var(--bs-s2)', flexWrap: 'wrap' }}>
+                    <ChoiceChip
+                      selected={!edit.icon}
+                      onSelect={() => setEdit({ ...edit, icon: '' })}
+                      aria-label={t('locations.symbolNone')}
+                    >
+                      <IonIcon icon={locationOutline} aria-hidden />
                     </ChoiceChip>
-                  ))}
-                </div>
-                <TextRow
-                  label={t('locations.symbolOwn')}
-                  placeholder={t('locations.symbolOwnHint')}
-                  value={(LOCATION_EMOJIS as readonly string[]).includes(edit.icon) ? '' : edit.icon}
-                  onChange={(v) => setEdit({ ...edit, icon: symbolOf(v) })}
-                  lines="none"
-                />
-              </IonList>
+                    {LOCATION_EMOJIS.map((e) => (
+                      <ChoiceChip key={e} selected={edit.icon === e} onSelect={() => setEdit({ ...edit, icon: e })} aria-label={e}>
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
+                      </ChoiceChip>
+                    ))}
+                  </div>
+                  <TextRow
+                    label={t('locations.symbolOwn')}
+                    placeholder={t('locations.symbolOwnHint')}
+                    value={(LOCATION_EMOJIS as readonly string[]).includes(edit.icon) ? '' : edit.icon}
+                    onChange={(v) => setEdit({ ...edit, icon: symbolOf(v) })}
+                    lines="none"
+                  />
+                </IonList>
+              )}
 
-              <IonList inset>
-                <IonItem lines="none">
-                  <IonIcon icon={star} slot="start" color={edit.isDefault ? 'success' : 'medium'} aria-hidden />
-                  <IonToggle checked={edit.isDefault} onIonChange={(e) => setEdit({ ...edit, isDefault: e.detail.checked })}>
-                    {t('locations.asDefault')}
-                    <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
-                      {t('locations.asDefaultHint')}
-                    </div>
-                  </IonToggle>
-                </IonItem>
-              </IonList>
+              {prefsReady && (
+                <IonList inset>
+                  <IonItem lines="none">
+                    <IonIcon icon={star} slot="start" color={edit.isDefault ? 'success' : 'medium'} aria-hidden />
+                    <IonToggle checked={edit.isDefault} onIonChange={(e) => setEdit({ ...edit, isDefault: e.detail.checked })}>
+                      {t('locations.asDefault')}
+                      <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                        {t('locations.asDefaultHint')}
+                      </div>
+                    </IonToggle>
+                  </IonItem>
+                </IonList>
+              )}
 
               {!edit.location && <IonNote className="bs-section-note">{t('locations.newHint')}</IonNote>}
               {edit.location && (

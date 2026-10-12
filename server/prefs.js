@@ -46,7 +46,11 @@ export async function handlePrefs(store, method, path, body) {
   const m = /^\/([a-z]+)$/.exec(path);
   if (!m || !NAMES.includes(m[1])) return { status: 404, body: { detail: 'Not found' } };
   if (method === 'GET') return { status: 200, body: { value: await store.get(m[1]) } };
-  if (method === 'PUT') return { status: 200, body: { value: await store.put(m[1], body?.value ?? null) } };
+  if (method === 'PUT') {
+    // Zurücksetzen nur ausdrücklich (value: null) – ein leerer oder kaputter Body darf nichts löschen
+    if (!body || typeof body !== 'object' || !('value' in body)) return { status: 400, body: { detail: 'value fehlt' } };
+    return { status: 200, body: { value: await store.put(m[1], body.value) } };
+  }
   return { status: 405, body: { detail: 'Method not allowed' } };
 }
 
