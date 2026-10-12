@@ -14,6 +14,7 @@ Bambuddy-Anmeldung gelten die Rechte des Schlüssels bzw. Nutzers.
 | Wiegen | `POST /spoolbuddy/scale/update-spool-weight` | `{ spool_id, weight_grams }` brutto → `weight_used`, `last_scale_weight`, `last_weighed_at` |
 | Dublette per NFC | `GET /inventory/spools/by-tag?tag_uid=…&tray_uuid=…` | |
 | Lagerorte | `GET/POST /inventory/locations` | Create `{ name, identifier? }`, 409 bei gleichem Namen |
+| Lagerort ändern/löschen | `PATCH/DELETE /inventory/locations/{id}` | Umbenennen überträgt den Namen auf die Spulen; Löschen nur ohne Spulen |
 | AMS-Zuweisungen | `GET/POST /inventory/assignments`, `DELETE /inventory/assignments/{printer}/{ams}/{tray}` | POST ersetzt belegten Slot; dieselbe Spule darf in mehreren Slots stehen (App räumt vorher auf); Lagerort bleibt unverändert |
 | Drucker | `GET /printers/`, `GET /printers/{id}/status` | `ams[].tray[]` (id, tray_color RRGGBBAA, tray_type, state 9/10/11), `vt_tray` id 254/255 → Zuweisung `ams_id 255, tray_id 0/1` |
 | Katalog | `GET /inventory/catalog`, `GET /inventory/colors/search?manufacturer=&material=` | Leerspulen `{id,name,weight}`, Farben `{manufacturer,color_name,hex_color,material}` |

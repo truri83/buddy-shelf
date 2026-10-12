@@ -45,6 +45,8 @@ import { MoveSheet } from '../components/MoveSheet';
 import { FamilyFilter } from '../components/FamilyFilter';
 import { SpoolCard } from '../components/SpoolCard';
 import { SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
+import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { locationText } from '../locationPrefs';
 import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
 import { isNewRfid } from '../slots';
 import {
@@ -64,6 +66,7 @@ import {
 export function SpoolListPage() {
   const spools = useSpools();
   const locations = useLocations();
+  const locationPrefs = useLocationPrefs();
   const assignments = useAssignments();
   const { slots } = useSlots();
   const newRfid = slots.filter((x) => isNewRfid(x, spools.data ?? [])).length;
@@ -331,7 +334,10 @@ export function SpoolListPage() {
                     {g.title && (
                       <IonItemDivider sticky>
                         <IonLabel>
-                          {g.title} <span style={{ color: 'var(--bs-text-2)' }}>· {g.spools.length}</span>
+                          {groupBy === 'location'
+                            ? locationText(g.title, locationPrefs.icons[locations.data?.find((l) => l.name === g.title)?.id ?? -1])
+                            : g.title}{' '}
+                          <span style={{ color: 'var(--bs-text-2)' }}>· {g.spools.length}</span>
                         </IonLabel>
                       </IonItemDivider>
                     )}
@@ -341,6 +347,7 @@ export function SpoolListPage() {
                           key={s.id}
                           spool={s}
                           location={locationName(s, locations.data ?? [])}
+                          locationIcon={s.location_id != null ? locationPrefs.icons[s.location_id] : undefined}
                           ams={amsBySpool.get(s.id) ?? null}
                           canEdit={canEdit}
                           selecting={selecting}

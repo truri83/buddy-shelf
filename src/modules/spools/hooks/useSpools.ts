@@ -105,6 +105,20 @@ export function useCreateLocation() {
   return useMutation({ mutationFn: (name: string) => bambuddy.locations.create({ name }), onSuccess: () => refresh() });
 }
 
+export function useRenameLocation() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => bambuddy.locations.update(id, { name }),
+    onSuccess: () => refresh(),
+  });
+}
+
+/** Nur leere Lagerorte lassen sich löschen. */
+export function useDeleteLocation() {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: (id: number) => bambuddy.locations.remove(id), onSuccess: () => refresh() });
+}
+
 /** SP-05: Bruttogewicht von der Waage über Bambuddys Waagen-Endpunkt. */
 export function useWeighSpool() {
   const refresh = useRefresh();

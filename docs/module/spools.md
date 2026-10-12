@@ -232,6 +232,17 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | Daten | `PATCH /inventory/spools/{id}` `{ location_id }`; Vorlagen-Art `location` |
 | Akzeptanz | Ort „Trockenbox“ scannen, 3 Spulen scannen → alle 3 dort; Spule scannen → Schnellmenü in < 1 s |
 
+## SP-18 Lagerorte bearbeiten
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt |
+| Ziel | Lagerorte wie in Spooly pflegen: Symbol, Standard-Ort für neue Spulen, umbenennen, löschen. |
+| Ablauf | Mehr → Lagerorte → Stift: Name, Symbol (12 Vorschläge oder eigenes Emoji), „Als Standard“, Löschen (nur wenn leer, sonst Hinweis „erst umlagern“). Neue Spule: Standard-Ort ist vorausgewählt, „Ohne Lagerort“ bleibt wählbar. Symbol erscheint in Karte, Detail, Verschieben, Einräumen, Gruppierung und Formular. |
+| Daten | Name: Bambuddy `PATCH /inventory/locations/{id}` (überträgt auf die Spulen), `DELETE …/{id}` (nur leer). Symbol und Standard: `/prefs/locations` `{ icons: { <id>: "📦" }, defaultId }` – gilt auf allen Geräten. Beim Löschen werden beide mit aufgeräumt. |
+| Rechte | INVENTORY_UPDATE |
+| Akzeptanz | Drybox 1 → 🔥 + Standard → Liste zeigt „🔥 Drybox 1 ★ Standard“, neue Spule hat Drybox 1 vorausgewählt; Ort mit Spulen lässt sich nicht löschen |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |
@@ -243,7 +254,6 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 
 | Paket | Inhalt |
 | --- | --- |
-| Lagerorte bearbeiten | Name, Symbol/Emoji, „Als Standard“ (neue Spulen landen dort), umbenennen, löschen (Bambuddy `PATCH/DELETE /inventory/locations/{id}`; Symbol/Standard in `/prefs`) |
 | Spulen-Anzeige | Warnschwellen „Niedrig“ (Standard 25 %) und „Fast leer“ (8 %, rot + Nachkauf-Hinweis), je Material überschreibbar; Signalfarben an/aus; Standard-Spulengröße; Preis/Feuchtigkeit in Listen anzeigen (`/prefs/display`) |
 | Rest aus dem UX-Review | einheitliche Fehler-/Rechte-Zustände (ein Baustein), `useNotify` statt kopierter Toasts, Scan-Knopf mittig bei gerader Tab-Zahl, ungenutzte Texte entfernen |
 | Später | Multi-Color/Verlauf (Spoolman `multi_color_hexes`), Nachkaufen-Links, „reicht noch x Tage“, Druckdienst fürs iPhone, native iOS-App (Push für Trocknungs-Erinnerung) |

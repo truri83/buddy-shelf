@@ -29,6 +29,25 @@ export const handlers = [
     locations.push(l);
     return HttpResponse.json(l, { status: 201 });
   }),
+  http.patch(api('/inventory/locations/:id'), async ({ params, request }) => {
+    const l = locations.find((x) => x.id === Number(params.id));
+    if (!l) return HttpResponse.json({ detail: 'Location not found' }, { status: 404 });
+    const body = (await request.json()) as { name?: string };
+    if (body.name && locations.some((x) => x !== l && x.name.toLowerCase() === body.name!.toLowerCase())) {
+      return HttpResponse.json({ detail: 'Location already exists' }, { status: 409 });
+    }
+    if (body.name) l.name = body.name;
+    return HttpResponse.json(l);
+  }),
+  // Wie Bambuddy: nur ohne zugeordnete Spulen
+  http.delete(api('/inventory/locations/:id'), ({ params }) => {
+    const id = Number(params.id);
+    if (spools.some((s) => s.location_id === id && !s.archived_at)) {
+      return HttpResponse.json({ detail: 'Location still has spools assigned' }, { status: 409 });
+    }
+    locations.splice(locations.findIndex((x) => x.id === id), 1);
+    return HttpResponse.json({ ok: true });
+  }),
   http.get(api('/inventory/assignments'), () => HttpResponse.json(assignments)),
   // Wie Bambuddy: belegter Slot wird ersetzt
   http.post(api('/inventory/assignments'), async ({ request }) => {

@@ -38,6 +38,8 @@ import { LabelSheet } from '../components/LabelSheet';
 import { coreDisplayName } from '../cores';
 import { todayIso } from '@/core/filament';
 import { STORAGE_ICONS } from '../storage';
+import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { defaultLocationId, locationText } from '../locationPrefs';
 import {
   useCatalog,
   useColors,
@@ -150,6 +152,11 @@ function SpoolForm({
   const [picker, setPicker] = useState<'brand' | 'material' | 'filament' | null>(null);
   const [created, setCreated] = useState<Spool[] | null>(null);
   const locations = useLocations();
+  const locationPrefs = useLocationPrefs();
+  // Neue Spule: Standard-Lagerort, solange nichts anderes gewählt ist („Ohne Lagerort“ zählt als Wahl)
+  const [locationPicked, setLocationPicked] = useState(false);
+  const locationId =
+    editing || locationPicked ? draft.locationId : (draft.locationId ?? defaultLocationId(locationPrefs, locations.data ?? []));
   const catalog = useCatalog();
   const manufacturers = useDbManufacturers(true);
   const materials = useDbMaterials(draft.brand.trim(), picker === 'material');
@@ -227,7 +234,7 @@ function SpoolForm({
         navigate(`/spools/${source.id}`, { replace: true });
         return;
       }
-      const list = await create.mutateAsync({ spool: draftToCreate(draft), quantity: draft.quantity });
+      const list = await create.mutateAsync({ spool: draftToCreate({ ...draft, locationId }), quantity: draft.quantity });
       const extras = draftExtras(draft);
       if (Object.keys(extras).length) await setExtras.mutateAsync({ ids: list.map((s) => s.id), patch: extras }).catch(fail);
       haptic();
@@ -593,13 +600,16 @@ function SpoolForm({
                 label={t('new.location')}
                 labelPlacement="stacked"
                 interface="action-sheet"
-                value={draft.locationId ?? 0}
-                onIonChange={(e) => set('locationId', Number(e.detail.value) || null)}
+                value={locationId ?? 0}
+                onIonChange={(e) => {
+                  setLocationPicked(true);
+                  set('locationId', Number(e.detail.value) || null);
+                }}
               >
                 <IonSelectOption value={0}>{t('move.none')}</IonSelectOption>
                 {(locations.data ?? []).map((l) => (
                   <IonSelectOption key={l.id} value={l.id}>
-                    {l.name}
+                    {locationText(l.name, locationPrefs.icons[l.id])}
                   </IonSelectOption>
                 ))}
               </IonSelect>

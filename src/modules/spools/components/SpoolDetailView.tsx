@@ -7,6 +7,8 @@ import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss } from '@/core/ui';
 import { useAssignments, useLocations, useSetExtras } from '../hooks/useSpools';
 import { isLow, locationName } from '../logic';
+import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { locationText } from '../locationPrefs';
 import { AmsSheet } from './AmsSheet';
 import { DryingCard } from './DryingCard';
 import { LabelSheet } from './LabelSheet';
@@ -49,6 +51,7 @@ export function SpoolDetailView({
   onSheet: (s: DetailSheet | null) => void;
 }) {
   const locations = useLocations();
+  const locationPrefs = useLocationPrefs();
   const assignments = useAssignments();
   const canEdit = useAllowed('inventory:update');
   const setExtras = useSetExtras();
@@ -165,7 +168,12 @@ export function SpoolDetailView({
                 '–'
               )}
             </Field>
-            <Field label={t('spools.detail.location')}>{locationName(s, locations.data ?? []) ?? '–'}</Field>
+            <Field label={t('spools.detail.location')}>
+              {(() => {
+                const name = locationName(s, locations.data ?? []);
+                return name ? locationText(name, s.location_id != null ? locationPrefs.icons[s.location_id] : null) : '–';
+              })()}
+            </Field>
             <Field label={t('spools.detail.ams')}>{ams ?? '–'}</Field>
             <Field label={s.category === 'Refill' ? t('spools.detail.refillCore') : t('spools.detail.emptyWeight')}>
               <span className="bs-num">{fmtNum(s.core_weight)} g</span>

@@ -12,6 +12,8 @@ import { agoText } from './DryingCard';
 interface Props {
   spool: Spool;
   location: string | null;
+  /** eigenes Symbol des Lagerorts */
+  locationIcon?: string;
   ams: string | null;
   canEdit?: boolean;
   /** Auswahlmodus: Tippen wählt statt zu öffnen */
@@ -25,7 +27,7 @@ interface Props {
 }
 
 /** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken in Filamentfarbe, ⋮-Menü. */
-export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, onToggle, onOpen, active }: Props) {
+export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecting, selected, onToggle, onOpen, active }: Props) {
   const fill = fillRatio(spool);
   const low = isLow(spool);
   const dry = dryingDue(spool, useDryingConfig());
@@ -152,7 +154,7 @@ export function SpoolCard({ spool, location, ams, canEdit, selecting, selected, 
             <span
               style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}
             >
-              <IonIcon icon={locationOutline} aria-hidden />
+              {locationIcon ? <span aria-hidden>{locationIcon}</span> : <IonIcon icon={locationOutline} aria-hidden />}
               {location}
             </span>
           )}

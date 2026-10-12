@@ -25,6 +25,8 @@ import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ScannerView, StateView } from '@/core/ui';
 import { useLocations, useMoveSpool, useSpools } from '../hooks/useSpools';
+import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { locationText } from '../locationPrefs';
 import { spoolTitle } from '../slots';
 
 interface Entry {
@@ -39,6 +41,7 @@ export function StowPage() {
   const { id } = useParams();
   const locationId = Number(id);
   const locations = useLocations();
+  const locationPrefs = useLocationPrefs();
   const spools = useSpools();
   const move = useMoveSpool();
   const canEdit = useAllowed('inventory:update');
@@ -115,7 +118,9 @@ export function StowPage() {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/more/locations" text="" />
           </IonButtons>
-          <IonTitle>{location ? t('stow.title', { name: location.name }) : t('stow.titleShort')}</IonTitle>
+          <IonTitle>
+            {location ? t('stow.title', { name: locationText(location.name, locationPrefs.icons[location.id]) }) : t('stow.titleShort')}
+          </IonTitle>
           <IonButtons slot="end">
             <IonButton strong onClick={() => (router.canGoBack() ? router.goBack() : router.push('/more/locations', 'back'))}>
               {t('stow.done')}

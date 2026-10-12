@@ -71,6 +71,9 @@ async function labelsRequest<T>(method: string, path: string, body?: unknown): P
   return data as T;
 }
 
+/** Bereiche der gemeinsamen Einstellungen (server/prefs.js NAMES). */
+export type PrefsName = 'drying' | 'display' | 'locations';
+
 /** Gemeinsame App-Einstellungen auf unserem Server (gelten für alle Geräte). */
 async function prefsRequest<T>(method: 'GET' | 'PUT', name: string, value?: unknown): Promise<T | null> {
   const res = await fetch(`/prefs/${name}`, {
@@ -369,6 +372,10 @@ export const bambuddy = {
     list: () => request<Location[]>('GET', '/inventory/locations'),
     /** 409 bei gleichem Namen */
     create: (l: LocationCreate) => request<Location>('POST', '/inventory/locations', l),
+    /** Umbenennen überträgt Bambuddy auf die Spulen dort */
+    update: (id: number, l: Partial<LocationCreate>) => request<Location>('PATCH', `/inventory/locations/${id}`, l),
+    /** nur leere Lagerorte */
+    remove: (id: number) => request<void>('DELETE', `/inventory/locations/${id}`),
   },
   assignments: {
     list: async (): Promise<SpoolAssignment[]> =>
@@ -439,8 +446,8 @@ export const bambuddy = {
   },
   /** App-Einstellungen für alle Geräte (z. B. Trocknungswerte); null = Standard */
   prefs: {
-    get: <T>(name: 'drying' | 'display') => prefsRequest<T>('GET', name),
-    put: <T>(name: 'drying' | 'display', value: T | null) => prefsRequest<T>('PUT', name, value),
+    get: <T>(name: PrefsName) => prefsRequest<T>('GET', name),
+    put: <T>(name: PrefsName, value: T | null) => prefsRequest<T>('PUT', name, value),
   },
   /** SpoolmanDB: Hersteller, Materialien, Filamente mit Farbe/Gewicht/Leerspule */
   filamentDb: {

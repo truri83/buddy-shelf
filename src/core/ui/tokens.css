@@ -391,3 +391,8 @@ ion-content.bs-medium {
   color: var(--bs-text-2);
   font-size: var(--bs-fs-caption);
 }
+
+/* Emoji statt Symbol am Zeilenanfang: gleicher Abstand wie ein ion-icon (md 32px, ios 16px) */
+html.md ion-item > .bs-slot-symbol[slot='start'] {
+  margin-inline-end: 32px;
+}

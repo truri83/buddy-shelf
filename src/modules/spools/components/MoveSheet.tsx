@@ -19,6 +19,8 @@ import { t } from '@/core/i18n';
 import { haptic, storage } from '@/core/platform';
 import { useBulkMove, useCreateLocation, useLocations, useMoveSpool } from '../hooks/useSpools';
 import { orderLocations } from '../logic';
+import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { LocationSymbol } from './LocationSymbol';
 import { spoolTitle } from '../slots';
 
 interface Props {
@@ -35,6 +37,7 @@ const LAST_KEY = 'spools.lastLocation';
 export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
   const modal = useRef<HTMLIonModalElement>(null);
   const locations = useLocations();
+  const locationPrefs = useLocationPrefs();
   const move = useMoveSpool();
   const bulk = useBulkMove();
   const single = spools.length === 1 ? spools[0]! : null;
@@ -104,6 +107,7 @@ export function MoveSheet({ spools, isOpen, onDismiss, onDone }: Props) {
         <IonList inset>
           {ordered.map((loc, i) => (
             <IonItem key={loc.id} button detail={false} disabled={busy} onClick={() => void choose(loc)}>
+              <LocationSymbol icon={locationPrefs.icons[loc.id]} slot="start" />
               <IonLabel>{loc.name}</IonLabel>
               {single && loc.id === single.location_id && <IonNote slot="end">✓</IonNote>}
               {i === 0 && loc.id === storage.get<number | null>(LAST_KEY, null) && loc.id !== single?.location_id && (
