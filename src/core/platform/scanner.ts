@@ -24,12 +24,13 @@ interface Detector {
   detect(source: CanvasImageSource | ImageBitmapSource): Promise<{ rawValue: string; format?: string; cornerPoints?: { x: number; y: number }[] }[]>;
 }
 
-/** QR für eigene Etiketten, EAN/UPC für Packungen. */
-export type ScanFormat = 'qr_code' | 'ean_13' | 'ean_8' | 'upc_a';
+/** QR für eigene Etiketten, EAN/UPC/Code-128 für Packungen. */
+export type ScanFormat = 'qr_code' | 'ean_13' | 'ean_8' | 'upc_a' | 'code_128';
 export const QR_ONLY: ScanFormat[] = ['qr_code'];
-// UPC-E bewusst nicht: kommt als 8 Ziffern, Prüfziffer gilt für die UPC-A-Langform (auf Filament kaum genutzt)
-export const QR_AND_BARCODES: ScanFormat[] = ['qr_code', 'ean_13', 'ean_8', 'upc_a'];
-export const BARCODES_ONLY: ScanFormat[] = ['ean_13', 'ean_8', 'upc_a'];
+// UPC-E bewusst nicht: kommt als 8 Ziffern, Prüfziffer gilt für die UPC-A-Langform (auf Filament kaum genutzt).
+// Code-128: Bambu-Lab-Kartons drucken die EAN so; andere Hersteller ihre Losnummer (→ parseScan: kein Produktcode).
+export const QR_AND_BARCODES: ScanFormat[] = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'code_128'];
+export const BARCODES_ONLY: ScanFormat[] = ['ean_13', 'ean_8', 'upc_a', 'code_128'];
 
 /** Lage eines Treffers im Videobild (Pixel des Kamerabilds). */
 export interface ScanHit {
