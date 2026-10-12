@@ -56,7 +56,7 @@ export function App() {
                 </span>
               </IonTabButton>
               {Array.from({ length: gap }, (_, i) => (
-                <IonTabButton key={`gap${i}`} tab={`gap${i}`} disabled className="bs-tab bs-tab-gap" aria-hidden tabIndex={-1} />
+                <IonTabButton key={`gap${i}`} tab={`gap${i}`} disabled className="bs-tab bs-tab-gap" aria-hidden />
               ))}
               {right.map((tab) => (
                 <IonTabButton key={tab.id} tab={tab.id} href={tab.href} className="bs-tab">
