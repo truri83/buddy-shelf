@@ -12,6 +12,7 @@ import { registerCatalog } from './catalog.js';
 import { registerTemplates } from './templates.js';
 import { registerExtras } from './extras.js';
 import { registerPrefs } from './prefs.js';
+import { serverKeyAllowed } from './serverKey.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const BAMBUDDY_URL = process.env.BAMBUDDY_URL;
@@ -41,17 +42,25 @@ await registerPrefs(app);
 
 await registerExtras(app, { bambuddyUrl: BAMBUDDY_URL, apiKey: BAMBUDDY_API_KEY, spoolmanUrl: process.env.SPOOLMAN_URL });
 
-/** Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt. */
-const withServerKey = (headers) =>
-  BAMBUDDY_API_KEY && !headers['x-api-key'] && !headers.authorization ? { ...headers, 'x-api-key': BAMBUDDY_API_KEY } : headers;
+/**
+ * Server-Schlüssel nur einsetzen, wenn das Gerät keinen eigenen mitschickt – und nur für die App selbst und die
+ * Bereiche, die sie braucht (serverKey.js): keine fremden Webseiten im Netz, keine Einstellungen/Steuerung.
+ */
+const withServerKey = (req, headers = {}) =>
+  BAMBUDDY_API_KEY &&
+  !req.headers['x-api-key'] &&
+  !req.headers.authorization &&
+  serverKeyAllowed({ method: req.method ?? 'GET', url: req.url ?? '', headers: req.headers })
+    ? { ...headers, 'x-api-key': BAMBUDDY_API_KEY }
+    : headers;
 
 await app.register(proxy, {
   upstream: BAMBUDDY_URL,
   prefix: '/api',
   rewritePrefix: '/api',
   websocket: true,
-  replyOptions: { rewriteRequestHeaders: (_req, headers) => withServerKey(headers) },
-  wsClientOptions: { rewriteRequestHeaders: (headers) => withServerKey(headers) },
+  replyOptions: { rewriteRequestHeaders: (req, headers) => withServerKey(req, headers) },
+  wsClientOptions: { rewriteRequestHeaders: (headers, req) => withServerKey(req, headers) },
 });
 
 // Phase 2: Druckdienst (niimblue-node) für den Etikettendruck vom iPhone.
