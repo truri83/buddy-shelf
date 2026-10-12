@@ -17,7 +17,7 @@ export function cleanTemplate(id, t) {
   return {
     id,
     title: String(t.title ?? id).slice(0, 60),
-    ...(t.kind === 'spool' || t.kind === 'slot' ? { kind: t.kind } : {}),
+    ...(['spool', 'slot', 'location'].includes(t.kind) ? { kind: t.kind } : {}),
     label: { printDirection: t.label.printDirection === 'left' ? 'left' : 'top', size: { width: size.width, height: size.height } },
     canvas: { version: String(t.canvas.version ?? '7.0.0'), objects: t.canvas.objects },
   };
@@ -67,7 +67,10 @@ async function handle(method, path, body) {
   return { status: 404, body: { detail: 'Not found' } };
 }
 
-const fail = (e) => ({ status: e.status ?? (e instanceof SyntaxError || /Vorlage/.test(e.message) ? 400 : 500), body: { detail: e.message } });
+const fail = (e) => ({
+  status: e.status ?? (e instanceof SyntaxError || /Vorlage/.test(e.message) ? 400 : 500),
+  body: { detail: e.message },
+});
 
 export async function registerTemplates(app) {
   app.route({

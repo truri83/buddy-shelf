@@ -226,7 +226,7 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 
 | Feld | Inhalt |
 | --- | --- |
-| Status | geplant |
+| Status | umgesetzt – Lagerorte unter Mehr → Lagerorte (anlegen, Etiketten); Code-Eingabe für PC ohne Kamera |
 | Ziel | Ein Scan startet die Arbeit: Spulen-Etikett → Schnellmenü; Lagerort-Etikett → danach gescannte Spulen landen dort. |
 | Ablauf | Scan Spule → Sheet mit Wiegen · Getrocknet · Ins AMS · Verschieben · Etikett · Details. Scan Lagerort (`bm:l:<id>`) → Modus „Einräumen in …“: jede weitere gescannte Spule wird dorthin verschoben (Ton + Liste), Ende per Knopf. Lagerort-Etiketten drucken unter Lagerorte. |
 | Daten | `PATCH /inventory/spools/{id}` `{ location_id }`; Vorlagen-Art `location` |

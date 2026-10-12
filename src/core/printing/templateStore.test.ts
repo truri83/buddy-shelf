@@ -37,12 +37,14 @@ describe('Vorlagen-Ordner auf dem Server', () => {
 });
 
 describe('Vorlagen-Art', () => {
-  it('eingebaute haben je mindestens eine Spulen- und eine Slot-Vorlage', () => {
+  it('eingebaute haben je mindestens eine Spulen-, Slot- und Lagerort-Vorlage', () => {
     expect(BUILTIN_TEMPLATES.some((x) => x.kind === 'spool')).toBe(true);
     expect(BUILTIN_TEMPLATES.some((x) => x.kind === 'slot')).toBe(true);
+    expect(BUILTIN_TEMPLATES.some((x) => x.kind === 'location')).toBe(true);
   });
   it('erkennt Slot-Vorlagen an den Platzhaltern', () => {
     expect(guessKind([{ text: 'Slot { slot }' }])).toBe('slot');
     expect(guessKind([{ text: '#{id}' }])).toBe('spool');
+    expect(guessKind([{ text: '{location}' }])).toBe('location');
   });
 });

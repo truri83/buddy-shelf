@@ -59,6 +59,7 @@ zusammen, `null` löscht.
 | --- | --- |
 | `bm:s:<id>` | eigenes Spulen-Etikett, Version 1, ohne Serveradresse |
 | `bm:t:<druckerId>:<amsId>:<slot>` | Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule, slot 0/1) |
+| `bm:l:<id>` | Lagerort-Etikett (Bambuddy-Lagerort-ID) → „Einräumen“ (SP-17) |
 | `<base>/inventory?spool=<id>` | Etikett aus Bambuddy |
 | `bambuddy://config?v=1&url=…&key=…` | Einrichtungs-QR aus Bambuddy (API-Schlüssel) |
 

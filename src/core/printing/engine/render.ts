@@ -19,10 +19,13 @@ export async function renderLabel(template: LabelTemplate, vars: LabelVariables,
   const canvas = new fabric.StaticCanvas(undefined, { width, height, backgroundColor: '#ffffff', enableRetinaScaling: false });
   try {
     await canvas.loadFromJSON(template.canvas);
-    for (const obj of canvas.getObjects()) {
+    for (const [i, obj] of canvas.getObjects().entries()) {
       if (obj instanceof TextboxExt) {
         const text = fillVariables(obj.text ?? '', vars);
-        if (obj.fontAutoSize) obj.setAndShrinkText(text, obj.width);
+        // Breite aus der Vorlage: Beim Laden wächst die Textbox auf den längsten Platzhalter
+        // („{location}“), das wäre sonst die Höchstbreite und der Text liefe übers Etikett
+        const declared = Number(template.canvas.objects[i]?.width);
+        if (obj.fontAutoSize) obj.setAndShrinkText(text, declared > 0 ? declared : obj.width);
         else obj.set({ text });
       } else if (obj instanceof fabric.IText || obj instanceof QRCode) {
         obj.set({ text: fillVariables((obj as { text?: string }).text ?? '', vars) });

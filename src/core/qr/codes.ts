@@ -4,6 +4,7 @@
  *
  *  bm:s:<id>                         eigenes Spulen-Etikett (stabil, ohne Serveradresse), Version 1
  *  bm:t:<druckerId>:<amsId>:<slot>   Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule)
+ *  bm:l:<id>                         Lagerort-Etikett (Bambuddy-Lagerort-ID) – startet „Einräumen“
  *  <beliebig>/inventory?spool=<id>   Etikett aus Bambuddy selbst
  *  bambuddy://config?v=1&url=…&key=… Einrichtungs-QR aus Bambuddy (API-Schlüssel)
  *  8/12/13/14 Ziffern mit Prüfziffer   Packungs-Barcode (EAN-8/13, UPC-A, GTIN-14)
@@ -12,6 +13,7 @@
 export type ScanResult =
   | { kind: 'spool'; spoolId: number; source: 'buddy-shelf' | 'bambuddy-label' }
   | { kind: 'slot'; printerId: number; amsId: number; trayId: number }
+  | { kind: 'location'; locationId: number }
   | { kind: 'config'; url: string; apiKey: string; version: number }
   | { kind: 'gtin'; code: string }
   | { kind: 'unknown'; raw: string };
@@ -27,6 +29,7 @@ export function isValidGtin(code: string): boolean {
   return (10 - (sum % 10)) % 10 === check;
 }
 export const SLOT_CODE_PREFIX = 'bm:t:';
+export const LOCATION_CODE_PREFIX = 'bm:l:';
 
 /** Externe Spulenhalterung in Bambuddy: ams_id 255, tray_id 0/1. */
 export const EXTERNAL_AMS_ID = 255;
@@ -44,6 +47,11 @@ export function encodeSlotCode(printerId: number, amsId: number, trayId: number)
   return `${SLOT_CODE_PREFIX}${printerId}:${amsId}:${trayId}`;
 }
 
+export function encodeLocationCode(locationId: number): string {
+  if (!Number.isInteger(locationId) || locationId <= 0) throw new Error(`Ungültiger Lagerort: ${locationId}`);
+  return `${LOCATION_CODE_PREFIX}${locationId}`;
+}
+
 function positiveInt(v: string | null | undefined): number | null {
   if (!v || !/^\d+$/.test(v)) return null;
   const n = Number(v);
@@ -57,6 +65,11 @@ export function parseScan(raw: string): ScanResult {
     const id = positiveInt(text.slice(SPOOL_CODE_PREFIX.length));
     if (id) return { kind: 'spool', spoolId: id, source: 'buddy-shelf' };
     return { kind: 'unknown', raw: text };
+  }
+
+  if (text.toLowerCase().startsWith(LOCATION_CODE_PREFIX)) {
+    const id = positiveInt(text.slice(LOCATION_CODE_PREFIX.length));
+    return id ? { kind: 'location', locationId: id } : { kind: 'unknown', raw: text };
   }
 
   if (text.toLowerCase().startsWith(SLOT_CODE_PREFIX)) {

@@ -34,7 +34,7 @@ import {
 } from '@/core/printing';
 import { Badge } from '@/core/ui';
 
-const KINDS: TemplateKind[] = ['spool', 'slot'];
+const KINDS: TemplateKind[] = ['spool', 'slot', 'location'];
 const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
 
 /** Etikett-Vorlagen: eingebaute + eigene (Server-Ordner). Gestaltet wird auf niim.blue, hier nur Import/Export. */
@@ -46,7 +46,12 @@ export function TemplatesPage() {
   const [alert] = useIonAlert();
   const [toast] = useIonToast();
   const fail = (e: unknown) =>
-    void toast({ message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }), duration: 3500, position: 'top', color: 'danger' });
+    void toast({
+      message: t('common.failed', { msg: e instanceof Error ? e.message : String(e) }),
+      duration: 3500,
+      position: 'top',
+      color: 'danger',
+    });
 
   const exportTemplate = (tpl: LabelTemplate) => {
     saveFile(new Blob([JSON.stringify(templateData(tpl), null, 2)], { type: 'application/json' }), `${tpl.id}.json`);
@@ -125,7 +130,11 @@ export function TemplatesPage() {
                       <IonIcon slot="icon-only" icon={downloadOutline} />
                     </IonButton>
                     {!tpl.builtin && (
-                      <IonButton color="danger" onClick={() => confirmDelete(tpl)} aria-label={t('templates.deleteOne', { title: tpl.title })}>
+                      <IonButton
+                        color="danger"
+                        onClick={() => confirmDelete(tpl)}
+                        aria-label={t('templates.deleteOne', { title: tpl.title })}
+                      >
                         <IonIcon slot="icon-only" icon={trashOutline} />
                       </IonButton>
                     )}
@@ -162,9 +171,7 @@ export function TemplatesPage() {
             <IonLabel>{t('templates.import')}</IonLabel>
           </IonItem>
         </IonList>
-        <IonNote style={{ display: 'block', padding: '0 var(--bs-s5) var(--bs-s5)', ...sub }}>
-          {t('templates.vars')}
-        </IonNote>
+        <IonNote style={{ display: 'block', padding: '0 var(--bs-s5) var(--bs-s5)', ...sub }}>{t('templates.vars')}</IonNote>
       </IonContent>
     </IonPage>
   );

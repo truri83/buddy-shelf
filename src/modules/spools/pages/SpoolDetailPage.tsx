@@ -1,6 +1,18 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import {
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  useIonActionSheet,
+  useIonToast,
+} from '@ionic/react';
 import { copyOutline, createOutline, cubeOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed } from '@/core/api';
 import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
@@ -55,6 +67,42 @@ export function SpoolDetailPage() {
     setSheet(null);
     if (params.has('action')) setParams({}, { replace: true }); // beim Neuladen nicht erneut öffnen
   };
+
+  // SP-17: Spulen-Etikett gescannt → Schnellmenü statt nur Detailseite
+  const [present] = useIonActionSheet();
+  const [toast] = useIonToast();
+  const quickShown = useRef(false);
+  useEffect(() => {
+    const s = spool.data;
+    if (params.get('action') !== 'quick' || !s || quickShown.current) return;
+    quickShown.current = true;
+    const pick = (target: Sheet) => () => setSheet(target);
+    void present({
+      header: `#${s.id} ${s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')}`,
+      buttons: [
+        ...(canEdit
+          ? [
+              { text: t('spools.action.weigh'), handler: pick('weigh') },
+              {
+                text: t('dry.markToday'),
+                handler: () =>
+                  void setExtras
+                    .mutateAsync({ ids: [s.id], patch: { dried_at: todayIso() } })
+                    .then(() => void toast({ message: t('dry.marked', { id: s.id }), duration: 2000, position: 'top' })),
+              },
+              { text: t('spools.action.toAms'), handler: pick('ams') },
+              { text: t('spools.action.move'), handler: pick('move') },
+            ]
+          : []),
+        { text: t('spools.action.label'), handler: pick('label') },
+        { text: t('quick.details'), role: 'cancel' },
+      ],
+      onDidDismiss: (e) => {
+        // „Details“/Wischen: Parameter weg; bei einem Blatt räumt dessen Schließen auf
+        if (e.detail.role === 'cancel' || e.detail.role === 'backdrop') setParams({}, { replace: true });
+      },
+    });
+  }, [spool.data, params, present, canEdit, setExtras, toast, setParams]);
   const assignment = assignments.data?.find((a) => a.spool_id === spoolId);
   const ams = assignment ? assignmentLabel(assignment) : null;
 
@@ -136,7 +184,15 @@ export function SpoolDetailPage() {
                   disabled={needsEdit && !canEdit}
                   title={needsEdit && !canEdit ? t('common.noPermission') : undefined}
                   onClick={() => setSheet(target)}
-                  style={{ margin: 0, minHeight: 56, '--padding-start': 'var(--bs-s1)', '--padding-end': 'var(--bs-s1)', '--border-radius': 'var(--bs-r-md)' } as CSSProperties}
+                  style={
+                    {
+                      margin: 0,
+                      minHeight: 56,
+                      '--padding-start': 'var(--bs-s1)',
+                      '--padding-end': 'var(--bs-s1)',
+                      '--border-radius': 'var(--bs-r-md)',
+                    } as CSSProperties
+                  }
                 >
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 'var(--bs-s1)' }}>
                     <IonIcon icon={icon} />
@@ -164,7 +220,13 @@ export function SpoolDetailPage() {
                     <span className="bs-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--bs-s2)' }}>
                       <span
                         aria-hidden
-                        style={{ width: 14, height: 14, borderRadius: 4, background: rgbaToCss(s.rgba), border: '1px solid var(--bs-border)' }}
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: 4,
+                          background: rgbaToCss(s.rgba),
+                          border: '1px solid var(--bs-border)',
+                        }}
                       />
                       #{s.rgba.slice(0, 6)}
                     </span>
@@ -196,7 +258,9 @@ export function SpoolDetailPage() {
                           fill="clear"
                           disabled={setExtras.isPending}
                           style={{ margin: 0, '--padding-start': 0 } as CSSProperties}
-                          onClick={() => void setExtras.mutate({ ids: [s.id], patch: { label_printed_at: s.label_printed_at ? null : todayIso() } })}
+                          onClick={() =>
+                            void setExtras.mutate({ ids: [s.id], patch: { label_printed_at: s.label_printed_at ? null : todayIso() } })
+                          }
                         >
                           {s.label_printed_at ? t('labels.markNone') : t('labels.markHas')}
                         </IonButton>

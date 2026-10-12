@@ -92,13 +92,19 @@ export class TextboxExt extends fabric.Textbox {
 
   /** Text setzen und verkleinern, bis Breite und Zeilenzahl passen (NiimBlue setAndShrinkText). */
   setAndShrinkText(text: string, maxWidth: number, maxLines?: number) {
-    const limit = maxLines ?? this._splitTextIntoLines(this.text).lines.length;
-    this.set({ text });
-    let lines = this._splitTextIntoLines(text).lines.length;
+    // Zeilen nach dem automatischen Umbruch der Textbox zählen – nicht nur echte Zeilenumbrüche,
+    // sonst bricht „Drybox 1“ in zwei Zeilen um, statt kleiner zu werden
+    const wrapped = () => {
+      this.initDimensions();
+      return this._textLines.length;
+    };
+    const limit = maxLines ?? wrapped();
+    this.set({ text, width: maxWidth });
+    let lines = wrapped();
     while ((lines > limit || this.width > maxWidth) && this.fontSize > 2) {
       this.fontSize -= 1;
       this.set({ text, width: maxWidth });
-      lines = this._splitTextIntoLines(text).lines.length;
+      lines = wrapped();
     }
   }
 }

@@ -9,7 +9,7 @@
 export type PrintDirection = 'left' | 'top';
 
 /** Wofür die Vorlage ist: Spulen-Etikett oder AMS-Slot-Etikett (andere Platzhalter). */
-export type TemplateKind = 'spool' | 'slot';
+export type TemplateKind = 'spool' | 'slot' | 'location';
 
 export interface LabelTemplate {
   /** Stabile ID (für gespeicherte Auswahl) */
@@ -70,7 +70,7 @@ export function parseTemplate(json: unknown, fallbackId = 'import'): LabelTempla
   return {
     id: o.id ?? fallbackId,
     title: o.title ?? 'Importiert',
-    kind: o.kind === 'slot' || o.kind === 'spool' ? o.kind : guessKind(o.canvas.objects),
+    kind: o.kind === 'slot' || o.kind === 'spool' || o.kind === 'location' ? o.kind : guessKind(o.canvas.objects),
     canvas: { version: o.canvas.version ?? '7.0.0', objects: o.canvas.objects },
     label: { printDirection: dir, size: { width: size.width, height: size.height } },
   };
@@ -83,9 +83,12 @@ export function templateData(tpl: LabelTemplate): Omit<LabelTemplate, 'builtin'>
   return copy as Omit<LabelTemplate, 'builtin'>;
 }
 
-/** Slot-Platzhalter ⇒ Slot-Etikett, sonst Spulen-Etikett (NiimBlue kennt `kind` nicht). */
+/** Art aus den Platzhaltern: Slot ({slot}/{ams}/{printer}), Lagerort ({location}), sonst Spule (NiimBlue kennt `kind` nicht). */
 export function guessKind(objects: Record<string, unknown>[]): TemplateKind {
-  return objects.some((o) => typeof o.text === 'string' && /{\s*(slot|ams|printer)\s*}/.test(o.text)) ? 'slot' : 'spool';
+  const uses = (rx: RegExp) => objects.some((o) => typeof o.text === 'string' && rx.test(o.text));
+  if (uses(/{\s*(slot|ams|printer)\s*}/)) return 'slot';
+  if (uses(/{\s*location\s*}/)) return 'location';
+  return 'spool';
 }
 
 /** Kennung für eine neu importierte Vorlage: aus dem Titel, eindeutig durch Zufallsanhang. */

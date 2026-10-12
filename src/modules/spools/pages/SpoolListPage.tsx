@@ -182,7 +182,9 @@ export function SpoolListPage() {
             }}
           >
             <span className="bs-num" style={{ flex: 1, whiteSpace: 'nowrap' }}>
-              {count === total ? t('spools.count', { n: total }) : t('spools.countOf', { n: count, total })}
+              {count === total
+                ? t(total === 1 ? 'spools.countOne' : 'spools.count', { n: total })
+                : t('spools.countOf', { n: count, total })}
             </span>
             {(unlabeled > 0 || unlabeledOnly) && (
               <IonButton
@@ -214,7 +216,12 @@ export function SpoolListPage() {
                 </IonSelectOption>
               ))}
             </IonSelect>
-            <IonButton size="small" fill="clear" onClick={toggleSort} aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}>
+            <IonButton
+              size="small"
+              fill="clear"
+              onClick={toggleSort}
+              aria-label={t('spools.sort.label', { by: t(`spools.sort.${sortBy}`) })}
+            >
               <IonIcon slot="start" icon={swapVerticalOutline} />
               {t(`spools.sort.${sortBy}`)}
             </IonButton>
@@ -229,7 +236,13 @@ export function SpoolListPage() {
         ) : (
           <div style={{ paddingBottom: 'var(--bs-s4)' }}>
             {newRfid > 0 && !selecting && (
-              <IonItem routerLink="/spools/slots" detail color="primary" lines="none" style={{ margin: 'var(--bs-s2) var(--bs-s3)', borderRadius: 'var(--bs-r-md)' }}>
+              <IonItem
+                routerLink="/spools/slots"
+                detail
+                color="primary"
+                lines="none"
+                style={{ margin: 'var(--bs-s2) var(--bs-s3)', borderRadius: 'var(--bs-r-md)' }}
+              >
                 <IonLabel>{t('rfid.banner', { n: newRfid })}</IonLabel>
               </IonItem>
             )}

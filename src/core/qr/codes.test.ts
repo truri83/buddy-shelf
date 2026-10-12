@@ -45,6 +45,19 @@ describe('parseScan', () => {
   });
 });
 
+describe('Lagerort-Etikett', async () => {
+  const { encodeLocationCode } = await import('./codes');
+  it('hin und zurück', () => {
+    expect(parseScan(encodeLocationCode(3))).toEqual({ kind: 'location', locationId: 3 });
+    expect(parseScan('BM:L:12')).toEqual({ kind: 'location', locationId: 12 });
+  });
+  it('kaputt = unbekannt', () => {
+    expect(parseScan('bm:l:0').kind).toBe('unknown');
+    expect(parseScan('bm:l:x').kind).toBe('unknown');
+    expect(() => encodeLocationCode(0)).toThrow();
+  });
+});
+
 describe('Packungs-Barcode', async () => {
   const { parseScan, isValidGtin } = await import('./codes');
   it('erkennt EAN-13/UPC-A mit gültiger Prüfziffer', () => {

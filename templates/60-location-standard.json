@@ -1,0 +1,83 @@
+{
+  "id": "location-standard",
+  "title": "Lagerort",
+  "kind": "location",
+  "label": {
+    "printDirection": "top",
+    "size": {
+      "width": 567,
+      "height": 354
+    }
+  },
+  "canvas": {
+    "version": "7.4.0",
+    "objects": [
+      {
+        "type": "QRCode",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 16,
+        "top": 42,
+        "width": 270,
+        "height": 270,
+        "text": "{code}",
+        "ecl": "M",
+        "mode": "Byte",
+        "qrVersion": 0
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 40,
+        "width": 243,
+        "text": "Lagerort",
+        "fontSize": 34,
+        "fontFamily": "Arial",
+        "fontWeight": "normal",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 96,
+        "width": 243,
+        "text": "{location}",
+        "fontSize": 80,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true,
+        "height": 220
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 312,
+        "top": 300,
+        "width": 243,
+        "text": "Scannen = einräumen",
+        "fontSize": 24,
+        "fontFamily": "Arial",
+        "fontWeight": "normal",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      }
+    ]
+  }
+}
