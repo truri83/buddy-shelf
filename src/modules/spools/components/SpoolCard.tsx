@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge } from '@/core/ui';
-import { dryingDue, materialLabel, todayIso, useDryingConfig } from '@/core/filament';
+import { dryingDue, materialLabel, stockLevel, todayIso, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
-import { isLow } from '../logic';
+import { fmtMoney, LEVEL_TEXT } from '../stock';
 import { agoText } from './DryingCard';
 
 interface Props {
@@ -29,8 +29,11 @@ interface Props {
 /** Spulenkarte nach Vorbild Spooly: Farbring, Name, Badges, Füllbalken in Filamentfarbe, ⋮-Menü. */
 export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecting, selected, onToggle, onOpen, active }: Props) {
   const fill = fillRatio(spool);
-  const low = isLow(spool);
-  const dry = dryingDue(spool, useDryingConfig());
+  const display = useDisplayConfig();
+  const level = stockLevel(spool, display);
+  const dryCfg = useDryingConfig();
+  const dry = display.showDrying ? dryingDue(spool, dryCfg) : null;
+  const price = display.showPrice && spool.cost_per_kg != null ? (spool.cost_per_kg * spool.label_weight) / 1000 : null;
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
   const [present] = useIonActionSheet();
@@ -127,13 +130,14 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
           {spool.category === 'Refill' && <Badge>{t('new.kind.refill')}</Badge>}
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
-          {low && <Badge tone="warn">{t('spools.low')}</Badge>}
+          {level !== 'ok' && <Badge tone={level === 'empty' ? 'critical' : 'warn'}>{t(`stock.${level}`)}</Badge>}
           {dry?.due ? (
             <Badge tone="warn">
               <IonIcon icon={sunnyOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
               {t('dry.badge')}
             </Badge>
           ) : (
+            display.showDrying &&
             spool.dried_at && (
               <span
                 title={t('dry.last')}
@@ -150,6 +154,11 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
               </span>
             )
           )}
+          {price != null && (
+            <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
+              {t('stock.price', { eur: fmtMoney(price) })}
+            </span>
+          )}
           {location && (
             <span
               style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}
@@ -161,11 +170,11 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-s3)' }}>
           <div style={{ flex: 1 }}>
-            <FillBar fill={fill} low={low} height={8} />
+            <FillBar fill={fill} level={level} signal={display.signalColors} height={8} />
           </div>
           <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', whiteSpace: 'nowrap' }}>
             <strong>{fmtNum(remainingGrams(spool))} g</strong>
-            <span style={{ color: low ? 'var(--bs-warn)' : 'var(--bs-text-2)' }}> · {Math.round(fill * 100)} %</span>
+            <span style={{ color: LEVEL_TEXT[level] }}> · {Math.round(fill * 100)} %</span>
           </span>
         </div>
       </div>

@@ -45,6 +45,7 @@ import { MoveSheet } from '../components/MoveSheet';
 import { FamilyFilter } from '../components/FamilyFilter';
 import { SpoolCard } from '../components/SpoolCard';
 import { SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
+import { useDisplayConfig } from '@/core/filament';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
 import { locationText } from '../locationPrefs';
 import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
@@ -67,6 +68,7 @@ export function SpoolListPage() {
   const spools = useSpools();
   const locations = useLocations();
   const locationPrefs = useLocationPrefs();
+  const display = useDisplayConfig();
   const assignments = useAssignments();
   const { slots } = useSlots();
   const newRfid = slots.filter((x) => isNewRfid(x, spools.data ?? [])).length;
@@ -94,7 +96,7 @@ export function SpoolListPage() {
   const dryCfg = useDryingConfig();
   const dueDry = (spools.data ?? []).filter((s) => dryingDue(s, dryCfg)?.due).length;
   const unlabeled = (spools.data ?? []).filter((s) => s.label_printed_at === null).length;
-  const lowCount = (spools.data ?? []).filter((s) => !s.archived_at && isLow(s)).length;
+  const lowCount = (spools.data ?? []).filter((s) => !s.archived_at && isLow(s, display)).length;
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
   // SP-12 Mehrfachauswahl
@@ -117,14 +119,14 @@ export function SpoolListPage() {
           matchesSearch(s, query) &&
           (!unlabeledOnly || s.label_printed_at === null) &&
           (!dryOnly || !!dryingDue(s, dryCfg)?.due) &&
-          (!lowOnly || isLow(s)) &&
+          (!lowOnly || isLow(s, display)) &&
           (!family || familyOf(s) === family) &&
           (variant == null || variantOf(s) === variant),
       ),
       sortBy,
     );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, lowOnly, dryCfg, family, variant]);
+  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, lowOnly, display, dryCfg, family, variant]);
 
   const toggleSort = () => {
     const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';

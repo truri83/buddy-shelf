@@ -29,11 +29,9 @@ import {
 } from 'ionicons/icons';
 import { Link } from 'react-router-dom';
 import { assignmentLabel, bambuddy, fillRatio, remainingGrams } from '@/core/api';
-import { dryingDue, useDryingConfig } from '@/core/filament';
+import { dryingDue, stockLevel, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { Badge, ColorRing, StatTile, StateView } from '@/core/ui';
-
-const LOW = 20;
 
 /** Schnellaktionen als Deep Links (Regel 2: Zusammenarbeit über Deep Links statt Imports). */
 // Scannen ist der Mittelknopf der Tab-Leiste – hier nicht doppelt
@@ -50,7 +48,10 @@ export function OverviewPage() {
   const assignments = useQuery({ queryKey: ['assignments'], queryFn: bambuddy.assignments.list });
 
   const active = (spools.data ?? []).filter((s) => !s.archived_at);
-  const low = active.filter((s) => fillRatio(s) * 100 < (s.low_stock_threshold_pct ?? LOW)).sort((a, b) => fillRatio(a) - fillRatio(b));
+  const display = useDisplayConfig();
+  const level = new Map(active.map((s) => [s.id, stockLevel(s, display)]));
+  const low = active.filter((s) => level.get(s.id) !== 'ok').sort((a, b) => fillRatio(a) - fillRatio(b));
+  const empty = low.filter((s) => level.get(s.id) === 'empty').length;
   const totalKg = active.reduce((g, s) => g + remainingGrams(s), 0) / 1000;
   // undefined = Zusatzdaten unbekannt (nicht „ohne Etikett“)
   const unlabeled = active.filter((s) => s.label_printed_at === null).length;
@@ -106,7 +107,7 @@ export function OverviewPage() {
                 value={low.length}
                 label={t('overview.low')}
                 icon={low.length ? alertCircleOutline : checkmarkCircleOutline}
-                tone={low.length ? 'warn' : 'good'}
+                tone={empty ? 'critical' : low.length ? 'warn' : 'good'}
                 to={low.length ? '/spools?filter=low' : undefined}
               />
             </div>
@@ -200,7 +201,7 @@ export function OverviewPage() {
                     </p>
                   </IonLabel>
                   <div slot="end">
-                    <Badge tone="warn">{fmtNum(remainingGrams(s))} g</Badge>
+                    <Badge tone={level.get(s.id) === 'empty' ? 'critical' : 'warn'}>{fmtNum(remainingGrams(s))} g</Badge>
                   </div>
                 </IonItem>
               ))}

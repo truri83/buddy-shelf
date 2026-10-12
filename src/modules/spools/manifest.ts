@@ -1,8 +1,18 @@
-import { addCircleOutline, albumsOutline, discOutline, gridOutline, locationOutline, scaleOutline, sunnyOutline } from 'ionicons/icons';
+import {
+  addCircleOutline,
+  albumsOutline,
+  discOutline,
+  gridOutline,
+  locationOutline,
+  optionsOutline,
+  scaleOutline,
+  sunnyOutline,
+} from 'ionicons/icons';
 import type { ModuleManifest } from '@/core/modules';
 import { SpoolDetailPage } from './pages/SpoolDetailPage';
 import { WeighSessionPage } from './pages/WeighSessionPage';
 import { CoreWeightsPage } from './pages/CoreWeightsPage';
+import { DisplaySettingsPage } from './pages/DisplaySettingsPage';
 import { DryingSettingsPage } from './pages/DryingSettingsPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { StowPage } from './pages/StowPage';
@@ -25,6 +35,7 @@ export const spoolsModule: ModuleManifest = {
     { path: '/more/cores', component: CoreWeightsPage },
     { path: '/more/locations', component: LocationsPage },
     { path: '/more/drying', component: DryingSettingsPage },
+    { path: '/more/display', component: DisplaySettingsPage },
     { path: '/spools/stow/:id', component: StowPage },
     { path: '/more/slots/:printer/:ams/:tray', component: SlotPage },
     { path: '/spools/:id', component: SpoolDetailPage },
@@ -37,6 +48,7 @@ export const spoolsModule: ModuleManifest = {
     { id: 'spools.slots', label: 'spools.action.slots', icon: gridOutline, href: '/more/slots', group: 'setup' },
     { id: 'spools.cores', label: 'cores.action', icon: discOutline, href: '/more/cores', group: 'setup' },
     { id: 'spools.drying', label: 'drySet.title', icon: sunnyOutline, href: '/more/drying', group: 'setup' },
+    { id: 'spools.display', label: 'display.title', icon: optionsOutline, href: '/more/display', group: 'setup' },
   ],
   // SP-17: Spule → Schnellmenü, Lagerort → Einräumen; SP-08: Slot-Etikett öffnet den Doppelscan
   scan: (r) =>

@@ -1,12 +1,13 @@
 import { IonButton, IonIcon, useIonToast } from '@ionic/react';
-import { gridOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
+import { cartOutline, gridOutline, locationOutline, pricetagOutline, scaleOutline } from 'ionicons/icons';
 import type { CSSProperties, ReactNode } from 'react';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed, type Spool } from '@/core/api';
-import { materialLabel, todayIso } from '@/core/filament';
+import { materialLabel, stockLevel, todayIso, useDisplayConfig } from '@/core/filament';
 import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss } from '@/core/ui';
 import { useAssignments, useLocations, useSetExtras } from '../hooks/useSpools';
-import { isLow, locationName } from '../logic';
+import { locationName } from '../logic';
+import { fmtMoney, LEVEL_TEXT } from '../stock';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
 import { locationText } from '../locationPrefs';
 import { AmsSheet } from './AmsSheet';
@@ -51,6 +52,7 @@ export function SpoolDetailView({
   onSheet: (s: DetailSheet | null) => void;
 }) {
   const locations = useLocations();
+  const display = useDisplayConfig();
   const locationPrefs = useLocationPrefs();
   const assignments = useAssignments();
   const canEdit = useAllowed('inventory:update');
@@ -65,6 +67,7 @@ export function SpoolDetailView({
     });
   const assignment = assignments.data?.find((a) => a.spool_id === s.id);
   const ams = assignment ? assignmentLabel(assignment) : null;
+  const level = stockLevel(s, display);
   // ohne Farbnamen: „ASA Basic“ statt nur „Basic“
   const name = s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ');
   const close = () => onSheet(null);
@@ -83,7 +86,7 @@ export function SpoolDetailView({
                   <MaterialBadge material={materialLabel(s)} />
                   {s.category === 'Refill' && <Badge>{t('new.kind.refill')}</Badge>}
                   {ams && <Badge tone="good">{ams}</Badge>}
-                  {isLow(s) && <Badge tone="warn">{t('spools.low')}</Badge>}
+                  {level !== 'ok' && <Badge tone={level === 'empty' ? 'critical' : 'warn'}>{t(`stock.${level}`)}</Badge>}
                 </div>
               </div>
             </div>
@@ -94,11 +97,25 @@ export function SpoolDetailView({
               <span className="bs-num" style={{ flex: 1, color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>
                 {t('spools.detail.ofLabel', { g: fmtNum(s.label_weight) })}
               </span>
-              <span className="bs-num" style={{ fontWeight: 600, color: isLow(s) ? 'var(--bs-warn)' : 'var(--bs-text-2)' }}>
+              <span className="bs-num" style={{ fontWeight: 600, color: LEVEL_TEXT[level] }}>
                 {Math.round(fillRatio(s) * 100)} %
               </span>
             </div>
-            <FillBar fill={fillRatio(s)} low={isLow(s)} height={10} />
+            <FillBar fill={fillRatio(s)} level={level} signal={display.signalColors} height={10} />
+            {level === 'empty' && (
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--bs-s1)',
+                  color: 'var(--bs-critical)',
+                  fontSize: 'var(--bs-fs-caption)',
+                }}
+              >
+                <IonIcon icon={cartOutline} aria-hidden />
+                {t('stock.reorder')}
+              </span>
+            )}
           </section>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--bs-s2)', padding: '0 var(--bs-s3)' }}>
@@ -186,9 +203,7 @@ export function SpoolDetailView({
             </Field>
             {s.cost_per_kg != null && (
               <Field label={t('spools.detail.price')}>
-                <span className="bs-num">
-                  {t('spools.detail.priceValue', { eur: fmtNum(Math.round(s.cost_per_kg * s.label_weight) / 1000) })}
-                </span>
+                <span className="bs-num">{t('spools.detail.priceValue', { eur: fmtMoney((s.cost_per_kg * s.label_weight) / 1000) })}</span>
               </Field>
             )}
             {s.label_printed_at !== undefined && (

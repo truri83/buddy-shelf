@@ -36,7 +36,7 @@ import { parseScan } from '@/core/qr/codes';
 import { ChoiceChip, ColorRing, FillBar, GramInput, PickerSheet, rgbaToCss, ScannerView, StateView, type PickerItem } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { coreDisplayName } from '../cores';
-import { todayIso } from '@/core/filament';
+import { todayIso, useDisplayConfig } from '@/core/filament';
 import { STORAGE_ICONS } from '../storage';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
 import { defaultLocationId, locationText } from '../locationPrefs';
@@ -143,8 +143,9 @@ function SpoolForm({
   editing: boolean;
   gtin?: { code: string; hits: GtinHit[]; failed: boolean };
 }) {
+  const display = useDisplayConfig();
   const [draft, setDraft] = useState<SpoolDraft>(() => {
-    const base = source ? draftFromSpool(source) : emptyDraft();
+    const base = source ? draftFromSpool(source) : { ...emptyDraft(), labelWeight: display.defaultWeight };
     return gtin ? applyGtin(base, gtin.hits) : base;
   });
   const [scanOpen, setScanOpen] = useState(false);

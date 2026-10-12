@@ -16,6 +16,7 @@ import { useRef, useState } from 'react';
 import { weightUsedFromScale, type Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
 import { haptic } from '@/core/platform';
+import { stockLevel, useDisplayConfig } from '@/core/filament';
 import { FillBar } from '@/core/ui';
 import { netToGross } from '../cores';
 import { useWeighSpool } from '../hooks/useSpools';
@@ -36,6 +37,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useWeighMode();
   const weigh = useWeighSpool();
+  const display = useDisplayConfig();
   const [toast] = useIonToast();
 
   const entered = parseGrams(value);
@@ -102,7 +104,11 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
               <div className="bs-num" style={{ fontSize: 'var(--bs-fs-title)', fontWeight: 700 }}>
                 {t('weigh.result', { g: rest })}
               </div>
-              <FillBar fill={spool.label_weight > 0 ? rest / spool.label_weight : 0} low={false} />
+              <FillBar
+                fill={spool.label_weight > 0 ? rest / spool.label_weight : 0}
+                level={stockLevel({ ...spool, weight_used: spool.label_weight - rest }, display)}
+                signal={display.signalColors}
+              />
             </>
           )}
           {tooLight && <IonNote color="warning">{t('weigh.tooLight', { g: spool.core_weight })}</IonNote>}

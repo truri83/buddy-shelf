@@ -243,6 +243,17 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | Rechte | INVENTORY_UPDATE |
 | Akzeptanz | Drybox 1 → 🔥 + Standard → Liste zeigt „🔥 Drybox 1 ★ Standard“, neue Spule hat Drybox 1 vorausgewählt; Ort mit Spulen lässt sich nicht löschen |
 
+## SP-19 Spulen-Anzeige
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt |
+| Ziel | Selbst festlegen, ab wann eine Spule niedrig oder fast leer ist, und was Karten zeigen (angelehnt an Spooly). |
+| Ablauf | Mehr → Spulen-Anzeige: Vorschau der drei Stufen; Warnschwellen „Niedrig unter“ (Standard 25 %) und „Fast leer ab“ (8 %); je Materialfamilie eigene Werte (PLA gilt auch für PLA+, PLA Matte …); Schalter Signalfarben, Preis zeigen, Trocknung zeigen; Standard-Spulengröße für neue Spulen. Fast leer = rotes Abzeichen und im Detail „Zeit zum Nachkaufen“. |
+| Daten | `/prefs/display` (`lowPct`, `emptyPct`, `materials`, `signalColors`, `defaultWeight`, `showPrice`, `showDrying`), Logik `core/filament/display.ts` (`stockLevel`) – Übersicht und Spulen nutzen dieselbe. Reihenfolge: Schwelle an der Spule (Bambuddy) → Familie → global. |
+| Rechte | INVENTORY_UPDATE zum Ändern |
+| Akzeptanz | PLA auf 40/15 % → PLA-Spule mit 13 % zeigt „Fast leer“ rot, PETG mit 30 % bleibt grün; Signalfarben aus → alle Balken in Akzentfarbe |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |
@@ -254,6 +265,5 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 
 | Paket | Inhalt |
 | --- | --- |
-| Spulen-Anzeige | Warnschwellen „Niedrig“ (Standard 25 %) und „Fast leer“ (8 %, rot + Nachkauf-Hinweis), je Material überschreibbar; Signalfarben an/aus; Standard-Spulengröße; Preis/Feuchtigkeit in Listen anzeigen (`/prefs/display`) |
 | Rest aus dem UX-Review | einheitliche Fehler-/Rechte-Zustände (ein Baustein), `useNotify` statt kopierter Toasts, Scan-Knopf mittig bei gerader Tab-Zahl, ungenutzte Texte entfernen |
 | Später | Multi-Color/Verlauf (Spoolman `multi_color_hexes`), Nachkaufen-Links, „reicht noch x Tage“, Druckdienst fürs iPhone, native iOS-App (Push für Trocknungs-Erinnerung) |

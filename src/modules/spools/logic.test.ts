@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Spool } from '@/core/api';
+import { DEFAULT_DISPLAY } from '@/core/filament';
 import { groupSpools, isLow, matchesSearch, orderLocations, sortSpools } from './logic';
 
 const base: Spool = {
@@ -42,10 +43,10 @@ describe('Spulen-Logik', () => {
     expect(sortSpools([a, b, c], 'remaining').map((s) => s.id)).toEqual([1, 2, 3]);
   });
 
-  it('niedrig unter 20 %', () => {
-    expect(isLow({ ...base, weight_used: 875 })).toBe(true);
-    expect(isLow({ ...base, weight_used: 500 })).toBe(false);
-    expect(isLow({ ...base, weight_used: 500, low_stock_threshold_pct: 60 })).toBe(true);
+  it('niedrig nach Warnschwelle (Standard 25 %)', () => {
+    expect(isLow({ ...base, weight_used: 875 }, DEFAULT_DISPLAY)).toBe(true);
+    expect(isLow({ ...base, weight_used: 500 }, DEFAULT_DISPLAY)).toBe(false);
+    expect(isLow({ ...base, weight_used: 500, low_stock_threshold_pct: 60 }, DEFAULT_DISPLAY)).toBe(true);
   });
 
   it('gruppiert nach Material, ohne archivierte', () => {

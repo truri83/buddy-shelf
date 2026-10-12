@@ -1,11 +1,10 @@
-import { fillRatio, slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
-import { cleanSubtype, materialFamily, materialVariant } from '@/core/filament';
+import { slotLabel, type Location, type Spool, type SpoolAssignment } from '@/core/api';
+import { cleanSubtype, materialFamily, materialVariant, stockLevel, type DisplayConfig } from '@/core/filament';
 import { colorFamily, colorSearchText, foldGerman, t } from '@/core/i18n';
 
-export const DEFAULT_LOW_PCT = 20;
-
-export function isLow(s: Spool): boolean {
-  return fillRatio(s) * 100 < (s.low_stock_threshold_pct ?? DEFAULT_LOW_PCT);
+/** Niedrig oder fast leer nach den Warnschwellen (Mehr → Spulen-Anzeige). */
+export function isLow(s: Spool, cfg: DisplayConfig): boolean {
+  return stockLevel(s, cfg) !== 'ok';
 }
 
 export type GroupBy = 'none' | 'material' | 'color' | 'location' | 'brand';

@@ -1,4 +1,4 @@
-/** Fachwissen über Filament, das mehrere Module brauchen (Materialfamilie, Trocknung). */
+/** Fachwissen über Filament, das mehrere Module brauchen (Materialfamilie, Trocknung, Füllstand-Schwellen). */
 export {
   DEFAULT_DRYING,
   daysSince,
@@ -12,5 +12,16 @@ export {
   type DryingRow,
   type StorageKind,
 } from './drying';
+export {
+  DEFAULT_DISPLAY,
+  mergeDisplay,
+  stockLevel,
+  thresholdsFor,
+  thresholdsValid,
+  type DisplayConfig,
+  type StockLevel,
+  type StockThresholds,
+} from './display';
+export { useDisplayConfig, useSaveDisplayConfig } from './useDisplayConfig';
 export { cleanSubtype, FAMILIES, materialFamily, materialLabel, materialVariant, type MaterialFamily } from './material';
 export { useDryingConfig, useSaveDryingConfig } from './useDryingConfig';
