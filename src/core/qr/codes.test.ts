@@ -78,3 +78,21 @@ describe('Barcode von Hand', async () => {
     expect(parseScan('6975337-031390')).toEqual({ kind: 'gtin', code: '6975337031390' });
   });
 });
+
+describe('Etiketten als Adresse (Handy-Kamera öffnet die Seite direkt)', async () => {
+  const { labelCode, parseScan: parse } = await import('./codes');
+  const base = 'https://tower.example.ts.net:8444';
+  it('wandelt die kurzen Codes in Adressen', () => {
+    expect(labelCode('bm:s:3', base)).toBe(`${base}/s/3`);
+    expect(labelCode('bm:l:2', base)).toBe(`${base}/l/2`);
+    expect(labelCode('bm:t:1:255:0', base)).toBe(`${base}/t/1/255/0`);
+    expect(labelCode('bm:s:3', undefined)).toBe('bm:s:3');
+  });
+  it('App-Scanner versteht die Adressen (jede Adresse der App, auch LAN)', () => {
+    expect(parse(`${base}/s/3`)).toEqual({ kind: 'spool', spoolId: 3, source: 'buddy-shelf' });
+    expect(parse('http://192.168.178.50:8096/l/2')).toEqual({ kind: 'location', locationId: 2 });
+    expect(parse(`${base}/t/1/255/0`)).toEqual({ kind: 'slot', printerId: 1, amsId: 255, trayId: 0 });
+    expect(parse(`${base}/s/abc`).kind).toBe('unknown');
+    expect(parse('https://example.com/spools/3').kind).toBe('unknown');
+  });
+});

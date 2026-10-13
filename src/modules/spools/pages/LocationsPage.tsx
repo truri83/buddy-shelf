@@ -22,14 +22,14 @@ import { ApiError, useAllowed, type Location } from '@/core/api';
 import { t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
 import { LabelPrintSheet, useLabelTemplates, type LabelVariables } from '@/core/printing';
-import { encodeLocationCode } from '@/core/qr/codes';
+import { encodeLocationCode, labelCode } from '@/core/qr/codes';
 import { ChoiceChip, EditSheet, MetaChip, StateView, TextRow, useNotify } from '@/core/ui';
 import { LocationSymbol } from '../components/LocationSymbol';
 import { useLocationPrefsQuery, useSaveLocationPrefs } from '../hooks/useLocationPrefs';
 import { useCreateLocation, useDeleteLocation, useLocations, useRenameLocation } from '../hooks/useSpools';
 import { EMPTY_LOCATION_PREFS, LOCATION_EMOJIS, symbolOf, withLocation, withoutLocation } from '../locationPrefs';
 
-const vars = (l: Location): LabelVariables => ({ code: encodeLocationCode(l.id), location: l.name });
+const vars = (l: Location): LabelVariables => ({ code: labelCode(encodeLocationCode(l.id)), location: l.name });
 
 interface Edit {
   /** fehlt = neuer Lagerort */

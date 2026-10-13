@@ -1,6 +1,6 @@
 import { slotLabel, type Printer, type PrinterStatus, type Spool, type SpoolAssignment } from '@/core/api';
 import { cleanSubtype, materialFamily, materialVariant } from '@/core/filament';
-import { EXTERNAL_AMS_ID, encodeSlotCode } from '@/core/qr/codes';
+import { EXTERNAL_AMS_ID, encodeSlotCode, labelCode } from '@/core/qr/codes';
 
 /** Ein Platz für eine Spule: AMS-Slot oder externe Halterung (Bambuddy-Adressierung). */
 export interface Slot {
@@ -119,7 +119,7 @@ export function linkCandidates<S extends Pick<Spool, 'id' | 'material' | 'subtyp
 
 /** Platzhalter für Slot-Etiketten (Vorlagen der Art „slot“). */
 export function slotLabelVariables(s: Slot) {
-  return { code: encodeSlotCode(s.printerId, s.amsId, s.trayId), printer: s.printerName, ams: s.label.split(' · ')[0]!, slot: s.amsId === EXTERNAL_AMS_ID ? (s.trayId === 0 ? 'L' : 'R') : String(s.trayId + 1) };
+  return { code: labelCode(encodeSlotCode(s.printerId, s.amsId, s.trayId)), printer: s.printerName, ams: s.label.split(' · ')[0]!, slot: s.amsId === EXTERNAL_AMS_ID ? (s.trayId === 0 ? 'L' : 'R') : String(s.trayId + 1) };
 }
 
 /** Kurzbeschreibung einer Spule für Rückfragen. */

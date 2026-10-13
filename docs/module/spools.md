@@ -255,6 +255,16 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | Rechte | INVENTORY_UPDATE zum Ändern |
 | Akzeptanz | PLA auf 40/15 % → PLA-Spule mit 13 % zeigt „Fast leer“ rot, PETG mit 30 % bleibt grün; Signalfarben aus → alle Balken in Akzentfarbe |
 
+## SP-20 Etiketten mit der normalen Handy-Kamera
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt (13.10.) |
+| Ziel | QR-Code mit der iPhone-Kamera scannen (ohne App-Scanner) → direkt die passende Seite mit Aktionen. |
+| Ablauf | QR enthält die App-Adresse: `<app>/s/<id>` → Schnellmenü der Spule (Wiegen, Ins AMS/Spule wechseln, Verschieben, Getrocknet, Etikett, Details); `<app>/l/<id>` → „Einräumen“; `<app>/t/<drucker>/<ams>/<slot>` → Slot-Seite (Spulenwechsel). Der App-Scanner versteht Adressen und alte `bm:`-Codes. |
+| Daten | `labelCode()` in `core/qr/codes.ts` (Basis = Adresse, unter der gedruckt wird); Vorlagen nutzen `{code}`; Routen `/s`, `/l`, `/t` → `CodeRedirect` (wie der Scan-Verteiler). |
+| Hinweis | Die Kamera öffnet Safari (iOS leitet Links nicht in Homescreen-Apps). Unterwegs braucht das Handy Tailscale. Etiketten über die https-Adresse drucken – eine Heimnetz-Adresse funktioniert nur zu Hause. Alte Etiketten (`bm:…`) gehen weiter mit dem App-Scanner, für die Handy-Kamera neu drucken. |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |

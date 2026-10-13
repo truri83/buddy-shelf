@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ellipsisHorizontal, scanOutline } from 'ionicons/icons';
 import { Navigate, Route } from 'react-router-dom';
 import { t } from '@/core/i18n';
+import { CodeRedirect } from './CodeRedirect';
 import { ScanPage } from './pages/ScanPage';
 import { EmbeddedToast } from './EmbeddedToast';
 import { UpdateToast } from './UpdateToast';
@@ -39,6 +40,10 @@ export function App() {
             <IonRouterOutlet>
               {modules.flatMap((m) => m.routes.map((r) => <Route key={r.path} path={r.path} element={<r.component />} />))}
               <Route path="/scan" element={<ScanPage />} />
+              {/* Etiketten-Adressen für die Handy-Kamera */}
+              <Route path="/s/:id" element={<CodeRedirect />} />
+              <Route path="/l/:id" element={<CodeRedirect />} />
+              <Route path="/t/:printer/:ams/:tray" element={<CodeRedirect />} />
               <Route path="/more" element={<SettingsPage />} />
               <Route path="/more/templates" element={<TemplatesPage />} />
               <Route path="/" element={<Navigate to={first?.tab?.href ?? '/more'} replace />} />

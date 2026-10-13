@@ -5,6 +5,8 @@
  *  bm:s:<id>                         eigenes Spulen-Etikett (stabil, ohne Serveradresse), Version 1
  *  bm:t:<druckerId>:<amsId>:<slot>   Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule)
  *  bm:l:<id>                         Lagerort-Etikett (Bambuddy-Lagerort-ID) – startet „Einräumen“
+ *  <App-Adresse>/s/<id> · /l/<id> · /t/<drucker>/<ams>/<slot>
+ *                                    dasselbe als Adresse: die normale Handy-Kamera öffnet die Seite direkt
  *  <beliebig>/inventory?spool=<id>   Etikett aus Bambuddy selbst
  *  bambuddy://config?v=1&url=…&key=… Einrichtungs-QR aus Bambuddy (API-Schlüssel)
  *  8/12/13/14 Ziffern mit Prüfziffer   Packungs-Barcode (EAN-8/13, UPC-A, GTIN-14)
@@ -52,6 +54,19 @@ export function encodeLocationCode(locationId: number): string {
   return `${LOCATION_CODE_PREFIX}${locationId}`;
 }
 
+/**
+ * Etiketten-Inhalt als Adresse der App (bm:s:3 → <app>/s/3): Die normale Handy-Kamera öffnet dann direkt das
+ * Schnellmenü bzw. „Einräumen“/Slot – ohne App-Scanner. Ohne Browser (Tests, Server) bleibt der kurze Code.
+ */
+export function labelCode(code: string, base: string | undefined = globalThis.location?.origin): string {
+  if (!base) return code;
+  const root = base.replace(/\/+$/, '');
+  if (code.startsWith(SPOOL_CODE_PREFIX)) return `${root}/s/${code.slice(SPOOL_CODE_PREFIX.length)}`;
+  if (code.startsWith(LOCATION_CODE_PREFIX)) return `${root}/l/${code.slice(LOCATION_CODE_PREFIX.length)}`;
+  if (code.startsWith(SLOT_CODE_PREFIX)) return `${root}/t/${code.slice(SLOT_CODE_PREFIX.length).replaceAll(':', '/')}`;
+  return code;
+}
+
 function positiveInt(v: string | null | undefined): number | null {
   if (!v || !/^\d+$/.test(v)) return null;
   const n = Number(v);
@@ -96,6 +111,12 @@ export function parseScan(raw: string): ScanResult {
 
   try {
     const u = new URL(text);
+    // eigene Etiketten als Adresse (jede Adresse der App – Tailscale oder Heimnetz)
+    const own = /^\/(s|l|t)\/([^?#]+?)\/?$/.exec(u.pathname);
+    if (own) {
+      const short = own[1] === 's' ? SPOOL_CODE_PREFIX : own[1] === 'l' ? LOCATION_CODE_PREFIX : SLOT_CODE_PREFIX;
+      return parseScan(short + own[2]!.replaceAll('/', ':'));
+    }
     if (/\/inventory\/?$/.test(u.pathname)) {
       const id = positiveInt(u.searchParams.get('spool'));
       if (id) return { kind: 'spool', spoolId: id, source: 'bambuddy-label' };
