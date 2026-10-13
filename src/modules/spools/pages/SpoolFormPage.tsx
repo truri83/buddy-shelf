@@ -25,7 +25,15 @@ import {
   IonToggle,
   IonToolbar,
 } from '@ionic/react';
-import { barcodeOutline, cartOutline, checkmark, colorPaletteOutline, documentTextOutline, sunnyOutline } from 'ionicons/icons';
+import {
+  barcodeOutline,
+  cartOutline,
+  checkmark,
+  colorPaletteOutline,
+  documentTextOutline,
+  scaleOutline,
+  sunnyOutline,
+} from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAllowed, type FilamentEntry, type GtinHit, type Spool } from '@/core/api';
@@ -35,17 +43,20 @@ import { parseScan } from '@/core/qr/codes';
 import {
   ChoiceChip,
   ColorRing,
+  FieldRow,
   FillBar,
   GramInput,
+  NumberInput,
   PermissionNote,
+  type PickerItem,
   PickerSheet,
   rgbaToCss,
   ScannerView,
   StateView,
   useNotify,
-  type PickerItem,
 } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
+import { useWeighMode, WeighModeSwitch } from '../components/CoreRow';
 import { coreDisplayName } from '../cores';
 import { todayIso, useDisplayConfig } from '@/core/filament';
 import { STORAGE_ICONS } from '../storage';
@@ -199,6 +210,13 @@ function SpoolForm({
     setHexText(rgbaToHex(rgba).replace('#', ''));
   };
   const hexValid = hexText.trim() === '' || parseHex(hexText) !== null;
+  // Angefangene Spule: Wert von der Waage (mit Spule, Standard) oder Rest netto. Die Leerspule wird erst hier
+  // abgezogen – so stimmt es auch, wenn die Leerspule danach noch geändert wird.
+  const [startedInput, setStartedInput] = useState<number | null>(null);
+  const [weighMode, setWeighMode] = useWeighMode();
+  const started = draft.remaining != null;
+  const net = !started || startedInput == null ? null : Math.round(weighMode === 'gross' ? startedInput - draft.coreWeight : startedInput);
+  const effective: SpoolDraft = started ? { ...draft, remaining: net ?? 0 } : draft;
   // Grund, warum Speichern nicht geht – steht neben dem Knopf statt still gesperrt
   const missing = !draft.material.trim()
     ? t('new.missingMaterial')
@@ -206,14 +224,18 @@ function SpoolForm({
       ? t('new.missingWeight')
       : !hexValid
         ? t('new.hexInvalid')
-        : draft.remaining != null && !(draft.remaining >= 0 && draft.remaining <= draft.labelWeight)
-          ? t('new.remainingInvalid')
-          : null;
+        : started && startedInput == null
+          ? t('new.missingRest')
+          : net != null && net < 0
+            ? t('new.belowCore', { g: draft.coreWeight })
+            : net != null && net > draft.labelWeight
+              ? t('new.remainingInvalid')
+              : null;
   const valid = !missing && draft.quantity >= 1 && canEdit;
 
   // Live-Vorschau oben (Vorbild Spooly)
   const title = draft.colorName.trim() || [draft.material, draft.subtype].filter((x) => x.trim()).join(' ') || t('new.preview');
-  const rest = draft.remaining ?? draft.labelWeight;
+  const rest = started ? (net ?? draft.labelWeight) : draft.labelWeight;
   const fill = draft.labelWeight > 0 ? Math.max(0, Math.min(1, rest / draft.labelWeight)) : 0;
 
   const setKind = (kind: SpoolKind) =>
@@ -251,7 +273,7 @@ function SpoolForm({
         return;
       }
       const { spools: list, incomplete } = await create.mutateAsync({
-        spool: draftToCreate({ ...draft, locationId }),
+        spool: draftToCreate({ ...effective, locationId }),
         quantity: draft.quantity,
       });
       // Ab hier existieren die Spulen: Fehler danach nur melden, nie als „Speichern fehlgeschlagen“ (sonst Dubletten)
@@ -543,22 +565,38 @@ function SpoolForm({
               <IonListHeader>{t('new.fill')}</IonListHeader>
               <div style={{ padding: 'var(--bs-s2) var(--bs-s3)' }}>
                 <IonSegment
-                  value={draft.remaining == null ? 'full' : 'started'}
-                  onIonChange={(e) => set('remaining', e.detail.value === 'full' ? null : Math.round(draft.labelWeight / 2))}
+                  value={started ? 'started' : 'full'}
+                  onIonChange={(e) => set('remaining', e.detail.value === 'full' ? null : 0)}
                 >
                   <IonSegmentButton value="full">{t('new.full')}</IonSegmentButton>
                   <IonSegmentButton value="started">{t('new.started')}</IonSegmentButton>
                 </IonSegment>
               </div>
-              {draft.remaining != null && (
-                <IonItem>
-                  <GramInput
-                    label={t('new.remaining')}
-                    value={draft.remaining}
-                    max={draft.labelWeight}
-                    onChange={(n) => set('remaining', Math.round(n))}
-                  />
-                </IonItem>
+              {started && (
+                <>
+                  <div style={{ padding: '0 var(--bs-s3) var(--bs-s2)' }}>
+                    <WeighModeSwitch mode={weighMode} onChange={setWeighMode} />
+                  </div>
+                  <FieldRow icon={scaleOutline} label={weighMode === 'gross' ? t('new.scaleGross') : t('new.remaining')}>
+                    <NumberInput
+                      label={weighMode === 'gross' ? t('new.scaleGross') : t('new.remaining')}
+                      unit="g"
+                      width="5.5ch"
+                      value={startedInput}
+                      invalid={net != null && (net < 0 || net > draft.labelWeight)}
+                      onChange={setStartedInput}
+                    />
+                  </FieldRow>
+                  {weighMode === 'gross' && startedInput != null && (
+                    <IonNote className="bs-section-note">
+                      {t('new.netCalc', {
+                        gross: fmtNum(startedInput),
+                        core: fmtNum(draft.coreWeight),
+                        net: fmtNum(Math.max(0, net ?? 0)),
+                      })}
+                    </IonNote>
+                  )}
+                </>
               )}
             </>
           )}
