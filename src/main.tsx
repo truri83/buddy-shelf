@@ -27,7 +27,22 @@ function markIosStandalone() {
   }
 }
 
+/**
+ * iOS scrollt beim Tippen in ein Feld das ganze Fenster; bleibt das nach dem Schließen der Tastatur oder nach
+ * einem App-Wechsel stehen, ist die App verschoben (Tab-Leiste mitten im Bild). Die App selbst scrollt nur in
+ * ion-content – das Fenster gehört immer auf 0.
+ */
+function keepWindowInPlace() {
+  const reset = () => {
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+  };
+  document.addEventListener('focusout', () => setTimeout(reset, 100));
+  document.addEventListener('visibilitychange', () => !document.hidden && reset());
+  window.visualViewport?.addEventListener('resize', () => setTimeout(reset, 100));
+}
+
 async function start() {
+  keepWindowInPlace();
   markIosStandalone();
   unlockAudio();
   configureApi(storage.get<Partial<ApiConfig>>('api', {}));
