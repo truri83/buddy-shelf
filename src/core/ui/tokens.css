@@ -178,17 +178,6 @@ ion-accordion-group.accordion-group-expand-inset > ion-accordion {
   --ion-safe-area-top: calc(env(safe-area-inset-top, 0px) + 34px);
 }
 
-/* Homescreen-App: Nach Tastatur, Kamera-Abfrage oder App-Wechsel meldet iOS teils eine zu kleine Fensterhöhe.
-   Ionic bindet die App an 100vh/100 % → Tab-Leiste rutscht hoch, Inhalt läuft darunter (iPhone, 13.10.).
-   dvh ist die tatsächlich sichtbare Höhe. */
-@supports (height: 100dvh) {
-  html.plt-pwa,
-  html.plt-pwa body {
-    height: 100dvh;
-    max-height: 100dvh;
-  }
-}
-
 /* Spulenkarten: Fläche, leichtes Nachgeben beim Antippen */
 ion-card {
   --background: var(--bs-surface);
