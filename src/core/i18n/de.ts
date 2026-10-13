@@ -74,6 +74,8 @@ export const de = {
   'common.undo': 'Rückgängig',
   'common.yes': 'ja',
   'common.later': 'Später',
+  'app.embedded': 'In Bambuddy eingebettet: Kamera-Scan und Etikettendruck per USB/Bluetooth gehen nur im eigenen Tab.',
+  'app.openStandalone': 'Im eigenen Tab öffnen',
   'app.updateAvailable': 'Neue Version verfügbar',
   'app.update': 'Aktualisieren',
   'common.no': 'nein',

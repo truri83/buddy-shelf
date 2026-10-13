@@ -5,6 +5,7 @@ import { ellipsisHorizontal, scanOutline } from 'ionicons/icons';
 import { Navigate, Route } from 'react-router-dom';
 import { t } from '@/core/i18n';
 import { ScanPage } from './pages/ScanPage';
+import { EmbeddedToast } from './EmbeddedToast';
 import { UpdateToast } from './UpdateToast';
 import { SettingsPage } from './pages/SettingsPage';
 import { TemplatesPage } from './pages/TemplatesPage';
@@ -68,6 +69,7 @@ export function App() {
           </IonTabs>
         </IonReactRouter>
         <UpdateToast />
+        <EmbeddedToast />
       </IonApp>
     </QueryClientProvider>
   );

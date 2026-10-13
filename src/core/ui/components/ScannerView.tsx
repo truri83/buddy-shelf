@@ -1,7 +1,7 @@
 import { IonButton } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { t } from '@/core/i18n';
-import { can, QR_ONLY, scanFeedback, ScannerError, startScanner, type ScanFormat, type ScanHit, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
+import { can, isEmbedded, openStandalone, QR_ONLY, scanFeedback, ScannerError, startScanner, type ScanFormat, type ScanHit, type ScannerErrorKind, type ScannerHandle } from '@/core/platform';
 
 type CamState = { kind: 'off' } | { kind: 'starting' } | { kind: 'running'; torch: boolean } | { kind: 'error'; error: ScannerErrorKind };
 
@@ -131,9 +131,13 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY, accept }:
     setTorchOn(!torchOn);
   }, [torchOn]);
 
+  // Eingebettet (Bambuddy-Seitenleiste) blockiert der Rahmen die Kamera – dann den eigentlichen Grund nennen
+  const embeddedBlock = isEmbedded() && (!can('scanner') || cam.kind === 'error');
   const status =
     cam.kind === 'error'
-      ? t(`scan.${cam.error}`)
+      ? embeddedBlock
+        ? t('app.embedded')
+        : t(`scan.${cam.error}`)
       : cam.kind === 'running'
         ? (hint ?? (barcodes ? t('scan.hintAny') : t('scan.hint')))
         : t('scan.starting');
@@ -173,8 +177,13 @@ export function ScannerView({ active, onCode, hint, formats = QR_ONLY, accept }:
         {cam.kind !== 'running' && (
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 'var(--bs-s5)', textAlign: 'center', color: 'var(--bs-text-2)' }}>
             <div style={{ display: 'grid', gap: 'var(--bs-s3)', justifyItems: 'center' }}>
-              <span>{can('scanner') ? status : t('scan.nocamera')}</span>
-              {cam.kind === 'error' && (cam.error === 'denied' || cam.error === 'failed') && (
+              <span>{can('scanner') ? status : isEmbedded() ? t('app.embedded') : t('scan.nocamera')}</span>
+              {embeddedBlock && (
+                <IonButton size="small" onClick={openStandalone}>
+                  {t('app.openStandalone')}
+                </IonButton>
+              )}
+              {!embeddedBlock && cam.kind === 'error' && (cam.error === 'denied' || cam.error === 'failed') && (
                 <IonButton size="small" fill="outline" onClick={() => setAttempt((a) => a + 1)}>
                   {t('scan.retry')}
                 </IonButton>

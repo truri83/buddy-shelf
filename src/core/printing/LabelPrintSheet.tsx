@@ -13,7 +13,7 @@ import {
 } from '@ionic/react';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '@/core/i18n';
-import { can, storage } from '@/core/platform';
+import { can, isEmbedded, openStandalone, storage } from '@/core/platform';
 import { headPixels, templateUsesRed, type LabelTemplate, type LabelVariables } from './template';
 import { loadEngine, useLabelPrinter } from './useLabelPrinter';
 
@@ -190,8 +190,15 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
                 </IonButton>
               )}
             </div>
+          ) : // Ohne https gibt es weder Web Serial (USB) noch Web Bluetooth – dann den Grund nennen statt nur „geht nicht“
+          isEmbedded() ? (
+            <>
+              <IonNote>{t('app.embedded')}</IonNote>
+              <IonButton expand="block" onClick={openStandalone}>
+                {t('app.openStandalone')}
+              </IonButton>
+            </>
           ) : (
-            // Ohne https gibt es weder Web Serial (USB) noch Web Bluetooth – dann den Grund nennen statt nur „geht nicht“
             <IonNote>{window.isSecureContext ? t('label.noDirect') : t('label.insecure')}</IonNote>
           )}
           {tooWide && <IonNote color="danger">{t('label.tooWide', { w: headPixels(template), max: max ?? 0 })}</IonNote>}

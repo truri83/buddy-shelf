@@ -29,6 +29,24 @@ const detectors: Record<Capability, Detector> = {
   haptics: () => !!nav && 'vibrate' in nav,
 };
 
+/**
+ * Läuft die App eingebettet (z. B. als Link in Bambuddys Seitenleiste)? Dort sperrt der Browser Kamera, USB und
+ * Bluetooth – Bambuddys iframe gibt sie nicht frei, und über http ist die Seite ohnehin unsicher.
+ */
+export function isEmbedded(): boolean {
+  if (!hasWindow) return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // fremder Rahmen: Zugriff auf top verboten
+  }
+}
+
+/** Dieselbe Seite im eigenen Tab öffnen (aus dem Rahmen heraus). */
+export function openStandalone(): void {
+  window.open(window.location.href, '_blank', 'noopener');
+}
+
 const overrides = new Map<Capability, boolean>();
 
 export function can(cap: Capability): boolean {
