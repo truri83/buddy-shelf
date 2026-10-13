@@ -4,6 +4,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonItemDivider,
   IonLabel,
@@ -13,21 +14,22 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { useMemo, useState } from 'react';
+import { pricetagOutline } from 'ionicons/icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAllowed, type Spool } from '@/core/api';
 import { t } from '@/core/i18n';
-import { LabelPrintSheet, useLabelTemplates } from '@/core/printing';
 import { Badge, rgbaToCss, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
+import { SlotLabelSheet } from '../components/SlotLabelSheet';
 import { useAdoptFromSlot, useSlots, useSpools } from '../hooks/useSpools';
-import { isNewRfid, linkCandidates, slotLabelVariables, spoolTitle, type Slot } from '../slots';
+import { isNewRfid, linkCandidates, spoolTitle, type Slot } from '../slots';
 
 /** SP-08: alle Slots mit Belegung; Slot-Etiketten (QR bm:t:…) für alle Slots in einem Druck. */
 export function SlotsPage() {
   const { slots, printers, isPending, isError, refetch } = useSlots();
   const spools = useSpools();
-  const [printOpen, setPrintOpen] = useState(false);
+  const [printing, setPrinting] = useState<Slot[] | null>(null);
   const adopt = useAdoptFromSlot();
   const canEdit = useAllowed('inventory:update');
   const [adopted, setAdopted] = useState<Spool | null>(null);
@@ -49,8 +51,6 @@ export function SlotsPage() {
           })
           .catch(notify.fail);
   const byId = new Map((spools.data ?? []).map((s) => [s.id, s]));
-  const records = useMemo(() => slots.map(slotLabelVariables), [slots]);
-  const { templates } = useLabelTemplates('slot');
 
   return (
     <IonPage>
@@ -123,6 +123,18 @@ export function SlotsPage() {
                               {sp ? spoolTitle(sp) : s.trayType ? t('slots.unassigned', { type: s.trayType }) : t('ams.free')}
                             </IonNote>
                           )}
+                          <IonButton
+                            slot="end"
+                            fill="clear"
+                            aria-label={t('slots.label', { slot: s.label })}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPrinting([s]);
+                            }}
+                          >
+                            <IonIcon slot="icon-only" icon={pricetagOutline} />
+                          </IonButton>
                         </IonItem>
                       );
                     })}
@@ -130,19 +142,13 @@ export function SlotsPage() {
               ))}
             </IonList>
             <div style={{ padding: '0 var(--bs-s4) var(--bs-s4)' }}>
-              <IonButton expand="block" fill="outline" disabled={records.length === 0} onClick={() => setPrintOpen(true)}>
+              <IonButton expand="block" fill="outline" disabled={slots.length === 0} onClick={() => setPrinting(slots)}>
+                <IonIcon slot="start" icon={pricetagOutline} />
                 {t('slots.printAll')}
               </IonButton>
             </div>
             <LabelSheet spools={adopted ? [adopted] : []} isOpen={!!adopted} onDismiss={() => setAdopted(null)} />
-            <LabelPrintSheet
-              templates={templates}
-              records={records}
-              fileName={(r) => `slot-${r.code?.replace(/[^0-9]+/g, '-')}.png`}
-              storageKey="label.slotTemplate"
-              isOpen={printOpen}
-              onDismiss={() => setPrintOpen(false)}
-            />
+            <SlotLabelSheet slots={printing} onDismiss={() => setPrinting(null)} />
           </>
         )}
       </IonContent>

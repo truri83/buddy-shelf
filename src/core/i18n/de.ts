@@ -269,6 +269,7 @@ export const de = {
   'slot.archived': 'Spule #{id} ist archiviert.',
   'slots.title': 'AMS-Slots',
   'slots.printAll': 'Alle Slot-Etiketten drucken',
+  'slots.label': 'Etikett für {slot}',
   'rfid.new': 'Neu erkannt',
   'rfid.partial': 'Spule #{id} wurde angelegt, aber Chip/Slot nicht verknüpft ({msg}). Nicht erneut übernehmen – #{id} im Slot zuordnen.',
   'rfid.isStock': 'Ist das eine Spule aus deinem Lager?',
@@ -439,6 +440,7 @@ export const de = {
   'label.connecting': 'Verbinde …',
   'label.connected': 'Verbunden: {name}',
   'label.disconnect': 'Trennen',
+  'label.insecure': 'Direktdruck per USB/Bluetooth geht nur über die https-Adresse der App (z. B. über Tailscale). Diese Seite ist per http geöffnet – hier nur als PNG speichern.',
   'label.noDirect': 'Direktdruck geht in Chrome oder Edge (PC, Android). Hier: als PNG speichern.',
   'label.tooWide': 'Vorlage ist breiter als der Druckkopf ({w} > {max} px).',
   'label.redHint': 'Rot braucht eine Zweifarbrolle; sonst wird es schwarz.',
@@ -479,6 +481,8 @@ export const de = {
   'settings.apiKey': 'API-Schlüssel',
   'settings.save': 'Speichern',
   'settings.saved': 'Gespeichert',
+  'settings.secureContext': 'Sichere Verbindung (https)',
+  'settings.insecureHint': 'Kamera, USB, Bluetooth und Mitteilungen sind hier gesperrt. Die https-Adresse öffnen.',
   'settings.capabilities': 'Was dieses Gerät kann',
 } as const;
 

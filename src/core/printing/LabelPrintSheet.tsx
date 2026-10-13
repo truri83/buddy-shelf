@@ -191,7 +191,8 @@ export function LabelPrintSheet({ templates, records, fileName, storageKey, isOp
               )}
             </div>
           ) : (
-            <IonNote>{t('label.noDirect')}</IonNote>
+            // Ohne https gibt es weder Web Serial (USB) noch Web Bluetooth – dann den Grund nennen statt nur „geht nicht“
+            <IonNote>{window.isSecureContext ? t('label.noDirect') : t('label.insecure')}</IonNote>
           )}
           {tooWide && <IonNote color="danger">{t('label.tooWide', { w: headPixels(template), max: max ?? 0 })}</IonNote>}
           {(lp.error ?? pngError) && <IonNote color="danger">{lp.error ?? pngError}</IonNote>}

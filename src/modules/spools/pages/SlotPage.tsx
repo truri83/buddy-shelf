@@ -16,7 +16,7 @@ import {
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
-import { closeCircleOutline } from 'ionicons/icons';
+import { closeCircleOutline, pricetagOutline } from 'ionicons/icons';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { remainingGrams, useAllowed } from '@/core/api';
@@ -26,8 +26,9 @@ import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { ColorRing, errorText, MaterialBadge, ScannerView, StateView, useNotify } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
+import { SlotLabelSheet } from '../components/SlotLabelSheet';
 import { useAdoptFromSlot, useAssignSpool, useLinkTagToSpool, useSlots, useSpools, useUnassign } from '../hooks/useSpools';
-import { isNewRfid, linkCandidates, spoolTitle } from '../slots';
+import { isNewRfid, linkCandidates, spoolTitle, type Slot } from '../slots';
 
 /**
  * SP-08: Slot-Etikett gescannt → Seite zeigt, was im Slot liegt, Kamera bleibt offen →
@@ -46,6 +47,7 @@ export function SlotPage() {
   const [manual, setManual] = useState('');
   const adopt = useAdoptFromSlot();
   const link = useLinkTagToSpool();
+  const [printing, setPrinting] = useState<Slot[] | null>(null);
   const [adopted, setAdopted] = useState<import('@/core/api').Spool | null>(null);
   const busy = useRef(false);
   const navigate = useNavigate();
@@ -154,6 +156,13 @@ export function SlotPage() {
             <IonBackButton defaultHref="/more/slots" text="" />
           </IonButtons>
           <IonTitle>{slot ? `${slot.printerName} · ${slot.label}` : t('slot.title')}</IonTitle>
+          {slot && (
+            <IonButtons slot="end">
+              <IonButton onClick={() => setPrinting([slot])} aria-label={t('slots.label', { slot: slot.label })}>
+                <IonIcon slot="icon-only" icon={pricetagOutline} />
+              </IonButton>
+            </IonButtons>
+          )}
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
@@ -239,6 +248,7 @@ export function SlotPage() {
               )}
             </section>
             <LabelSheet spools={adopted ? [adopted] : []} isOpen={!!adopted} onDismiss={() => setAdopted(null)} />
+            <SlotLabelSheet slots={printing} onDismiss={() => setPrinting(null)} />
             <ScannerView active={active} onCode={onCode} hint={t('slot.scanSpool')} />
             {message && (
               <p role="alert" style={{ textAlign: 'center', color: 'var(--bs-critical)' }}>

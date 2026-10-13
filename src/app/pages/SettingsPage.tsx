@@ -195,6 +195,19 @@ export function SettingsPage() {
               <IonLabel>{t('settings.capabilities')}</IonLabel>
             </IonItem>
             <div slot="content">
+              {/* Ohne sicheren Kontext (https/localhost) sperrt der Browser Kamera, USB, Bluetooth und Mitteilungen */}
+              <IonItem>
+                <IonLabel>
+                  {t('settings.secureContext')}
+                  <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                    {location.origin}
+                    {window.isSecureContext ? '' : ` – ${t('settings.insecureHint')}`}
+                  </div>
+                </IonLabel>
+                <IonNote slot="end" color={window.isSecureContext ? 'success' : 'danger'}>
+                  {window.isSecureContext ? t('common.yes') : t('common.no')}
+                </IonNote>
+              </IonItem>
               {CAPS.map((c) => (
                 <IonItem key={c}>
                   <IonLabel>{t(`cap.${c}`)}</IonLabel>
