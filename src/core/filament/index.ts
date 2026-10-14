@@ -23,5 +23,6 @@ export {
   type StockThresholds,
 } from './display';
 export { useDisplayConfig, useDisplayConfigQuery, useSaveDisplayConfig } from './useDisplayConfig';
+export { moistureState, type MoistureLevel, type MoistureState } from './moisture';
 export { cleanSubtype, FAMILIES, materialFamily, materialLabel, materialVariant, type MaterialFamily } from './material';
 export { useDryingConfig, useDryingConfigQuery, useSaveDryingConfig } from './useDryingConfig';

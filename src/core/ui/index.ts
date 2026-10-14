@@ -1,5 +1,6 @@
 export { ColorRing } from './components/ColorRing';
 export { FillBar } from './components/FillBar';
+export { MoistureLight } from './components/MoistureLight';
 export { Badge, MaterialBadge } from './components/Badge';
 export { PermissionNote, StateView } from './components/StateView';
 export { errorText, useNotify } from './useNotify';

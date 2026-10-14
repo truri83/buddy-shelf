@@ -1,14 +1,13 @@
 import { IonButton, IonCard, IonCheckbox, IonIcon, useIonActionSheet } from '@ionic/react';
-import { ellipsisVertical, locationOutline, sunnyOutline } from 'ionicons/icons';
+import { ellipsisVertical, locationOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
 import { primeKeyboard } from '@/core/platform';
-import { Badge, ColorRing, FillBar, MaterialBadge, useNotify } from '@/core/ui';
-import { dryingDue, materialLabel, stockLevel, todayIso, useDisplayConfig, useDryingConfig } from '@/core/filament';
+import { Badge, ColorRing, FillBar, MaterialBadge, MoistureLight, useNotify } from '@/core/ui';
+import { materialLabel, moistureState, stockLevel, todayIso, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
 import { fmtMoney, LEVEL_TEXT } from '../stock';
-import { agoText } from './DryingCard';
 
 interface Props {
   spool: Spool;
@@ -33,7 +32,8 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
   const display = useDisplayConfig();
   const level = stockLevel(spool, display);
   const dryCfg = useDryingConfig();
-  const dry = display.showDrying ? dryingDue(spool, dryCfg) : null;
+  // Feuchtigkeits-Ampel aus zuletzt getrocknet + Lagerungsart (Erklärung beim Darüberfahren)
+  const moisture = display.showDrying ? moistureState(spool, dryCfg) : null;
   const price = display.showPrice && spool.cost_per_kg != null ? (spool.cost_per_kg * spool.label_weight) / 1000 : null;
   const name = spool.color_name ?? [spool.material, spool.subtype].filter(Boolean).join(' ');
   const navigate = useNavigate();
@@ -124,29 +124,7 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
           {level !== 'ok' && <Badge tone={level === 'empty' ? 'critical' : 'warn'}>{t(`stock.${level}`)}</Badge>}
-          {dry?.due ? (
-            <Badge tone="warn">
-              <IonIcon icon={sunnyOutline} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
-              {t('dry.badge')}
-            </Badge>
-          ) : (
-            display.showDrying &&
-            spool.dried_at && (
-              <span
-                title={t('dry.last')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 'var(--bs-s1)',
-                  fontSize: 'var(--bs-fs-caption)',
-                  color: 'var(--bs-text-2)',
-                }}
-              >
-                <IonIcon icon={sunnyOutline} aria-label={t('dry.last')} />
-                {agoText(spool.dried_at)}
-              </span>
-            )
-          )}
+          {display.showDrying && moisture && <MoistureLight {...moisture} />}
           {price != null && (
             <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
               {t('stock.price', { eur: fmtMoney(price) })}
