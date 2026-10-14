@@ -2,7 +2,9 @@
 
 Plattformneutrale App (PWA → später Capacitor iOS/Android, Desktop als PWA/Tauri), die Bambuddy
 aufs Handy bringt. Erstes Modul: Spulen scannen, zuweisen, wiegen und auf Niimbot-Etikettendruckern
-etikettieren. Bambuddy ist die einzige Datenhaltung; diese App hat keine eigene Datenbank.
+etikettieren. Daten: Bambuddy (im Spoolman-Modus: Bestand in Spoolman), Zusatzdaten je Spule in Spoolman-
+Zusatzfeldern (`server/extras.js`), gemeinsame Einstellungen in `/prefs/<bereich>` (`server/prefs.js`, Datei im
+Datenordner). Keine eigene Datenbank.
 
 Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschreibungen Deutsch.
 
@@ -19,6 +21,9 @@ Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschre
 2. Kleine Schritte, je Steckbrief ein Branch/PR. Steckbrief-Status am Ende auf „umgesetzt“.
 3. Vor dem Abschluss immer: `npm run typecheck && npm run lint && npm test && npm run build`.
 4. UI immer im Mock prüfen (`npm run dev:mock`): iPhone-Breite hell + dunkel, Desktop-Breite.
+   Typprüfung immer mit `npm run typecheck` (tsc -b) – `tsc -p .` prüft hier nichts.
+5a. Einstellbares als gemeinsame Einstellung (`/prefs/<bereich>`, alle Geräte) bauen; speichern nur auf frisch
+   gelesenem Server-Stand. Genutzt wird die App nur zu Hause.
 5. Bambuddy-Feldnamen nie raten: im Bambuddy-Code nachsehen (github.com/maziggy/bambuddy,
    `backend/app/schemas/`, `backend/app/api/routes/`) oder `npm run api:types` gegen die laufende Instanz.
 6. Neue Endpunkte, die die App nutzt, in `docs/BAMBUDDY-API.md` und `mocks/handlers.ts` nachtragen.
@@ -31,7 +36,9 @@ Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschre
 - Alle Texte über `t()` aus `@/core/i18n`.
 - Gefährliche Aktionen nur mit Bestätigung und passendem Bambuddy-Recht.
 - Alles für mehrere Drucker, AMS-Einheiten und Lagerorte auslegen.
-- Etiketten-QR enthält `bm:s:<id>` (keine Serveradresse). Parser: `src/core/qr/codes.ts`.
+- Etiketten-QR enthält die App-Adresse (`<app>/s/<id>`, `/l/<id>`, `/t/<drucker>/<ams>/<slot>`), damit die normale
+  Handy-Kamera direkt die Aktion öffnet; Basis = Einstellung „Adresse für Etiketten“ (`/prefs/app`) oder aktuelle
+  Adresse. Der App-Scanner versteht weiterhin `bm:`-Codes. Parser/Erzeugung: `src/core/qr/codes.ts`.
 - Etikettendrucker nur über Profile (`src/core/printing/profiles.ts`), Layouts in Millimetern.
 - Bambuddy wird nie verändert. Fehlt etwas: Übergangslösung in `server/`, Vorschlag an Bambuddy.
 
