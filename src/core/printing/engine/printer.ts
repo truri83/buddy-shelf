@@ -40,12 +40,30 @@ export function connectedPrinter(): PrinterInfo | null {
   return client?.isConnected() ? info : null;
 }
 
-/** Muss direkt aus einem Klick heraus aufgerufen werden (Geräteauswahl des Browsers). */
+/** USB-Hersteller-ID von Niimbot (B1 Pro: VID 3513). */
+const NIIMBOT_USB_VENDOR = 0x3513;
+type SerialPortLike = NonNullable<NonNullable<Parameters<NiimbotSerialClient['connect']>[0]>['authorizedPort']>;
+
+/** Schon einmal erlaubter Niimbot-Anschluss – dann ohne erneute Geräteauswahl des Browsers verbinden. */
+async function knownSerialPort(): Promise<SerialPortLike | undefined> {
+  const serial = (navigator as Navigator & { serial?: { getPorts(): Promise<SerialPortLike[]> } }).serial;
+  const ports = (await serial?.getPorts().catch(() => [])) ?? [];
+  return ports.find((p) => p.getInfo().usbVendorId === NIIMBOT_USB_VENDOR);
+}
+
+/** Muss direkt aus einem Klick heraus aufgerufen werden (Geräteauswahl des Browsers beim ersten Mal). */
 export async function connectPrinter(transport: Transport): Promise<PrinterInfo> {
   await disconnectPrinter();
   const c = transport === 'bluetooth' ? new NiimbotBluetoothClient() : new NiimbotSerialClient();
   c.setHeartbeatInterval(HEARTBEAT_MS);
-  const conn = await c.connect();
+  let conn;
+  if (c instanceof NiimbotSerialClient) {
+    // Chrome merkt sich die Erlaubnis – nur beim allerersten Mal (oder wenn der bekannte Anschluss klemmt) fragen
+    const known = await knownSerialPort();
+    conn = known ? await c.connect({ authorizedPort: known }).catch(() => c.connect()) : await c.connect();
+  } else {
+    conn = await c.connect();
+  }
   armIdle();
   client = c;
   const meta = c.getModelMetadata();
