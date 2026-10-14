@@ -215,6 +215,20 @@ export interface AmsUnit {
   dry_time?: number | null;
 }
 
+/** Gespeicherter Flussdynamik-Wert (K) einer Spule für eine Düse (Bambuddy /…/spools/{id}/k-profiles). */
+export interface SpoolKProfile {
+  id: number;
+  printer_id: number;
+  /** Düse: beim X2D 1 = links, 0 = rechts */
+  extruder: number;
+  nozzle_diameter: string | null;
+  /** z. B. HS (Standard), HH (High Flow) */
+  nozzle_type: string | null;
+  k_value: number;
+  name: string | null;
+  cali_idx: number | null;
+}
+
 /** Filamentprofil, das im Slot eingestellt ist (Bambuddy /printers/{id}/slot-presets). */
 export interface SlotPreset {
   ams_id: number;

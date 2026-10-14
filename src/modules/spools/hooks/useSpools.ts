@@ -164,6 +164,28 @@ export function useLinkTagToSpool() {
   });
 }
 
+/** K-Werte einer Spule je Düse. */
+export function useSpoolKProfiles(spoolId: number) {
+  return useQuery({ queryKey: ['spools', spoolId, 'k-profiles'], queryFn: () => bambuddy.spools.kProfiles(spoolId), staleTime: 60_000 });
+}
+
+/** Druckerstatus und Slot-Profile eines Druckers (für Profil/K-Wert im Slot). */
+export function usePrinterSlotInfo(printerId: number | null) {
+  const status = useQuery({
+    queryKey: ['printers', printerId, 'status'],
+    queryFn: () => bambuddy.printers.status(printerId!),
+    enabled: printerId != null,
+    staleTime: 30_000,
+  });
+  const presets = useQuery({
+    queryKey: ['printers', printerId, 'slot-presets'],
+    queryFn: () => bambuddy.printers.slotPresets(printerId!),
+    enabled: printerId != null,
+    staleTime: 60_000,
+  });
+  return { status: status.data, presets: presets.data ?? [] };
+}
+
 export function useAdoptFromSlot() {
   const refresh = useRefresh();
   const qc = useQueryClient();

@@ -237,6 +237,17 @@ export const handlers = [
     const s = spools.find((x) => x.id === Number(params.id));
     return s ? HttpResponse.json(asSpoolman(s)) : HttpResponse.json({ detail: 'Spool not found' }, { status: 404 });
   }),
+  // Gespeicherte K-Werte je Düse (wie Bambuddy nach Kalibrierung im AMS)
+  http.get(api('/spoolman/inventory/spools/:id/k-profiles'), ({ params }) =>
+    HttpResponse.json(
+      Number(params.id) === 4
+        ? [
+            { id: 1, spool_id: 4, printer_id: 1, extruder: 1, nozzle_diameter: '0.4', nozzle_type: 'HH', k_value: 0.019, name: 'L_HF_Bambu PLA Basic', cali_idx: 10 },
+            { id: 2, spool_id: 4, printer_id: 1, extruder: 0, nozzle_diameter: '0.4', nozzle_type: 'HS', k_value: 0.028, name: 'R_Std_Bambu PLA Basic', cali_idx: 13 },
+          ]
+        : [],
+    ),
+  ),
   // Chip an vorhandene Spule hängen (wie Bambuddy: nur eines von beiden)
   http.patch(api('/spoolman/inventory/spools/:id/tag'), async ({ params, request }) => {
     const s = spools.find((x) => x.id === Number(params.id));

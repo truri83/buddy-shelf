@@ -17,6 +17,7 @@ import type {
   SpoolCreate,
   SpoolUpdate,
   SlotPreset,
+  SpoolKProfile,
 } from './types';
 
 /**
@@ -399,6 +400,8 @@ export const bambuddy = {
       }
       return request('PATCH', `/inventory/spools/${spoolId}/link-tag`, { tag_uid, tray_uuid });
     },
+    /** Gespeicherte K-Werte der Spule je Düse (Bambuddy merkt sie sich bei der Kalibrierung im AMS) */
+    kProfiles: async (spoolId: number) => request<SpoolKProfile[]>('GET', `${await inv()}/spools/${spoolId}/k-profiles`),
     /** Zusatzdaten setzen (null = entfernen), auch für viele Spulen auf einmal */
     setExtras: (ids: number[], patch: ExtrasPatch) => setExtras(ids, patch),
     /**

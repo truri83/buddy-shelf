@@ -15,6 +15,7 @@ import { AmsSheet } from './AmsSheet';
 import { DryingCard } from './DryingCard';
 import { LabelSheet } from './LabelSheet';
 import { MoveSheet } from './MoveSheet';
+import { ProfileCard } from './ProfileCard';
 import { WeighSheet } from './WeighSheet';
 
 export type DetailSheet = 'ams' | 'move' | 'weigh' | 'label';
@@ -235,6 +236,8 @@ export function SpoolDetailView({
             </div>
           )}
         </section>
+
+        <ProfileCard spool={s} style={card} />
       </div>
       <AmsSheet spool={s} isOpen={sheet === 'ams'} onDismiss={close} />
       <MoveSheet spools={[s]} isOpen={sheet === 'move'} onDismiss={close} />
