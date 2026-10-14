@@ -14,7 +14,7 @@ import {
 import { useRef, useState } from 'react';
 import { weightUsedFromScale, type Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
-import { haptic } from '@/core/platform';
+import { haptic, releaseKeyboard } from '@/core/platform';
 import { stockLevel, useDisplayConfig } from '@/core/filament';
 import { errorText, FillBar, useNotify } from '@/core/ui';
 import { netToGross } from '../cores';
@@ -32,6 +32,7 @@ interface Props {
 /** SP-05/SP-10: Brutto (Waage mit Spule) oder Netto eingeben → Vorschau Rest → speichern (Bambuddys Waagen-Endpunkt). */
 export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
   const modal = useRef<HTMLIonModalElement>(null);
+  const input = useRef<HTMLIonInputElement>(null);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useWeighMode();
@@ -63,6 +64,8 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
       ref={modal}
       isOpen={isOpen}
       onWillPresent={() => (setValue(''), setError(null))}
+      // Gleich tippen können: Feld fokussieren (Ziffernblock); auf iOS hält primeKeyboard() die Tastatur offen
+      onDidPresent={() => void input.current?.setFocus().finally(releaseKeyboard)}
       onDidDismiss={onDismiss}
       initialBreakpoint={0.75}
       breakpoints={[0, 0.75, 1]}
@@ -83,6 +86,7 @@ export function WeighSheet({ spool, isOpen, onDismiss }: Props) {
         <IonList inset>
           <IonItem>
             <IonInput
+              ref={input}
               label={mode === 'net' ? t('weigh.net') : t('weigh.gross')}
               labelPlacement="stacked"
               inputmode="decimal"

@@ -57,9 +57,10 @@ import {
 } from '@/core/ui';
 import { LabelSheet } from '../components/LabelSheet';
 import { useWeighMode, WeighModeSwitch } from '../components/CoreRow';
-import { coreDisplayName } from '../cores';
+import { brandKey, coreDisplayName, defaultCoreFor } from '../cores';
 import { todayIso, useDisplayConfig } from '@/core/filament';
 import { STORAGE_ICONS } from '../storage';
+import { useCorePrefs } from '../hooks/useCorePrefs';
 import { useListPrefs } from '../hooks/useListPrefs';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
 import { isHidden, recentValues } from '../listPrefs';
@@ -229,9 +230,26 @@ function SpoolForm({
   // abgezogen – so stimmt es auch, wenn die Leerspule danach noch geändert wird.
   const [startedInput, setStartedInput] = useState<number | null>(null);
   const [weighMode, setWeighMode] = useWeighMode();
+  // Leerspule passend zum Hersteller vorbelegen (Mehr → Leerspulen-Gewichte → „Standard für …“), bis man sie selbst
+  // ändert. Eingestellter Standard geht vor dem Datenbankwert; ohne Einstellung nur bei genau einem Katalog-Eintrag.
+  const corePrefs = useCorePrefs();
+  const [coreTouched, setCoreTouched] = useState(!!source);
+  const brandCore =
+    !editing && !coreTouched && draft.kind !== 'refill' ? defaultCoreFor(draft.brand, catalog.data ?? [], corePrefs.defaults) : undefined;
+  const useBrandCore = !!brandCore && (corePrefs.defaults[brandKey(draft.brand)] != null || draft.coreCatalogId == null);
+  const withCore: SpoolDraft =
+    useBrandCore && brandCore
+      ? {
+          ...draft,
+          coreCatalogId: brandCore.id,
+          coreWeight: brandCore.weight,
+          kind: /cardboard|pappe/i.test(brandCore.name) ? 'cardboard' : 'plastic',
+        }
+      : draft;
   const started = draft.remaining != null;
-  const net = !started || startedInput == null ? null : Math.round(weighMode === 'gross' ? startedInput - draft.coreWeight : startedInput);
-  const effective: SpoolDraft = started ? { ...draft, remaining: net ?? 0 } : draft;
+  const net =
+    !started || startedInput == null ? null : Math.round(weighMode === 'gross' ? startedInput - withCore.coreWeight : startedInput);
+  const effective: SpoolDraft = started ? { ...withCore, remaining: net ?? 0 } : withCore;
   // Grund, warum Speichern nicht geht – steht neben dem Knopf statt still gesperrt
   const missing = !draft.material.trim()
     ? t('new.missingMaterial')
@@ -242,7 +260,7 @@ function SpoolForm({
         : started && startedInput == null
           ? t('new.missingRest')
           : net != null && net < 0
-            ? t('new.belowCore', { g: draft.coreWeight })
+            ? t('new.belowCore', { g: withCore.coreWeight })
             : net != null && net > draft.labelWeight
               ? t('new.remainingInvalid')
               : null;
@@ -606,7 +624,7 @@ function SpoolForm({
                     <IonNote className="bs-section-note">
                       {t('new.netCalc', {
                         gross: fmtNum(startedInput),
-                        core: fmtNum(draft.coreWeight),
+                        core: fmtNum(withCore.coreWeight),
                         net: fmtNum(Math.max(0, net ?? 0)),
                       })}
                     </IonNote>
@@ -617,7 +635,7 @@ function SpoolForm({
           )}
           <IonListHeader>{t('new.kind')}</IonListHeader>
           <div style={{ padding: 'var(--bs-s2) var(--bs-s3)' }}>
-            <IonSegment value={draft.kind} onIonChange={(e) => setKind(e.detail.value as SpoolKind)}>
+            <IonSegment value={withCore.kind} onIonChange={(e) => (setCoreTouched(true), setKind(e.detail.value as SpoolKind))}>
               {(['plastic', 'cardboard', 'refill'] as const).map((k) => (
                 <IonSegmentButton key={k} value={k}>
                   {t(`new.kind.${k}`)}
@@ -644,11 +662,12 @@ function SpoolForm({
                   label={t('new.coreWeight')}
                   labelPlacement="stacked"
                   interface="action-sheet"
-                  value={draft.coreCatalogId ?? 'custom'}
+                  value={withCore.coreCatalogId ?? 'custom'}
                   onIonChange={(e) => {
                     const id = e.detail.value as number | 'custom';
                     const entry = catalog.data?.find((c) => c.id === id);
-                    setDraft((d) => ({ ...d, coreCatalogId: entry?.id ?? null, coreWeight: entry?.weight ?? d.coreWeight }));
+                    setCoreTouched(true);
+                    setDraft((d) => ({ ...d, coreCatalogId: entry?.id ?? null, coreWeight: entry?.weight ?? withCore.coreWeight }));
                   }}
                 >
                   {(catalog.data ?? []).map((c) => (
@@ -659,11 +678,12 @@ function SpoolForm({
                   <IonSelectOption value="custom">{t('new.coreWeightOwn')}</IonSelectOption>
                 </IonSelect>
               </IonItem>
-              {draft.coreCatalogId == null && (
+              {useBrandCore && <IonNote className="bs-section-note">{t('new.coreFromBrand', { brand: draft.brand })}</IonNote>}
+              {withCore.coreCatalogId == null && (
                 <IonItem>
                   <GramInput
                     label={t('new.coreWeightCustom')}
-                    value={draft.coreWeight}
+                    value={withCore.coreWeight}
                     max={2000}
                     onChange={(n) => set('coreWeight', Math.round(n))}
                   />

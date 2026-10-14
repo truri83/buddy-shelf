@@ -2,6 +2,7 @@ export * from './capabilities';
 export * from './storage';
 export * from './files';
 export * from './haptics';
+export { primeKeyboard, releaseKeyboard } from './keyboard';
 export {
   ScannerError,
   startScanner,

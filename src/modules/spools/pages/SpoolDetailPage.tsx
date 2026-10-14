@@ -16,6 +16,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAllowed } from '@/core/api';
 import { todayIso } from '@/core/filament';
 import { t } from '@/core/i18n';
+import { primeKeyboard } from '@/core/platform';
 import { StateView, useNotify } from '@/core/ui';
 import { DETAIL_SHEETS, SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
 import { useSetExtras, useSpool } from '../hooks/useSpools';
@@ -53,7 +54,7 @@ export function SpoolDetailPage() {
       buttons: [
         ...(canEdit
           ? [
-              { text: t('spools.action.weigh'), handler: pick('weigh') },
+              { text: t('spools.action.weigh'), handler: () => (primeKeyboard(), pick('weigh')()) },
               {
                 text: t('dry.markToday'),
                 handler: () =>

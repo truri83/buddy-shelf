@@ -13,16 +13,18 @@ import {
   IonPage,
   IonSearchbar,
   IonTitle,
+  IonToggle,
   IonToolbar,
   useIonAlert,
 } from '@ionic/react';
-import { add, cubeOutline, discOutline, scaleOutline, sparklesOutline, trashOutline } from 'ionicons/icons';
+import { add, cubeOutline, discOutline, scaleOutline, sparklesOutline, star, trashOutline } from 'ionicons/icons';
 import { useMemo, useState } from 'react';
 import { useAllowed, type CatalogEntry } from '@/core/api';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { haptic } from '@/core/platform';
-import { EditSheet, FieldRow, NumberInput, StateView, TextRow, useNotify } from '@/core/ui';
-import { coreDisplayName, coreSuggestions, groupCores } from '../cores';
+import { EditSheet, FieldRow, MetaChip, NumberInput, StateView, TextRow, useNotify } from '@/core/ui';
+import { brandKey, coreDisplayName, coreManufacturer, coreSuggestions, groupCores } from '../cores';
+import { useCorePrefsQuery, useSaveCorePrefs } from '../hooks/useCorePrefs';
 import { useCatalog, useCatalogMutations, useDbSpoolWeights, useSpools } from '../hooks/useSpools';
 
 /** SP-10: Leerspulen-Gewichte pflegen (Bambuddy-Katalog) + Vorschläge aus der Filament-Datenbank. */
@@ -47,15 +49,32 @@ export function CoreWeightsPage() {
   }, [db.data, catalog.data, query]);
 
   // Bearbeiten-Blatt: neu (id undefined) oder bestehender Eintrag
-  const [edit, setEdit] = useState<{ id?: number; name: string; weight: number | null } | null>(null);
+  const [edit, setEdit] = useState<{ id?: number; name: string; weight: number | null; isDefault?: boolean } | null>(null);
+  // Standard-Leerspule je Hersteller (gilt für neue Spulen dieses Herstellers, alle Geräte)
+  const corePrefs = useCorePrefsQuery();
+  const saveCorePrefs = useSaveCorePrefs();
+  const defaults = corePrefs.data?.defaults ?? {};
+  const isDefaultEntry = (c: { id: number; name: string }) => defaults[brandKey(coreManufacturer(c.name))] === c.id;
   const editValid = !!edit && edit.name.trim().length > 0 && edit.weight != null && edit.weight > 0 && edit.weight < 2000;
   const editor = (entry?: CatalogEntry) =>
-    setEdit(entry ? { id: entry.id, name: entry.name, weight: entry.weight } : { name: '', weight: null });
+    setEdit(
+      entry ? { id: entry.id, name: entry.name, weight: entry.weight, isDefault: isDefaultEntry(entry) } : { name: '', weight: null },
+    );
   const saveEdit = async () => {
     if (!edit || !editValid) return false;
     const e = { name: edit.name.trim(), weight: Math.round(edit.weight!) };
     try {
       await (edit.id ? m.update.mutateAsync({ id: edit.id, ...e }) : m.add.mutateAsync(e));
+      const id = edit.id;
+      if (id != null && corePrefs.isSuccess && edit.isDefault !== isDefaultEntry({ id, name: e.name })) {
+        const key = brandKey(coreManufacturer(e.name));
+        await saveCorePrefs.mutateAsync((p) => {
+          const next = { ...p.defaults };
+          if (edit.isDefault) next[key] = id;
+          else if (next[key] === id) delete next[key];
+          return { defaults: next };
+        });
+      }
       haptic();
       notify.ok(t('common.saved'));
       return true;
@@ -122,8 +141,17 @@ export function CoreWeightsPage() {
                     <IonIcon icon={/cardboard|pappe/i.test(c.name) ? cubeOutline : discOutline} slot="start" color="primary" aria-hidden />
                     <IonLabel>
                       {coreDisplayName(c.name)}
-                      {c.used > 0 && (
-                        <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{tn('cores.used', c.used)}</div>
+                      {(c.used > 0 || isDefaultEntry(c)) && (
+                        <div className="bs-meta-row">
+                          {isDefaultEntry(c) && (
+                            <MetaChip icon={star} tone="good">
+                              {t('cores.default')}
+                            </MetaChip>
+                          )}
+                          {c.used > 0 && (
+                            <span style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)' }}>{tn('cores.used', c.used)}</span>
+                          )}
+                        </div>
                       )}
                     </IonLabel>
                     <IonNote slot="end" className="bs-num">
@@ -196,9 +224,20 @@ export function CoreWeightsPage() {
                   value={edit.name}
                   onChange={(name) => setEdit({ ...edit, name })}
                 />
-                <FieldRow icon={scaleOutline} label={t('cores.weight')} lines="none">
+                <FieldRow icon={scaleOutline} label={t('cores.weight')} lines={edit.id ? undefined : 'none'}>
                   <NumberInput label={t('cores.weight')} unit="g" value={edit.weight} onChange={(weight) => setEdit({ ...edit, weight })} />
                 </FieldRow>
+                {edit.id && corePrefs.isSuccess && (
+                  <IonItem lines="none">
+                    <IonIcon icon={star} slot="start" color={edit.isDefault ? 'success' : 'medium'} aria-hidden />
+                    <IonToggle checked={!!edit.isDefault} onIonChange={(ev) => setEdit({ ...edit, isDefault: ev.detail.checked })}>
+                      {t('cores.asDefault', { maker: coreManufacturer(edit.name) })}
+                      <div style={{ color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' }}>
+                        {t('cores.asDefaultHint', { maker: coreManufacturer(edit.name) })}
+                      </div>
+                    </IonToggle>
+                  </IonItem>
+                )}
               </IonList>
               {edit.id && (
                 <div style={{ padding: '0 var(--bs-s4)' }}>

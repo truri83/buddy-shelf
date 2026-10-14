@@ -3,6 +3,7 @@ import { cartOutline, gridOutline, locationOutline, pricetagOutline, scaleOutlin
 import type { CSSProperties, ReactNode } from 'react';
 import { assignmentLabel, fillRatio, remainingGrams, useAllowed, type Spool } from '@/core/api';
 import { materialLabel, stockLevel, todayIso, useDisplayConfig } from '@/core/filament';
+import { primeKeyboard } from '@/core/platform';
 import { fmtDate, fmtNum, otherLanguageName, t } from '@/core/i18n';
 import { Badge, ColorRing, FillBar, MaterialBadge, rgbaToCss, useNotify } from '@/core/ui';
 import { useAssignments, useLocations, useSetExtras } from '../hooks/useSpools';
@@ -126,7 +127,10 @@ export function SpoolDetailView({
                 fill={target === 'weigh' ? 'solid' : 'outline'}
                 expand="block"
                 disabled={needsEdit && !canEdit}
-                onClick={() => onSheet(target)}
+                onClick={() => {
+                  if (target === 'weigh') primeKeyboard();
+                  onSheet(target);
+                }}
                 style={
                   {
                     margin: 0,

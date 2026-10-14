@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 const FILE = process.env.BUDDY_SHELF_PREFS_FILE || join(process.env.BUDDY_SHELF_DATA_DIR || join(process.cwd(), 'data'), 'prefs.json');
-const NAMES = ['drying', 'display', 'locations', 'lists', 'app'];
+const NAMES = ['drying', 'display', 'locations', 'lists', 'app', 'cores'];
 const MAX_BYTES = 64 * 1024;
 
 let chain = Promise.resolve();

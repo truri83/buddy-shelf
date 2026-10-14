@@ -72,7 +72,7 @@ async function labelsRequest<T>(method: string, path: string, body?: unknown): P
 }
 
 /** Bereiche der gemeinsamen Einstellungen (server/prefs.js NAMES). */
-export type PrefsName = 'drying' | 'display' | 'locations' | 'lists' | 'app';
+export type PrefsName = 'drying' | 'display' | 'locations' | 'lists' | 'app' | 'cores';
 
 /** Gemeinsame App-Einstellungen auf unserem Server (gelten für alle Geräte). */
 async function prefsRequest<T>(method: 'GET' | 'PUT', name: string, value?: unknown): Promise<T | null> {

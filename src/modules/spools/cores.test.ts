@@ -52,3 +52,25 @@ describe('Leerspule ohne Katalog-Nummer (Spoolman)', () => {
     expect(matchCore({ core_weight: 250, core_weight_catalog_id: null, brand: 'Polymaker' }, catalog)).toBeUndefined();
   });
 });
+
+describe('Standard-Leerspule je Hersteller', async () => {
+  const { defaultCoreFor, brandKey } = await import('./cores');
+  const cat = [
+    { id: 24, name: 'Bambu Lab - Plastic', weight: 237, is_default: true },
+    { id: 25, name: 'Bambu Lab - Plastic High Temp', weight: 216, is_default: true },
+    { id: 30, name: 'Sunlu - Plastic', weight: 180, is_default: true },
+    { id: 31, name: 'eSun - Cardboard', weight: 150, is_default: true },
+  ];
+  it('eingestellter Standard geht vor', () => {
+    expect(defaultCoreFor('Bambu Lab', cat, { [brandKey('Bambu Lab')]: 25 })?.id).toBe(25);
+  });
+  it('ohne Einstellung: nur bei genau einem Eintrag des Herstellers', () => {
+    expect(defaultCoreFor('SUNLU', cat, {})?.id).toBe(30);
+    expect(defaultCoreFor('Bambu Lab', cat, {})).toBeUndefined();
+    expect(defaultCoreFor('Polymaker', cat, {})).toBeUndefined();
+    expect(defaultCoreFor('', cat, {})).toBeUndefined();
+  });
+  it('Standard auf einen gelöschten Eintrag zählt nicht', () => {
+    expect(defaultCoreFor('Sunlu', cat, { [brandKey('Sunlu')]: 99 })?.id).toBe(30);
+  });
+});

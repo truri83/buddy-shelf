@@ -3,6 +3,7 @@ import { ellipsisVertical, locationOutline, sunnyOutline } from 'ionicons/icons'
 import { useNavigate } from 'react-router-dom';
 import { fillRatio, remainingGrams, type Spool } from '@/core/api';
 import { fmtNum, t } from '@/core/i18n';
+import { primeKeyboard } from '@/core/platform';
 import { Badge, ColorRing, FillBar, MaterialBadge, useNotify } from '@/core/ui';
 import { dryingDue, materialLabel, stockLevel, todayIso, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { useSetExtras } from '../hooks/useSpools';
@@ -52,7 +53,7 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
       buttons: [
         ...(canEdit
           ? [
-              { text: t('spools.action.weigh'), handler: () => navigate(`/spools/${spool.id}?action=weigh`) },
+              { text: t('spools.action.weigh'), handler: () => (primeKeyboard(), navigate(`/spools/${spool.id}?action=weigh`)) },
               { text: t('dry.markToday'), handler: () => void markDried() },
               { text: t('spools.action.toAms'), handler: () => navigate(`/spools/${spool.id}?action=ams`) },
               { text: t('spools.action.move'), handler: () => navigate(`/spools/${spool.id}?action=move`) },

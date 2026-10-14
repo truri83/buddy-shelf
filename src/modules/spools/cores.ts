@@ -72,6 +72,22 @@ export function matchCore(
   return same.length === 1 ? same[0] : undefined;
 }
 
+/** Schlüssel für Hersteller-Einstellungen (Groß/Klein, Leer- und Sonderzeichen egal). */
+export const brandKey = (brand: string) => norm(brand);
+
+/**
+ * Leerspule, die für einen Hersteller vorbelegt wird: der eingestellte Standard (Mehr → Leerspulen-Gewichte),
+ * sonst der einzige Katalog-Eintrag dieses Herstellers. Mehrere ohne Standard → keine Vermutung.
+ */
+export function defaultCoreFor(brand: string, catalog: CatalogEntry[], defaults: Record<string, number>): CatalogEntry | undefined {
+  const key = brand.trim() ? brandKey(brand) : '';
+  if (!key) return undefined;
+  const chosen = defaults[key] != null ? catalog.find((c) => c.id === defaults[key]) : undefined;
+  if (chosen) return chosen;
+  const own = catalog.filter((c) => norm(coreManufacturer(c.name)) === key);
+  return own.length === 1 ? own[0] : undefined;
+}
+
 /** Anzeige: „Bambu Lab - Plastic“ → „Bambu Lab – Kunststoff“ (gespeichert bleibt Bambuddys Name). */
 export function coreDisplayName(name: string): string {
   const [maker, ...rest] = name.split(' - ');
