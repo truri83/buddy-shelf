@@ -265,6 +265,24 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | Daten | `labelCode()` in `core/qr/codes.ts` (Basis = Adresse, unter der gedruckt wird); Vorlagen nutzen `{code}`; Routen `/s`, `/l`, `/t` → `CodeRedirect` (wie der Scan-Verteiler). |
 | Hinweis | Die Kamera öffnet Safari (iOS leitet Links nicht in Homescreen-Apps). Unterwegs braucht das Handy Tailscale. Etiketten über die https-Adresse drucken – eine Heimnetz-Adresse funktioniert nur zu Hause. Alte Etiketten (`bm:…`) gehen weiter mit dem App-Scanner, für die Handy-Kamera neu drucken. |
 
+## SP-21 Profile, K-Werte, AMS-Übersicht, Feuchtigkeits-Ampel
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt (14.10.) |
+| Ziel | Verzahnung mit Bambuddy sichtbar: was ist im Slot eingestellt, welche K-Werte hat die Spule, wie feucht ist sie? |
+| Ablauf | Übersicht „Im AMS“: Kachel je AMS (Feuchte gelb ab Einstellung, Temperatur, „trocknet“), je Slot Material + Hersteller, Rest, Ampel, Slot-Profil + K-Wert bzw. „kein Profil“/„Profil passt nicht“. Spulen-Detail „Druckprofil“: Slot-Profil + K und gespeicherte K-Werte je Düse (links/rechts, Standard/High Flow). Ampel rot/gelb/grün aus zuletzt getrocknet × Lagerungsart, Erklärung beim Darüberfahren. Spulenliste: Filter nach Lagerungsart. |
+| Daten | `GET /printers/{id}/status` (`ams[].humidity/temp/dry_time`, `tray[].k/cali_idx/tray_info_idx`), `GET /printers/{id}/slot-presets`, `GET /spoolman/inventory/spools/{id}/k-profiles` (lokal `/inventory/…`). Nur lesend. |
+
+## SP-22 Ablauf-Etiketten (Waage, Dörrautomat)
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt (14.10.) |
+| Ziel | Etikett am Ort des Arbeitsschritts: Scannen startet den Ablauf. |
+| Ablauf | Mehr → Ablauf-Etiketten: „Wiegen“ (→ Wiegen & Inventur), „Trocknen“ (→ jede gescannte Spule = heute getrocknet, mit Dörrautomat-Empfehlung). Neue Abläufe in `src/modules/spools/workflows.ts` ergänzen. |
+| Daten | QR `bm:w:<ablauf>` bzw. `<app>/w/<ablauf>`; Vorlage der Art „location“. |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |

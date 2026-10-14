@@ -5,7 +5,8 @@
  *  bm:s:<id>                         eigenes Spulen-Etikett (stabil, ohne Serveradresse), Version 1
  *  bm:t:<druckerId>:<amsId>:<slot>   Slot-Etikett am AMS (Bambuddy-IDs, 0-basiert; amsId 255 = externe Spule)
  *  bm:l:<id>                         Lagerort-Etikett (Bambuddy-Lagerort-ID) – startet „Einräumen“
- *  <App-Adresse>/s/<id> · /l/<id> · /t/<drucker>/<ams>/<slot>
+ *  bm:w:<ablauf>                     Ablauf-Etikett (z. B. weigh an der Waage, dry am Dörrautomaten)
+ *  <App-Adresse>/s/<id> · /l/<id> · /t/<drucker>/<ams>/<slot> · /w/<ablauf>
  *                                    dasselbe als Adresse: die normale Handy-Kamera öffnet die Seite direkt
  *  <beliebig>/inventory?spool=<id>   Etikett aus Bambuddy selbst
  *  bambuddy://config?v=1&url=…&key=… Einrichtungs-QR aus Bambuddy (API-Schlüssel)
@@ -16,6 +17,7 @@ export type ScanResult =
   | { kind: 'spool'; spoolId: number; source: 'buddy-shelf' | 'bambuddy-label' }
   | { kind: 'slot'; printerId: number; amsId: number; trayId: number }
   | { kind: 'location'; locationId: number }
+  | { kind: 'workflow'; name: string }
   | { kind: 'config'; url: string; apiKey: string; version: number }
   | { kind: 'gtin'; code: string }
   | { kind: 'unknown'; raw: string };
@@ -32,6 +34,7 @@ export function isValidGtin(code: string): boolean {
 }
 export const SLOT_CODE_PREFIX = 'bm:t:';
 export const LOCATION_CODE_PREFIX = 'bm:l:';
+export const WORKFLOW_CODE_PREFIX = 'bm:w:';
 
 /** Externe Spulenhalterung in Bambuddy: ams_id 255, tray_id 0/1. */
 export const EXTERNAL_AMS_ID = 255;
@@ -70,7 +73,13 @@ export function labelCode(code: string, base: string | undefined = configuredBas
   if (code.startsWith(SPOOL_CODE_PREFIX)) return `${root}/s/${code.slice(SPOOL_CODE_PREFIX.length)}`;
   if (code.startsWith(LOCATION_CODE_PREFIX)) return `${root}/l/${code.slice(LOCATION_CODE_PREFIX.length)}`;
   if (code.startsWith(SLOT_CODE_PREFIX)) return `${root}/t/${code.slice(SLOT_CODE_PREFIX.length).replaceAll(':', '/')}`;
+  if (code.startsWith(WORKFLOW_CODE_PREFIX)) return `${root}/w/${code.slice(WORKFLOW_CODE_PREFIX.length)}`;
   return code;
+}
+
+export function encodeWorkflowCode(name: string): string {
+  if (!/^[a-z][a-z0-9-]{0,30}$/.test(name)) throw new Error(`Ungültiger Ablauf: ${name}`);
+  return `${WORKFLOW_CODE_PREFIX}${name}`;
 }
 
 function positiveInt(v: string | null | undefined): number | null {
@@ -91,6 +100,11 @@ export function parseScan(raw: string): ScanResult {
   if (text.toLowerCase().startsWith(LOCATION_CODE_PREFIX)) {
     const id = positiveInt(text.slice(LOCATION_CODE_PREFIX.length));
     return id ? { kind: 'location', locationId: id } : { kind: 'unknown', raw: text };
+  }
+
+  if (text.toLowerCase().startsWith(WORKFLOW_CODE_PREFIX)) {
+    const name = text.slice(WORKFLOW_CODE_PREFIX.length).toLowerCase();
+    return /^[a-z][a-z0-9-]{0,30}$/.test(name) ? { kind: 'workflow', name } : { kind: 'unknown', raw: text };
   }
 
   if (text.toLowerCase().startsWith(SLOT_CODE_PREFIX)) {
@@ -118,9 +132,11 @@ export function parseScan(raw: string): ScanResult {
   try {
     const u = new URL(text);
     // eigene Etiketten als Adresse (jede Adresse der App – Tailscale oder Heimnetz)
-    const own = /^\/(s|l|t)\/([^?#]+?)\/?$/.exec(u.pathname);
+    const own = /^\/(s|l|t|w)\/([^?#]+?)\/?$/.exec(u.pathname);
     if (own) {
-      const short = own[1] === 's' ? SPOOL_CODE_PREFIX : own[1] === 'l' ? LOCATION_CODE_PREFIX : SLOT_CODE_PREFIX;
+      const short = { s: SPOOL_CODE_PREFIX, l: LOCATION_CODE_PREFIX, t: SLOT_CODE_PREFIX, w: WORKFLOW_CODE_PREFIX }[
+        own[1] as 's' | 'l' | 't' | 'w'
+      ];
       return parseScan(short + own[2]!.replaceAll('/', ':'));
     }
     if (/\/inventory\/?$/.test(u.pathname)) {

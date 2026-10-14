@@ -106,3 +106,15 @@ describe('Feste Etiketten-Adresse (Einstellung)', async () => {
     expect(labelCode('bm:s:7')).toBe('bm:s:7'); // Tests laufen ohne Browser-Adresse
   });
 });
+
+describe('Ablauf-Etiketten', async () => {
+  const { encodeWorkflowCode, labelCode, parseScan: parse } = await import('./codes');
+  it('Wiegen/Trocknen als Code und Adresse', () => {
+    expect(encodeWorkflowCode('weigh')).toBe('bm:w:weigh');
+    expect(labelCode('bm:w:dry', 'https://app.example')).toBe('https://app.example/w/dry');
+    expect(parse('bm:w:weigh')).toEqual({ kind: 'workflow', name: 'weigh' });
+    expect(parse('https://app.example/w/dry')).toEqual({ kind: 'workflow', name: 'dry' });
+    expect(parse('bm:w:../x').kind).toBe('unknown');
+    expect(() => encodeWorkflowCode('Böse Sache')).toThrow();
+  });
+});

@@ -45,6 +45,7 @@ export function App() {
               <Route path="/s/:id" element={<CodeRedirect />} />
               <Route path="/l/:id" element={<CodeRedirect />} />
               <Route path="/t/:printer/:ams/:tray" element={<CodeRedirect />} />
+              <Route path="/w/:name" element={<CodeRedirect />} />
               <Route path="/more" element={<SettingsPage />} />
               <Route path="/more/templates" element={<TemplatesPage />} />
               <Route path="/" element={<Navigate to={first?.tab?.href ?? '/more'} replace />} />
