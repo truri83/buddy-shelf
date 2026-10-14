@@ -46,6 +46,8 @@ import { SpoolCard } from '../components/SpoolCard';
 import { SpoolDetailView, type DetailSheet } from '../components/SpoolDetailView';
 import { useDisplayConfig } from '@/core/filament';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { STORAGE_TYPES } from '../newSpool';
+import { STORAGE_ICONS } from '../storage';
 import { locationText } from '../locationPrefs';
 import { useAssignments, useBulkArchive, useLocations, useSlots, useSpools } from '../hooks/useSpools';
 import { isNewRfid } from '../slots';
@@ -79,6 +81,8 @@ export function SpoolListPage() {
   const unlabeledOnly = filter === 'unlabeled';
   const dryOnly = filter === 'dry';
   const lowOnly = filter === 'low';
+  // Lagerungsart (OVP, Beutel, Trockenbox, offen) – kombinierbar mit den anderen Filtern
+  const storageFilter = params.get('storage');
   const family = params.get('fam');
   const variant = params.get('sub');
   /** Adresse ändern, ohne die anderen Filter zu verlieren */
@@ -96,6 +100,10 @@ export function SpoolListPage() {
   const dueDry = (spools.data ?? []).filter((s) => dryingDue(s, dryCfg)?.due).length;
   const unlabeled = (spools.data ?? []).filter((s) => s.label_printed_at === null).length;
   const lowCount = (spools.data ?? []).filter((s) => !s.archived_at && isLow(s, display)).length;
+  const storageCounts = STORAGE_TYPES.map((k) => ({
+    k,
+    n: (spools.data ?? []).filter((s) => !s.archived_at && s.storage_type === k).length,
+  }));
   const [groupBy, setGroupBy] = useState<GroupBy>(() => storage.get<GroupBy>('spools.groupBy', 'none'));
   const [sortBy, setSortBy] = useState<SortBy>(() => storage.get<SortBy>('spools.sortBy', 'id'));
   // SP-12 Mehrfachauswahl
@@ -119,13 +127,28 @@ export function SpoolListPage() {
           (!unlabeledOnly || s.label_printed_at === null) &&
           (!dryOnly || !!dryingDue(s, dryCfg)?.due) &&
           (!lowOnly || isLow(s, display)) &&
+          (!storageFilter || s.storage_type === storageFilter) &&
           (!family || familyOf(s) === family) &&
           (variant == null || variantOf(s) === variant),
       ),
       sortBy,
     );
     return groupSpools(list, groupBy, locations.data ?? [], t('spools.noLocation'));
-  }, [spools.data, locations.data, query, groupBy, sortBy, unlabeledOnly, dryOnly, lowOnly, display, dryCfg, family, variant]);
+  }, [
+    spools.data,
+    locations.data,
+    query,
+    groupBy,
+    sortBy,
+    unlabeledOnly,
+    dryOnly,
+    lowOnly,
+    storageFilter,
+    display,
+    dryCfg,
+    family,
+    variant,
+  ]);
 
   const toggleSort = () => {
     const next: SortBy = sortBy === 'id' ? 'remaining' : 'id';
@@ -301,6 +324,18 @@ export function SpoolListPage() {
                     {t('dry.filter', { n: dueDry })}
                   </ChoiceChip>
                 )}
+                {storageCounts
+                  .filter(({ k, n }) => n > 0 || storageFilter === k)
+                  .map(({ k, n }) => (
+                    <ChoiceChip
+                      key={k}
+                      selected={storageFilter === k}
+                      onSelect={() => updateParams({ storage: storageFilter === k ? null : k })}
+                    >
+                      <IonIcon icon={STORAGE_ICONS[k]} aria-hidden style={{ marginRight: 'var(--bs-s1)' }} />
+                      {t(`storage.${k}`)} · {n}
+                    </ChoiceChip>
+                  ))}
               </FamilyFilter>
             )}
             {spools.isPending ? (
