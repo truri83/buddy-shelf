@@ -54,11 +54,17 @@ export function encodeLocationCode(locationId: number): string {
   return `${LOCATION_CODE_PREFIX}${locationId}`;
 }
 
+/** Feste Adresse für Etiketten (Einstellung „Adresse für Etiketten“); null = aktuelle Adresse der Seite. */
+let configuredBase: string | null = null;
+export function setLabelBase(url: string | null): void {
+  configuredBase = url?.trim().replace(/\/+$/, '') || null;
+}
+
 /**
  * Etiketten-Inhalt als Adresse der App (bm:s:3 → <app>/s/3): Die normale Handy-Kamera öffnet dann direkt das
  * Schnellmenü bzw. „Einräumen“/Slot – ohne App-Scanner. Ohne Browser (Tests, Server) bleibt der kurze Code.
  */
-export function labelCode(code: string, base: string | undefined = globalThis.location?.origin): string {
+export function labelCode(code: string, base: string | undefined = configuredBase ?? globalThis.location?.origin): string {
   if (!base) return code;
   const root = base.replace(/\/+$/, '');
   if (code.startsWith(SPOOL_CODE_PREFIX)) return `${root}/s/${code.slice(SPOOL_CODE_PREFIX.length)}`;

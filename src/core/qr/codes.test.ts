@@ -96,3 +96,13 @@ describe('Etiketten als Adresse (Handy-Kamera öffnet die Seite direkt)', async 
     expect(parse('https://example.com/spools/3').kind).toBe('unknown');
   });
 });
+
+describe('Feste Etiketten-Adresse (Einstellung)', async () => {
+  const { labelCode, setLabelBase } = await import('./codes');
+  it('eingestellte Adresse geht vor der aktuellen, ohne Einstellung die aktuelle', () => {
+    setLabelBase('https://tower.example.ts.net:8444/');
+    expect(labelCode('bm:s:7')).toBe('https://tower.example.ts.net:8444/s/7');
+    setLabelBase(null);
+    expect(labelCode('bm:s:7')).toBe('bm:s:7'); // Tests laufen ohne Browser-Adresse
+  });
+});

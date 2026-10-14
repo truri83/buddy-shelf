@@ -3,6 +3,7 @@ import {
   albumsOutline,
   discOutline,
   gridOutline,
+  listOutline,
   locationOutline,
   optionsOutline,
   scaleOutline,
@@ -14,6 +15,7 @@ import { WeighSessionPage } from './pages/WeighSessionPage';
 import { CoreWeightsPage } from './pages/CoreWeightsPage';
 import { DisplaySettingsPage } from './pages/DisplaySettingsPage';
 import { DryingSettingsPage } from './pages/DryingSettingsPage';
+import { ListsSettingsPage } from './pages/ListsSettingsPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { StowPage } from './pages/StowPage';
 import { SlotPage } from './pages/SlotPage';
@@ -36,6 +38,7 @@ export const spoolsModule: ModuleManifest = {
     { path: '/more/locations', component: LocationsPage },
     { path: '/more/drying', component: DryingSettingsPage },
     { path: '/more/display', component: DisplaySettingsPage },
+    { path: '/more/lists', component: ListsSettingsPage },
     { path: '/spools/stow/:id', component: StowPage },
     { path: '/more/slots/:printer/:ams/:tray', component: SlotPage },
     { path: '/spools/:id', component: SpoolDetailPage },
@@ -49,6 +52,7 @@ export const spoolsModule: ModuleManifest = {
     { id: 'spools.cores', label: 'cores.action', icon: discOutline, href: '/more/cores', group: 'setup' },
     { id: 'spools.drying', label: 'drySet.title', icon: sunnyOutline, href: '/more/drying', group: 'setup' },
     { id: 'spools.display', label: 'display.title', icon: optionsOutline, href: '/more/display', group: 'setup' },
+    { id: 'spools.lists', label: 'lists.title', icon: listOutline, href: '/more/lists', group: 'setup' },
   ],
   // SP-17: Spule → Schnellmenü, Lagerort → Einräumen; SP-08: Slot-Etikett öffnet den Doppelscan
   scan: (r) =>

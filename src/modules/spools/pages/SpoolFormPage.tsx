@@ -60,7 +60,9 @@ import { useWeighMode, WeighModeSwitch } from '../components/CoreRow';
 import { coreDisplayName } from '../cores';
 import { todayIso, useDisplayConfig } from '@/core/filament';
 import { STORAGE_ICONS } from '../storage';
+import { useListPrefs } from '../hooks/useListPrefs';
 import { useLocationPrefs } from '../hooks/useLocationPrefs';
+import { isHidden, recentValues } from '../listPrefs';
 import { defaultLocationId, locationText } from '../locationPrefs';
 import {
   useCatalog,
@@ -72,6 +74,7 @@ import {
   useGtin,
   useLocations,
   useSetExtras,
+  useSpools,
   useSpool,
   useUpdateSpool,
 } from '../hooks/useSpools';
@@ -194,6 +197,18 @@ function SpoolForm({
     editing || locationPicked ? draft.locationId : (draft.locationId ?? defaultLocationId(locationPrefs, locations.data ?? []));
   const catalog = useCatalog();
   const manufacturers = useDbManufacturers(true);
+  // Auswahllisten entschlacken: zuletzt genutzt oben, Ausgeblendetes (Mehr → Auswahllisten) nur über Suche
+  const stock = useSpools();
+  const listPrefs = useListPrefs();
+  const recentBrands = useMemo(() => recentValues(stock.data ?? [], (s) => s.brand), [stock.data]);
+  const recentMaterials = useMemo(() => recentValues(stock.data ?? [], (s) => s.material), [stock.data]);
+  const materialChips = useMemo(
+    () =>
+      [...COMMON_MATERIALS, ...recentMaterials.filter((m) => !(COMMON_MATERIALS as readonly string[]).includes(m)).slice(0, 3)].filter(
+        (m) => !isHidden(listPrefs.hiddenMaterials, m),
+      ),
+    [recentMaterials, listPrefs.hiddenMaterials],
+  );
   const materials = useDbMaterials(draft.brand.trim(), picker === 'material');
   const filaments = useDbFilaments(draft.brand.trim(), draft.material.trim());
   const colors = useColors(draft.brand.trim(), draft.material.trim());
@@ -385,12 +400,12 @@ function SpoolForm({
           </IonItem>
           <IonListHeader>{t('new.material')}</IonListHeader>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bs-s1)', padding: 'var(--bs-s2) var(--bs-s3)' }}>
-            {COMMON_MATERIALS.map((m) => (
+            {materialChips.map((m) => (
               <ChoiceChip key={m} selected={draft.material === m} onSelect={() => set('material', m)}>
                 {m}
               </ChoiceChip>
             ))}
-            {!COMMON_MATERIALS.includes(draft.material as (typeof COMMON_MATERIALS)[number]) && draft.material && (
+            {!materialChips.includes(draft.material) && draft.material && (
               <ChoiceChip selected onSelect={() => setPicker('material')}>
                 {draft.material}
               </ChoiceChip>
@@ -837,6 +852,8 @@ function SpoolForm({
         value={draft.brand}
         loading={manufacturers.isPending}
         allowCustom
+        pinned={recentBrands}
+        hidden={(v) => isHidden(listPrefs.hiddenBrands, v)}
         onSelect={(v) => set('brand', v)}
         onDismiss={() => setPicker(null)}
       />
@@ -847,6 +864,8 @@ function SpoolForm({
         value={draft.material}
         loading={materials.isPending}
         allowCustom
+        pinned={recentMaterials}
+        hidden={(v) => isHidden(listPrefs.hiddenMaterials, v)}
         onSelect={(v) => set('material', v.toUpperCase())}
         onDismiss={() => setPicker(null)}
       />

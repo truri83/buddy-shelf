@@ -7,6 +7,7 @@ import { t } from '@/core/i18n';
 import { CodeRedirect } from './CodeRedirect';
 import { ScanPage } from './pages/ScanPage';
 import { EmbeddedToast } from './EmbeddedToast';
+import { LabelBaseSync } from './LabelBaseSync';
 import { UpdateToast } from './UpdateToast';
 import { SettingsPage } from './pages/SettingsPage';
 import { TemplatesPage } from './pages/TemplatesPage';
@@ -75,6 +76,7 @@ export function App() {
         </IonReactRouter>
         <UpdateToast />
         <EmbeddedToast />
+        <LabelBaseSync />
       </IonApp>
     </QueryClientProvider>
   );

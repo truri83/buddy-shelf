@@ -18,7 +18,15 @@ import {
   useIonViewWillEnter,
 } from '@ionic/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { alertCircle, checkmarkCircle, cloudOfflineOutline, documentTextOutline, serverOutline, volumeHighOutline } from 'ionicons/icons';
+import {
+  alertCircle,
+  checkmarkCircle,
+  cloudOfflineOutline,
+  documentTextOutline,
+  qrCodeOutline,
+  serverOutline,
+  volumeHighOutline,
+} from 'ionicons/icons';
 import { useState } from 'react';
 import {
   ApiError,
@@ -27,11 +35,14 @@ import {
   isTestedVersion,
   useAuthStatus,
   useBambuddyVersion,
+  useAppPrefsQuery,
   useInventorySource,
   useMe,
+  useSaveAppPrefs,
 } from '@/core/api';
 import { t } from '@/core/i18n';
 import { can, scanSoundEnabled, setScanSound, storage, type Capability } from '@/core/platform';
+import { EditSheet, TextRow, useNotify } from '@/core/ui';
 import { modules } from '../registry';
 
 const CAPS: Capability[] = ['scanner', 'printer.bluetooth', 'printer.usb', 'printer.service', 'nfc', 'push', 'share', 'haptics'];
@@ -56,6 +67,23 @@ export function SettingsPage() {
   const me = useMe();
   const authStatus = useAuthStatus();
   const source = useInventorySource();
+  // Feste Adresse für Etiketten (alle Geräte): alle QR-Codes öffnen dieselbe Adresse
+  const appPrefs = useAppPrefsQuery();
+  const saveApp = useSaveAppPrefs();
+  const notify = useNotify();
+  const [labelEdit, setLabelEdit] = useState<string | null>(null);
+  const labelValid = !labelEdit?.trim() || /^https?:\/\/\S+$/i.test(labelEdit.trim());
+  const saveLabelBase = async () => {
+    const v = labelEdit?.trim().replace(/\/+$/, '') || null;
+    try {
+      await saveApp.mutateAsync((p) => ({ ...p, labelBaseUrl: v }));
+      notify.ok(t('common.saved'));
+      return true;
+    } catch (e) {
+      notify.fail(e);
+      return false;
+    }
+  };
   const actions = modules.flatMap((m) => m.quickActions ?? []);
 
   const save = () => {
@@ -150,6 +178,19 @@ export function SettingsPage() {
               </IonLabel>
             </IonItem>
           )}
+          <IonItem
+            button
+            detail
+            lines="none"
+            disabled={!appPrefs.isSuccess}
+            onClick={() => setLabelEdit(appPrefs.data?.labelBaseUrl ?? '')}
+          >
+            <IonIcon icon={qrCodeOutline} slot="start" style={{ color: 'var(--bs-text-2)' }} aria-hidden />
+            <IonLabel>
+              {t('settings.labelBase')}
+              <div style={sub}>{appPrefs.data?.labelBaseUrl ?? t('settings.labelBaseCurrent', { url: location.origin })}</div>
+            </IonLabel>
+          </IonItem>
         </IonList>
 
         <IonAccordionGroup expand="inset">
@@ -224,6 +265,35 @@ export function SettingsPage() {
           {t('app.name')} {__APP_VERSION__}
           {__BUILD_SHA__ ? ` · ${__BUILD_SHA__.slice(0, 7)}` : ''}
         </p>
+        <EditSheet
+          isOpen={labelEdit !== null}
+          title={t('settings.labelBase')}
+          saveDisabled={!labelValid}
+          busy={saveApp.isPending}
+          onSave={saveLabelBase}
+          onDismiss={() => setLabelEdit(null)}
+        >
+          <IonList inset>
+            <TextRow
+              icon={qrCodeOutline}
+              label={t('settings.labelBase')}
+              placeholder={location.origin}
+              value={labelEdit ?? ''}
+              onChange={setLabelEdit}
+              lines="none"
+            />
+          </IonList>
+          <IonNote className="bs-section-note" color={labelValid ? undefined : 'danger'}>
+            {labelValid ? t('settings.labelBaseHint') : t('settings.labelBaseInvalid')}
+          </IonNote>
+          {labelEdit !== location.origin && (
+            <div style={{ padding: '0 var(--bs-s4)' }}>
+              <IonButton expand="block" fill="outline" onClick={() => setLabelEdit(location.origin)}>
+                {t('settings.labelBaseUse')}
+              </IonButton>
+            </div>
+          )}
+        </EditSheet>
       </IonContent>
     </IonPage>
   );

@@ -84,6 +84,7 @@ Kennzahl-Kachel, Abschnittskopf, Objektzeile, Leer-/Fehler-/Offline-Hinweis ✅,
 | `ColorRing` | **nur** Filamentfarbe (Spulen-Symbol mit Nabe) – nie Status |
 | `FillBar` | **nur** Füllstand in Statusfarbe: grün ok · gelb niedrig · rot fast leer; Stufe aus `stockLevel` (Schwellen unter Mehr → Spulen-Anzeige) |
 | `ChoiceChip` in `.bs-chip-row` | wischbare Filter-/Auswahlreihen |
+| `PickerSheet` | Auswahl mit Suche; `pinned` = „Zuletzt genutzt“ oben, `hidden` = ausgeblendet (Mehr → Auswahllisten), über Suche/„… anzeigen“ trotzdem erreichbar |
 | `useMediaQuery`, `SPLIT_QUERY` | Breitenstufen; ab 1000 px Liste links + Detail rechts |
 | `StateView` | ganze Seite: lädt · leer · Fehler · offline · keine Rechte (`denied`), jeweils mit Symbol in Statusfarbe |
 | `PermissionNote` | Hinweis oben auf Seiten, die man ohne Schreibrecht nur ansehen kann |
