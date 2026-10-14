@@ -128,5 +128,6 @@
     "bag": 6,
     "sealed": null
   },
-  "dehydratorMax": null
+  "dehydratorMax": null,
+  "amsHumidityWarn": 40
 }

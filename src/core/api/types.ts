@@ -196,12 +196,31 @@ export interface AmsTray {
   /** RFID der Bambu-Spule (leer/Nullen = kein Chip) */
   tag_uid?: string | null;
   tray_uuid?: string | null;
+  /** aktueller Flussdynamik-Wert (K) des Slots; null = unbekannt */
+  k?: number | null;
+  /** Kalibrier-Profil des Druckers (−1 = keins) */
+  cali_idx?: number | null;
+  /** Filamentprofil-ID im Slot (z. B. GFA00) */
+  tray_info_idx?: string | null;
 }
 
 export interface AmsUnit {
   id: number;
   is_ams_ht: boolean;
   tray: AmsTray[];
+  /** Luftfeuchte in % und Temperatur in °C (AMS 2 Pro / HT) */
+  humidity?: number | null;
+  temp?: number | null;
+  /** Trocknung läuft, wenn > 0 */
+  dry_time?: number | null;
+}
+
+/** Filamentprofil, das im Slot eingestellt ist (Bambuddy /printers/{id}/slot-presets). */
+export interface SlotPreset {
+  ams_id: number;
+  tray_id: number;
+  preset_id: string | null;
+  preset_name: string | null;
 }
 
 export interface PrinterStatus {

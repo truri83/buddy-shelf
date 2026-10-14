@@ -17,6 +17,15 @@ export const handlers = [
     Object.assign(s, (await request.json()) as object, { updated_at: new Date().toISOString() });
     return HttpResponse.json(s);
   }),
+  // Filamentprofil je Slot (wie Bambuddy: Schlüssel = laufende Nummer)
+  http.get(api('/printers/:id/slot-presets'), () =>
+    HttpResponse.json({
+      0: { ams_id: 0, tray_id: 0, preset_id: 'GFA00', preset_name: 'PLA Basic', tray_info_idx: 'GFA00' },
+      2: { ams_id: 0, tray_id: 2, preset_id: 'P38d16be', preset_name: 'ASA', tray_info_idx: 'P38d16be' },
+      3: { ams_id: 0, tray_id: 3, preset_id: 'GFSNL03', preset_name: 'PLA+', tray_info_idx: 'GFSNL03' },
+      5: { ams_id: 1, tray_id: 1, preset_id: 'GFA00', preset_name: 'PLA Basic', tray_info_idx: 'GFA00' },
+    }),
+  ),
   http.get(api('/inventory/locations'), () =>
     HttpResponse.json(locations.map((l) => ({ ...l, spool_count: spools.filter((s) => s.location_id === l.id && !s.archived_at).length }))),
   ),

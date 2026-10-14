@@ -109,16 +109,21 @@ export const printerStatus: Record<number, PrinterStatus> = {
       {
         id: 0,
         is_ams_ht: false,
+        humidity: 26,
+        temp: 21.1,
         tray: [
-          tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80),
+          { ...tray(0, 'PLA', 'PLA Basic', 'FFFFFFFF', 80), k: 0.019 },
           tray(1, null, null, null, null),
           tray(2, 'ASA', 'ASA', 'FFFFFFFF', 100),
-          tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65),
+          { ...tray(3, 'PETG', 'PETG HF', '8A8D91FF', 65), k: 0.031 },
         ],
       },
       {
         id: 1,
         is_ams_ht: false,
+        humidity: 44,
+        temp: 22.4,
+        dry_time: 120,
         tray: [
           tray(0, 'PLA', 'PLA Matte', '7C4B3AFF', 100, 'A1B2C3D4E5F60708'),
           tray(1, 'PLA', 'PLA Basic', '000000FF', 45),

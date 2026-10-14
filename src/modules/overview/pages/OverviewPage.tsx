@@ -28,10 +28,11 @@ import {
   sunnyOutline,
 } from 'ionicons/icons';
 import { Link } from 'react-router-dom';
-import { assignmentLabel, bambuddy, fillRatio, remainingGrams } from '@/core/api';
+import { bambuddy, fillRatio, remainingGrams } from '@/core/api';
 import { dryingDue, stockLevel, useDisplayConfig, useDryingConfig } from '@/core/filament';
 import { fmtNum, t, tn } from '@/core/i18n';
 import { Badge, ColorRing, StatTile, StateView } from '@/core/ui';
+import { AmsOverview } from '../components/AmsOverview';
 
 /** Schnellaktionen als Deep Links (Regel 2: Zusammenarbeit über Deep Links statt Imports). */
 // Scannen ist der Mittelknopf der Tab-Leiste – hier nicht doppelt
@@ -57,10 +58,6 @@ export function OverviewPage() {
   const unlabeled = active.filter((s) => s.label_printed_at === null).length;
   const dryCfg = useDryingConfig();
   const dueDry = active.filter((s) => dryingDue(s, dryCfg)?.due).length;
-  const byId = new Map(active.map((s) => [s.id, s]));
-  const loaded = (assignments.data ?? [])
-    .map((a) => ({ a, s: byId.get(a.spool_id) }))
-    .sort((x, y) => assignmentLabel(x.a).localeCompare(assignmentLabel(y.a), 'de', { numeric: true }));
 
   const refresh = async (e: CustomEvent<RefresherEventDetail>) => {
     await Promise.all([spools.refetch(), assignments.refetch()]);
@@ -147,27 +144,7 @@ export function OverviewPage() {
               ))}
             </div>
 
-            {loaded.length > 0 && (
-              <IonList inset>
-                <IonListHeader>{t('overview.loaded')}</IonListHeader>
-                {loaded.map(({ a, s }) => (
-                  <IonItem key={a.id} routerLink={`/spools/${a.spool_id}`} detail>
-                    <div slot="start">
-                      <ColorRing rgba={s?.rgba ?? null} size={32} label={s?.color_name ?? `#${a.spool_id}`} />
-                    </div>
-                    <IonLabel>
-                      #{a.spool_id} {s ? (s.color_name ?? [s.material, s.subtype].filter(Boolean).join(' ')) : ''}
-                      <p>{assignmentLabel(a)}</p>
-                    </IonLabel>
-                    {s && (
-                      <IonLabel slot="end" className="bs-num" style={{ flex: 'none' }}>
-                        {fmtNum(remainingGrams(s))} g
-                      </IonLabel>
-                    )}
-                  </IonItem>
-                ))}
-              </IonList>
-            )}
+            <AmsOverview spools={active} assignments={assignments.data ?? []} />
 
             <IonList inset>
               <IonListHeader>{t('overview.attention')}</IonListHeader>

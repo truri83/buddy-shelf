@@ -9,6 +9,8 @@ export interface MoistureState {
   short: string;
   /** ausführlich für Hover/Screenreader */
   detail: string;
+  /** lohnt die Anzeige? (nicht bei unbekannter Lagerung/Material – das wäre nur ein grauer Strich) */
+  show: boolean;
 }
 
 /** Ab diesem Rest des Intervalls wird die Ampel gelb (letztes Viertel). */
@@ -23,9 +25,9 @@ export function moistureState(
   cfg: DryingConfig,
   now = new Date(),
 ): MoistureState {
-  if (s.storage_type === 'sealed') return { level: 'none', short: t('moist.sealed'), detail: t('moist.sealedDetail') };
+  if (s.storage_type === 'sealed') return { level: 'none', short: t('moist.sealed'), detail: t('moist.sealedDetail'), show: true };
   const due = dryingDue(s, cfg, now);
-  if (!due) return { level: 'none', short: t('moist.unknown'), detail: t(s.storage_type ? 'moist.noFamily' : 'moist.noStorage') };
+  if (!due) return { level: 'none', short: '', detail: t(s.storage_type ? 'moist.noFamily' : 'moist.noStorage'), show: false };
   const since = daysSince(s.dried_at ?? s.created_at.slice(0, 10), now);
   const last = s.dried_at ? tn('moist.driedAgo', since) : tn('moist.neverDried', since);
   const where = t(`storage.${s.storage_type}`);
@@ -35,5 +37,6 @@ export function moistureState(
     level,
     short: due.due ? t('moist.dueShort') : t('moist.inDays', { n: due.dueInDays }),
     detail: `${last} · ${where} · ${next}`,
+    show: true,
   };
 }

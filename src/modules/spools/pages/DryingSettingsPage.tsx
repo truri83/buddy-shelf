@@ -16,7 +16,15 @@ import {
   IonToolbar,
   useIonAlert,
 } from '@ionic/react';
-import { add, flameOutline, notificationsOffOutline, notificationsOutline, thermometerOutline, timeOutline } from 'ionicons/icons';
+import {
+  add,
+  flameOutline,
+  notificationsOffOutline,
+  notificationsOutline,
+  thermometerOutline,
+  timeOutline,
+  waterOutline,
+} from 'ionicons/icons';
 import { useState } from 'react';
 import { useAllowed } from '@/core/api';
 import { DEFAULT_DRYING, FAMILIES, useDryingConfigQuery, useSaveDryingConfig, type DryingConfig, type StorageKind } from '@/core/filament';
@@ -146,12 +154,20 @@ export function DryingSettingsPage() {
 
             <IonList inset>
               <IonListHeader>{t('drySet.dehydrator')}</IonListHeader>
-              <FieldRow icon={flameOutline} label={t('drySet.maxTemp')} hint={t('drySet.maxTempHint')} lines="none">
+              <FieldRow icon={flameOutline} label={t('drySet.maxTemp')} hint={t('drySet.maxTempHint')}>
                 <NumberInput
                   label={t('drySet.maxTemp')}
                   unit="°C"
                   value={cfg.dehydratorMax}
                   onChange={(v) => canEdit && change((c) => ({ ...c, dehydratorMax: v }))}
+                />
+              </FieldRow>
+              <FieldRow icon={waterOutline} label={t('drySet.amsHumidity')} hint={t('drySet.amsHumidityHint')} lines="none">
+                <NumberInput
+                  label={t('drySet.amsHumidity')}
+                  unit="%"
+                  value={cfg.amsHumidityWarn}
+                  onChange={(v) => canEdit && v != null && change((c) => ({ ...c, amsHumidityWarn: v }))}
                 />
               </FieldRow>
             </IonList>

@@ -16,6 +16,7 @@ import type {
   SpoolAssignmentCreate,
   SpoolCreate,
   SpoolUpdate,
+  SlotPreset,
 } from './types';
 
 /**
@@ -500,6 +501,9 @@ export const bambuddy = {
   printers: {
     list: () => request<Printer[]>('GET', '/printers/'),
     status: (id: number) => request<PrinterStatus>('GET', `/printers/${id}/status`),
+    /** Filamentprofil je Slot (Name wie im Slicer) */
+    slotPresets: async (id: number): Promise<SlotPreset[]> =>
+      Object.values(await request<Record<string, SlotPreset>>('GET', `/printers/${id}/slot-presets`)),
   },
   catalog: {
     spools: () => request<CatalogEntry[]>('GET', '/inventory/catalog'),

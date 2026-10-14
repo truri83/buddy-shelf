@@ -124,7 +124,7 @@ export function SpoolCard({ spool, location, locationIcon, ams, canEdit, selecti
           {spool.material_number && <Badge>{spool.material_number}</Badge>}
           {ams && <Badge tone="good">{ams}</Badge>}
           {level !== 'ok' && <Badge tone={level === 'empty' ? 'critical' : 'warn'}>{t(`stock.${level}`)}</Badge>}
-          {display.showDrying && moisture && <MoistureLight {...moisture} />}
+          {display.showDrying && moisture?.show && <MoistureLight {...moisture} />}
           {price != null && (
             <span className="bs-num" style={{ fontSize: 'var(--bs-fs-caption)', color: 'var(--bs-text-2)' }}>
               {t('stock.price', { eur: fmtMoney(price) })}

@@ -19,12 +19,15 @@ export interface DryingConfig {
   storageFactor: Record<StorageKind, number | null>;
   /** Höchsttemperatur des eigenen Dörrautomaten (°C); null = schafft alles → kein Hinweis */
   dehydratorMax: number | null;
+  /** AMS-Luftfeuchte (%), ab der die Übersicht warnt */
+  amsHumidityWarn: number;
 }
 
 export const DEFAULT_DRYING: DryingConfig = {
   materials: defaults.materials as unknown as Record<string, DryingRow>,
   storageFactor: defaults.storageFactor as Record<StorageKind, number | null>,
   dehydratorMax: defaults.dehydratorMax as number | null,
+  amsHumidityWarn: (defaults as { amsHumidityWarn?: number }).amsHumidityWarn ?? 40,
 };
 
 /** Gespeicherte Werte über die Startwerte legen (fehlende Familien/Felder bleiben Standard). */
@@ -34,6 +37,10 @@ export function mergeDrying(saved: Partial<DryingConfig> | null | undefined): Dr
     materials: { ...DEFAULT_DRYING.materials, ...(saved.materials ?? {}) },
     storageFactor: { ...DEFAULT_DRYING.storageFactor, ...(saved.storageFactor ?? {}) },
     dehydratorMax: saved.dehydratorMax === undefined ? DEFAULT_DRYING.dehydratorMax : saved.dehydratorMax,
+    amsHumidityWarn:
+      typeof saved.amsHumidityWarn === 'number' && saved.amsHumidityWarn > 0 && saved.amsHumidityWarn <= 100
+        ? saved.amsHumidityWarn
+        : DEFAULT_DRYING.amsHumidityWarn,
   };
 }
 
