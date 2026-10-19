@@ -22,6 +22,7 @@ import {
   locationOutline,
   openOutline,
   pricetagOutline,
+  sunnyOutline,
   trashOutline,
 } from 'ionicons/icons';
 import { useRef } from 'react';
@@ -41,8 +42,13 @@ import {
 } from '@/core/printing';
 import { Badge, useNotify } from '@/core/ui';
 
-const KINDS: TemplateKind[] = ['spool', 'slot', 'location'];
-const KIND_ICONS: Record<TemplateKind, string> = { spool: pricetagOutline, slot: gridOutline, location: locationOutline };
+const KINDS: TemplateKind[] = ['spool', 'dried', 'slot', 'location'];
+const KIND_ICONS: Record<TemplateKind, string> = {
+  spool: pricetagOutline,
+  dried: sunnyOutline,
+  slot: gridOutline,
+  location: locationOutline,
+};
 const sub = { color: 'var(--bs-text-2)', fontSize: 'var(--bs-fs-caption)', whiteSpace: 'normal' } as const;
 
 /** Etikett-Vorlagen: eingebaute + eigene (Server-Ordner). Gestaltet wird auf niim.blue, hier nur Import/Export. */

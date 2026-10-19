@@ -4,6 +4,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonLabel,
@@ -17,6 +18,7 @@ import {
   useIonViewDidEnter,
   useIonViewWillLeave,
 } from '@ionic/react';
+import { pricetagOutline } from 'ionicons/icons';
 import { useRef, useState } from 'react';
 import { useAllowed } from '@/core/api';
 import { dryingAdvice, todayIso, useDryingConfig } from '@/core/filament';
@@ -25,6 +27,7 @@ import { haptic, warnFeedback } from '@/core/platform';
 import { parseScan } from '@/core/qr/codes';
 import { errorText, ScannerView, StateView } from '@/core/ui';
 import { useSetExtras, useSpools } from '../hooks/useSpools';
+import { DriedLabelSheet } from '../components/DriedLabelSheet';
 import { spoolTitle } from '../slots';
 
 interface Entry {
@@ -52,6 +55,7 @@ export function DrySessionPage() {
   const [done, setDone] = useState<Entry[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [manual, setManual] = useState('');
+  const [printing, setPrinting] = useState(false);
   const busy = useRef(new Set<number>());
   useIonViewDidEnter(() => setActive(true));
   useIonViewWillLeave(() => setActive(false));
@@ -172,6 +176,19 @@ export function DrySessionPage() {
                 ))
               )}
             </IonList>
+            {done.length > 0 && (
+              <div style={{ padding: '0 var(--bs-s4) var(--bs-s4)' }}>
+                <IonButton expand="block" fill="outline" onClick={() => setPrinting(true)}>
+                  <IonIcon slot="start" icon={pricetagOutline} />
+                  {t('drySession.print', { n: done.length })}
+                </IonButton>
+              </div>
+            )}
+            <DriedLabelSheet
+              spools={printing ? done.flatMap((d) => spools.data?.find((s) => s.id === d.spoolId) ?? []) : null}
+              date={today}
+              onDismiss={() => setPrinting(false)}
+            />
           </>
         )}
       </IonContent>

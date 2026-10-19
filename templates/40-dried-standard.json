@@ -1,0 +1,99 @@
+{
+  "id": "dried-standard",
+  "title": "Getrocknet am",
+  "kind": "dried",
+  "label": {
+    "printDirection": "top",
+    "size": {
+      "width": 567,
+      "height": 354
+    }
+  },
+  "canvas": {
+    "version": "7.4.0",
+    "objects": [
+      {
+        "type": "QRCode",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 16,
+        "top": 67,
+        "width": 220,
+        "height": 220,
+        "text": "{code}",
+        "ecl": "M",
+        "mode": "Byte",
+        "qrVersion": 0
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 252,
+        "top": 28,
+        "width": 300,
+        "text": "GETROCKNET",
+        "fontSize": 40,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 252,
+        "top": 80,
+        "width": 300,
+        "text": "{dried}",
+        "fontSize": 64,
+        "fontFamily": "Arial",
+        "fontWeight": "bold",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 252,
+        "top": 176,
+        "width": 300,
+        "text": "#{id} {material}",
+        "fontSize": 36,
+        "fontFamily": "Arial",
+        "fontWeight": "normal",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      },
+      {
+        "type": "Textbox",
+        "version": "7.4.0",
+        "originX": "left",
+        "originY": "top",
+        "left": 252,
+        "top": 232,
+        "width": 300,
+        "text": "{color}",
+        "fontSize": 32,
+        "fontFamily": "Arial",
+        "fontWeight": "normal",
+        "fill": "#000000",
+        "textAlign": "left",
+        "lineHeight": 1,
+        "fontAutoSize": true
+      }
+    ]
+  }
+}

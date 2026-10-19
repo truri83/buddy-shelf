@@ -17,7 +17,7 @@ export function cleanTemplate(id, t) {
   return {
     id,
     title: String(t.title ?? id).slice(0, 60),
-    ...(['spool', 'slot', 'location'].includes(t.kind) ? { kind: t.kind } : {}),
+    ...(['spool', 'slot', 'location', 'dried'].includes(t.kind) ? { kind: t.kind } : {}),
     label: { printDirection: t.label.printDirection === 'left' ? 'left' : 'top', size: { width: size.width, height: size.height } },
     canvas: { version: String(t.canvas.version ?? '7.0.0'), objects: t.canvas.objects },
   };

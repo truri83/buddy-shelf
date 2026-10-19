@@ -7,7 +7,12 @@ const SPOOL_TEMPLATE = SPOOL_TEMPLATES[0]!;
 import { spoolLabelVariables } from './labels';
 
 const spool = {
-  id: 4, material: 'PLA', subtype: 'Basic', color_name: 'Black', brand: 'Bambu Lab', label_weight: 1000,
+  id: 4,
+  material: 'PLA',
+  subtype: 'Basic',
+  color_name: 'Black',
+  brand: 'Bambu Lab',
+  label_weight: 1000,
 } as Spool;
 
 describe('Spulen-Etikett', () => {
@@ -35,5 +40,28 @@ describe('Spulen-Etikett', () => {
     const vars = spoolLabelVariables({ ...spool, subtype: null, color_name: null, brand: null });
     expect(vars.material).toBe('PLA');
     expect(vars.color).toBe('');
+  });
+});
+
+describe('Trocknungs-Etikett', async () => {
+  const { driedLabelVariables } = await import('./labels');
+  const { guessKind } = await import('@/core/printing/template');
+  it('Datum ausdrücklich oder aus der Spule, deutsch formatiert', () => {
+    const s = {
+      id: 7,
+      material: 'PLA',
+      subtype: 'Basic',
+      color_name: 'Black',
+      brand: 'Bambu Lab',
+      label_weight: 1000,
+      core_weight: 250,
+      material_number: null,
+      dried_at: '2026-10-02T00:00:00',
+    } as never;
+    expect(driedLabelVariables(s, '2026-10-19').dried).toBe('19.10.2026');
+    expect(driedLabelVariables(s).dried).toBe('02.10.2026');
+  });
+  it('Vorlagen mit {dried} gelten als Trocknungs-Etikett', () => {
+    expect(guessKind([{ type: 'Textbox', text: 'Getrocknet {dried}' }])).toBe('dried');
   });
 });

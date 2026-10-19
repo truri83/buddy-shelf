@@ -1,5 +1,5 @@
 import { IonButton, IonIcon, IonList } from '@ionic/react';
-import { calendarOutline, sunnyOutline } from 'ionicons/icons';
+import { calendarOutline, pricetagOutline, sunnyOutline } from 'ionicons/icons';
 import { useState, type CSSProperties } from 'react';
 import type { Spool } from '@/core/api';
 import { fmtDate, t } from '@/core/i18n';
@@ -8,6 +8,7 @@ import { ChoiceChip, EditSheet, TextRow, useNotify } from '@/core/ui';
 import { STORAGE_TYPES } from '../newSpool';
 import { STORAGE_ICONS } from '../storage';
 import { useSetExtras } from '../hooks/useSpools';
+import { DriedLabelSheet } from './DriedLabelSheet';
 
 /** „vor 3 Tagen“ usw. */
 export function agoText(iso: string): string {
@@ -27,6 +28,7 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
   const save = (patch: { dried_at?: string | null; storage_type?: string | null }) =>
     set.mutateAsync({ ids: [spool.id], patch }).catch(notify.fail);
   const [date, setDate] = useState<string | null>(null);
+  const [printDried, setPrintDried] = useState(false);
   const pickDate = () => setDate(spool.dried_at?.slice(0, 10) ?? todayIso());
 
   return (
@@ -104,12 +106,19 @@ export function DryingCard({ spool, canEdit, style }: { spool: Spool; canEdit: b
             {t('dry.pickDate')}
           </IonButton>
           {spool.dried_at && (
+            <IonButton size="small" fill="outline" onClick={() => setPrintDried(true)}>
+              <IonIcon slot="start" icon={pricetagOutline} />
+              {t('dry.label')}
+            </IonButton>
+          )}
+          {spool.dried_at && (
             <IonButton size="small" fill="clear" color="medium" disabled={set.isPending} onClick={() => void save({ dried_at: null })}>
               {t('dry.clear')}
             </IonButton>
           )}
         </div>
       )}
+      <DriedLabelSheet spools={printDried ? [spool] : null} onDismiss={() => setPrintDried(false)} />
       <EditSheet
         isOpen={date !== null}
         title={t('dry.pickDate')}
