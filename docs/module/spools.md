@@ -283,6 +283,15 @@ Bambuddy kennt keine Felder für „getrocknet am“ und „Etikett gedruckt“.
 | Ablauf | Mehr → Ablauf-Etiketten: „Wiegen“ (→ Wiegen & Inventur), „Trocknen“ (→ jede gescannte Spule = heute getrocknet, mit Dörrautomat-Empfehlung). Neue Abläufe in `src/modules/spools/workflows.ts` ergänzen. |
 | Daten | QR `bm:w:<ablauf>` bzw. `<app>/w/<ablauf>`; Vorlage der Art „location“. |
 
+## SP-23 Trocknungs-Etikett
+
+| Feld | Inhalt |
+| --- | --- |
+| Status | umgesetzt (19.10.) – echter Druck auf B1 Pro noch offen |
+| Ziel | Nach dem Trocknen ein eigenes Etikett „Getrocknet am …“ auf Spule oder Beutel kleben. |
+| Ablauf | Spulen-Detail → Trocknungskarte → „Etikett“ (sobald Datum da); Trocknen-Modus → „Trocknungs-Etiketten drucken (n)“. |
+| Daten | Vorlagen-Art `dried` (eingebaut `templates/40-dried-standard.json`), Platzhalter `{dried}` (TT.MM.JJJJ), sonst wie Spulen-Etikett inkl. QR. |
+
 ## SP-14 Umzug von Spooly (Ablauf G)
 
 | Feld | Inhalt |
