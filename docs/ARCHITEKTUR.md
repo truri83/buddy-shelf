@@ -127,3 +127,26 @@ Capacitor-Client, unterstützt B1 Pro inkl. Rot).
 - Regeln 1–14 eingehalten, `typecheck`, `lint`, `test`, `build` grün
 - Tests für Logik (Kern bzw. `logic.ts` des Moduls)
 - Steckbrief-Status „umgesetzt“
+
+## Betrieb, Deploy und Ergänzungen (aus CLAUDE.md übernommen)
+### Daten
+- Keine eigene Datenbank. Zusatzdaten je Spule in Spoolman-Zusatzfeldern (`server/extras.js`); gemeinsame Einstellungen in `/prefs/<bereich>` (`server/prefs.js`, Datei im Datenordner).
+- Einstellbares als gemeinsame Einstellung (alle Geräte) bauen; speichern nur auf frisch gelesenem Server-Stand. Genutzt wird die App nur zu Hause.
+
+### Etiketten und Drucker
+- Etiketten-QR enthält die App-Adresse (`<app>/s/<id>`, `/l/<id>`, `/t/<drucker>/<ams>/<slot>`), damit die normale Handy-Kamera direkt die Aktion öffnet. Basis = Einstellung „Adresse für Etiketten“ (`/prefs/app`) oder aktuelle Adresse. Der App-Scanner versteht weiterhin `bm:`-Codes. Parser/Erzeugung: `src/core/qr/codes.ts`.
+- Etikettendrucker nur über Profile (`src/core/printing/profiles.ts`), Layouts in Millimetern.
+- Neue Plattformfähigkeiten nur über `can('…')` aus `@/core/platform`; Bausteine aus `@/core/ui`; Texte über `t()` aus `@/core/i18n`.
+
+### Deploy (Unraid, Ablauf wie SeestarManager)
+- Prod: `https://tower.tail2ef903.ts.net:8444` (HTTPS per `tailscale serve --https=8444` → `127.0.0.1:8096`), intern `http://100.101.172.117:8096`. Container `buddy-shelf`, Vorlage `deploy/unraid/buddy-shelf.xml`.
+- Der Bambuddy-Schlüssel liegt im Container (`BAMBUDDY_API_KEY`); Geräte brauchen keinen eigenen.
+- Push auf `main` → CI baut `ghcr.io/truri83/buddy-shelf:latest` und `:<sha>` (mit `BUILD_SHA`).
+- Dann `scripts/deploy.sh`: wartet auf CI, ruft `POST /api/admin/self-recreate` (Bearer-Token), pollt `/healthz` bis `sha` = HEAD. Code: `server/admin.js` (übernommen aus Seestar `admin-api.ts`).
+- Token nur aus der Windows-Benutzer-Variable `BUDDY_SHELF_ADMIN_TOKEN`, nie in Chat oder Kommandozeile.
+- Zugang zum Tower per SSH nur für Einrichtung/Notfall: Tailscale `root@100.101.172.117` oder LAN `root@192.168.178.50` (Tailscale ist bei aktivem NordVPN-Killswitch gesperrt).
+
+### Umgebung des Nutzers
+- Bambuddy selbst gehostet auf Unraid, erreichbar über Tailscale.
+- Drucker: Bambu Lab X2D mit AMS. Etikettendrucker: Niimbot B1 Pro (300 dpi, 48 mm, schwarz/rot, Bluetooth oder USB-C).
+- Testgeräte zuerst: iPhone (Safari, Homescreen-PWA) und Windows-PC (Chrome/Edge).
