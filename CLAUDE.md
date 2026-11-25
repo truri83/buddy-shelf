@@ -1,66 +1,33 @@
-# CLAUDE.md – buddy-shelf
+# buddy-shelf – Hinweise für Claude Code
 
-Plattformneutrale App (PWA → später Capacitor iOS/Android, Desktop als PWA/Tauri), die Bambuddy
-aufs Handy bringt. Erstes Modul: Spulen scannen, zuweisen, wiegen und auf Niimbot-Etikettendruckern
-etikettieren. Daten: Bambuddy (im Spoolman-Modus: Bestand in Spoolman), Zusatzdaten je Spule in Spoolman-
-Zusatzfeldern (`server/extras.js`), gemeinsame Einstellungen in `/prefs/<bereich>` (`server/prefs.js`, Datei im
-Datenordner). Keine eigene Datenbank.
+PWA (React/Ionic, Vite, später Capacitor/Tauri) mit Fastify-Server `server/`: bringt Bambuddy aufs Handy; erstes Modul Spulen scannen, zuweisen, wiegen, Niimbot-Etiketten. Läuft als Docker-Container auf Unraid. Code und Bezeichner Englisch; App-Texte, Doku, Commits Deutsch. Repo ist öffentlich: keine Schlüssel, Tokens, Passwörter. Push nur nach Torstens Okay, je Steckbrief ein Branch/PR.
 
-Sprache: Code und Bezeichner Englisch; Texte in der App, Doku und Commit-Beschreibungen Deutsch.
-
-## Vor jeder Arbeit lesen
-- `docs/KONZEPT.md` – Ziel, Umfang, Phasen, Abgrenzung zu vorhandenen Apps
-- `docs/ARCHITEKTUR.md` – Schichten, Ordner, Modulvertrag, **verbindliche Regeln 1–14**
-- `docs/DESIGN-SYSTEM.md` – Tokens, Seitenvorlagen, Bausteine, **UI-Regeln 1–6**
-- `docs/BAMBUDDY-API.md` – genutzte Endpunkte, QR-Formate, offene API-Fragen
-- `docs/module/<modul>.md` – Funktionssteckbriefe; **gebaut wird nur, was einen Steckbrief hat**
-
-## Arbeitsweise
-1. Neue Funktion → zuerst Steckbrief in `docs/module/<modul>.md` (Vorlage `docs/module/_VORLAGE.md`),
-   inkl. Skizze aus Seitenvorlage + Bausteinen. Erst bauen, wenn der Steckbrief steht.
-2. Kleine Schritte, je Steckbrief ein Branch/PR. Steckbrief-Status am Ende auf „umgesetzt“.
-3. Vor dem Abschluss immer: `npm run typecheck && npm run lint && npm test && npm run build`.
-4. UI immer im Mock prüfen (`npm run dev:mock`): iPhone-Breite hell + dunkel, Desktop-Breite.
-   Typprüfung immer mit `npm run typecheck` (tsc -b) – `tsc -p .` prüft hier nichts.
-5a. Einstellbares als gemeinsame Einstellung (`/prefs/<bereich>`, alle Geräte) bauen; speichern nur auf frisch
-   gelesenem Server-Stand. Genutzt wird die App nur zu Hause.
-5. Bambuddy-Feldnamen nie raten: im Bambuddy-Code nachsehen (github.com/maziggy/bambuddy,
-   `backend/app/schemas/`, `backend/app/api/routes/`) oder `npm run api:types` gegen die laufende Instanz.
-6. Neue Endpunkte, die die App nutzt, in `docs/BAMBUDDY-API.md` und `mocks/handlers.ts` nachtragen.
-
-## Harte Regeln (Kurzfassung, Details in docs/ARCHITEKTUR.md)
-- Module importieren nie aus anderen Modulen (ESLint erzwingt das). Gemeinsames gehört nach `src/core`.
-- Kein `fetch` außerhalb `src/core` (ESLint erzwingt das). Bambuddy nur über `@/core/api`.
-- Keine Plattformweichen in Modulen; nur `can('…')` aus `@/core/platform`.
-- Keine festen Farben/Abstände in Modulen; nur Tokens (`var(--bs-…)`) und Bausteine aus `@/core/ui`.
-- Alle Texte über `t()` aus `@/core/i18n`.
-- Gefährliche Aktionen nur mit Bestätigung und passendem Bambuddy-Recht.
-- Alles für mehrere Drucker, AMS-Einheiten und Lagerorte auslegen.
-- Etiketten-QR enthält die App-Adresse (`<app>/s/<id>`, `/l/<id>`, `/t/<drucker>/<ams>/<slot>`), damit die normale
-  Handy-Kamera direkt die Aktion öffnet; Basis = Einstellung „Adresse für Etiketten“ (`/prefs/app`) oder aktuelle
-  Adresse. Der App-Scanner versteht weiterhin `bm:`-Codes. Parser/Erzeugung: `src/core/qr/codes.ts`.
-- Etikettendrucker nur über Profile (`src/core/printing/profiles.ts`), Layouts in Millimetern.
-- Bambuddy wird nie verändert. Fehlt etwas: Übergangslösung in `server/`, Vorschlag an Bambuddy.
+## Zuerst lesen (gezielt per Suche, nie ganz)
+- `docs/ARCHITEKTUR.md`: Schichten, Modulvertrag, verbindliche Regeln 1–14, Deploy und Betrieb, Etiketten-QR
+- `docs/KONZEPT.md`: Ziel, Umfang, Phasen. `docs/BAMBUDDY-API.md`: genutzte Endpunkte, QR-Formate
+- `docs/DESIGN-SYSTEM.md`: Tokens, Seitenvorlagen, UI-Regeln 1–6. `docs/adr/`: Entscheidungen
+- `docs/module/<modul>.md`: Steckbriefe (Vorlage `_VORLAGE.md`); gebaut wird nur, was einen hat
+- `docs/analyse/INDEX.md`: vorhandene Erhebungen
+- Arbeitsdateien (`docs/uebergabe/`, `docs/superpowers/plans/`, `docs/analyse/`, `docs/bugs.md`, `docs/ideen.md`, `.local/`) bleiben lokal, nicht in Git (`.git/info/exclude`)
 
 ## Befehle
-- `npm run dev:mock` – App mit Beispieldaten (MSW), kein Server nötig
-- `npm run dev` – App gegen echte Bambuddy-Instanz (`BAMBUDDY_URL` in `.env.local`)
-- `npm test` – Vitest (`src/**/*.test.ts`)
-- `npm run api:types` – Typen aus Bambuddys `openapi.json` → `src/core/api/bambuddy.gen.ts`
-- `npm run build && npm run server` – Produktionsbuild + Server (Proxy /api → Bambuddy)
+- Prüfen vor Abschluss: `npm run typecheck && npm run lint && npm test && npm run build` (`tsc -p .` prüft hier nichts)
+- Starten: `npm run dev:mock` (Beispieldaten, kein Server), `npm run dev` (echte Instanz, `BAMBUDDY_URL` in `.env.local`)
+- Produktion lokal: `npm run build && npm run server`
+- Typen aus Bambuddy: `npm run api:types` (nach `src/core/api/bambuddy.gen.ts`)
+- Deploy: nach Push auf `main` und grüner CI `scripts/deploy.sh`; Ablauf in `docs/ARCHITEKTUR.md`
+- Tower: `ssh -i ~/.ssh/unraid_claude root@100.101.172.117` oder LAN `root@192.168.178.50` (Tailscale bei NordVPN-Killswitch gesperrt); nur Einrichtung/Notfall
 
-## Deploy (Unraid, Ablauf wie SeestarManager)
-- Prod: `https://tower.tail2ef903.ts.net:8444` (HTTPS per `tailscale serve --https=8444` → `127.0.0.1:8096`),
-  intern `http://100.101.172.117:8096`. Container `buddy-shelf`, Vorlage `deploy/unraid/buddy-shelf.xml`.
-- Bambuddy-Schlüssel liegt im Container (`BAMBUDDY_API_KEY`); Geräte brauchen keinen eigenen.
-- Push auf `main` → CI baut `ghcr.io/truri83/buddy-shelf:latest` + `:<sha>` (mit `BUILD_SHA`).
-- Dann `scripts/deploy.sh`: wartet auf CI, ruft `POST /api/admin/self-recreate` (Bearer-Token), pollt
-  `/healthz` bis `sha` = HEAD. Code: `server/admin.js` (übernommen aus Seestar `admin-api.ts`).
-- Token nur aus der Windows-Benutzer-Variable `BUDDY_SHELF_ADMIN_TOKEN` lesen, nie in Chat oder Kommandozeile.
-- Zugriff auf den Tower: `ssh -i ~/.ssh/unraid_claude root@100.101.172.117` (nur für Einrichtung/Notfall).
+## Nie
+- Bambuddy verändern: Übergangslösung in `server/`, Vorschlag an Bambuddy.
+- `BUDDY_SHELF_ADMIN_TOKEN` oder `BAMBUDDY_API_KEY` ausgeben; Token nur aus der Windows-Benutzer-Variable lesen.
+- Bambuddy-Feldnamen raten.
 
-## Umgebung des Nutzers
-- Bambuddy selbst gehostet auf Unraid, erreichbar über Tailscale.
-- Drucker: Bambu Lab X2D mit AMS. Etikettendrucker: Niimbot B1 Pro (300 dpi, 48 mm, schwarz/rot,
-  Bluetooth oder USB-C).
-- Testgeräte zuerst: iPhone (Safari, Homescreen-PWA) und Windows-PC (Chrome/Edge).
+## Arbeitsregeln
+- Wenn eine neue Funktion kommt, dann zuerst Steckbrief mit Skizze (Seitenvorlage + Bausteine), erst danach bauen; am Ende Status „umgesetzt“.
+- Wenn ein Bambuddy-Feldname gebraucht wird, dann in github.com/maziggy/bambuddy (`backend/app/schemas/`, `backend/app/api/routes/`) nachsehen oder `npm run api:types`.
+- Wenn die App einen neuen Endpunkt nutzt, dann in `docs/BAMBUDDY-API.md` und `mocks/handlers.ts` nachtragen.
+- Wenn UI geändert wird, dann im Mock prüfen: iPhone-Breite hell und dunkel, Desktop-Breite.
+- Wenn etwas einstellbar ist, dann als gemeinsame Einstellung `/prefs/<bereich>` bauen; speichern nur auf frisch gelesenem Server-Stand. Genutzt wird nur zu Hause.
+
+## Lehren (neu)
